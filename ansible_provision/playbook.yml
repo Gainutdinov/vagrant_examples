@@ -1,0 +1,11 @@
+---
+- hosts: all
+  become: true
+  vars:
+    doc_root: /vagrant/web
+    server_name: "{{ ansible_all_ipv4_addresses[1] }}"
+    sys_packages: [ 'curl', 'vim', 'git']
+    php_packages: [ 'php7.4-curl', 'php7.4-cli' ]
+  roles:
+    - init
+    - nginxphp

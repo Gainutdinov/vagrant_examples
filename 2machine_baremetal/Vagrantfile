@@ -22,6 +22,7 @@ Vagrant.configure("2") do |config|
     config.vm.define "box_#{i}" do |box|
       box.vm.box = box_name
       box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
+      box.vm.disk :disk, name: "backup_#{i}", size: "2GB"
   
       box.vm.provision "shell", inline: "#{script}"
     end

@@ -19,10 +19,11 @@ Vagrant.configure("2") do |config|
   end
   
   (1..number_of_machines).each do |i|
-    config.vm.define "pcs_#{i}" do |box|
+    config.vm.define "pcs#{i}" do |box|
       box.vm.box = box_name
       box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
   
+      box.vm.hostname = "pcs#{i}"
       box.vm.provision "shell", inline: "#{script}"
 
     end

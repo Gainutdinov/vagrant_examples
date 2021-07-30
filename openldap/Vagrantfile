@@ -25,6 +25,8 @@ Vagrant.configure("2") do |config|
       box.vm.disk :disk, name: "backup_#{i}", size: "2GB"
   
       box.vm.provision "shell", inline: "#{script}"
+			box.vm.hostname = "server#{i}"
+      box.vm.network "forwarded_port", guest: 80, host: "808#{i}"
     end
   end
 end

@@ -1,0 +1,35 @@
+#!/bin/bash
+
+#Set options:
+#Fail on a single failed command in a pipeline
+#bash -x kdeploy for debugging
+
+#Doesn't continue executing script if on of the commands failed
+#Doesn't execute script if variable is not defaine (u)
+set -eu
+
+#If commands in pipeline fails when all pipewill fail
+set -o pipefail
+
+#Save global script args
+ARGS=("$@")
+
+hasflag() {
+  #local  flag=${1:-} #If first flag is not provided set it as empty string
+  local  flag=${1}
+  for arg in $ARGS; do
+    if [ "$flag" = "$arg" ]; then
+      echo "true"
+    fi 
+  done
+  echo "false"
+  
+}
+
+if $(hasflag --devopscon); then
+  echo "Yeah !"
+fi
+
+
+
+

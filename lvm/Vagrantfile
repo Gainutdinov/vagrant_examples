@@ -13,6 +13,8 @@ Vagrant.configure("2") do |config|
   
   script = <<-SCRIPT
     echo "hello world"
+    apt update
+    apt install thin-provisioning-tools
   SCRIPT
   
   config.vm.provider "virtualbox" do |v|

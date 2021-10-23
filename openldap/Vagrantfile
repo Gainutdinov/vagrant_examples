@@ -11,7 +11,8 @@ Vagrant.configure("2") do |config|
   ip_addresses = (1..number_of_machines).map{ |i| "#{base_ip_addresses}.#{base_ip + i}" }
   
   script = <<-SCRIPT
-    echo "hello world"
+    sudo apt update
+    echo "192.168.51.101 example.com ldap.example.com" >> /etc/hosts
   SCRIPT
   
   config.vm.provider "virtualbox" do |v|
@@ -23,13 +24,13 @@ Vagrant.configure("2") do |config|
       box.vm.box = box_name
       box.vm.box = box_name
       if "box_#{i}"  == "box_1" then                                                                                                                                               
-        box.vm.box = "generic/ubuntu2004"
+        box.vm.box = "generic/ubuntu1804"
       end
       box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
       box.vm.disk :disk, name: "backup_#{i}", size: "2GB"
   
       box.vm.provision "shell", inline: "#{script}"
-			box.vm.hostname = "server#{i}"
+      box.vm.hostname = "server#{i}"
       box.vm.network "forwarded_port", guest: 80, host: "808#{i}"
     end
   end

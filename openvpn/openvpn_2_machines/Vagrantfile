@@ -1,0 +1,67 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  number_of_machines = 2
+  box_name = "generic/ubuntu1804"
+  
+  base_ip           = 100
+  base_ip_addresses = "192.168.33"
+  net_with_server   = "192.168.111"
+  net_with_client   = "192.168.222"
+  
+  ip_addresses             = (1..number_of_machines).map{ |i| "#{base_ip_addresses}.#{base_ip + i}" }
+  ip_addresses_with_server = (1..number_of_machines).map{ |i| "#{net_with_server}.#{base_ip + i}" }
+  ip_addresses_with_client = (1..number_of_machines).map{ |i| "#{net_with_client}.#{base_ip + i}" }
+  
+  script = <<-SCRIPT
+    echo "hello world"
+    apt update
+    apt install openvpn -y 
+    echo '192.168.33.101 openvpnserver.example.com' >> /etc/hosts
+    echo '192.168.33.102 openvpnclient.example.com' >> /etc/hosts
+    echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
+    sysctl -p
+  SCRIPT
+  
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 1024
+  end
+  
+  (1..number_of_machines).each do |i|
+    config.vm.define "vpn#{i}" do |box|
+      box.vm.box = box_name
+      box.vm.hostname = "vpn#{i}"
+      
+      if box.vm.hostname  == "vpn1" then
+        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
+#        box.vm.network "private_network", ip: "#{ip_addresses_with_server[i-1]}"
+      elsif box.vm.hostname  == "vpn2" then
+        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
+#        box.vm.network "private_network", ip: "#{ip_addresses_with_client[i-2]}"
+      end 
+
+      box.vm.provision "shell", inline: "#{script}"
+
+    end
+  end
+#
+#  config.vm.define "separatehost1" do |box|
+#    box.vm.box = box_name
+#    box.vm.network "private_network", ip: "#{ip_addresses_with_server[1]}"
+#    box.vm.hostname = "separatehosts1"
+#    box.vm.provision "shell", inline: "#{script}"
+#  end
+#
+#
+#  config.vm.define "separatehost2" do |box|
+#    box.vm.box = box_name
+#    box.vm.network "private_network", ip: "#{ip_addresses_with_client[1]}"
+#    box.vm.hostname = "separatehosts2"
+#    box.vm.provision "shell", inline: "#{script}"
+#  end
+#
+
+
+
+end

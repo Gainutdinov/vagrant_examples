@@ -8,16 +8,14 @@ Vagrant.configure("2") do |config|
   base_ip           = 100
   base_ip_addresses = "192.168.33"
   net_with_server   = "192.168.111"
-  net_with_client   = "192.168.222"
   
   ip_addresses             = (1..number_of_machines).map{ |i| "#{base_ip_addresses}.#{base_ip + i}" }
   ip_addresses_with_server = (1..number_of_machines).map{ |i| "#{net_with_server}.#{base_ip + i}" }
-  ip_addresses_with_client = (1..number_of_machines).map{ |i| "#{net_with_client}.#{base_ip + i}" }
   
   script = <<-SCRIPT
     echo "hello world"
     apt update
-    apt install openvpn -y 
+    apt install openvpn bridge-utils -y 
     echo '192.168.33.101 openvpnserver.example.com' >> /etc/hosts
     echo '192.168.33.102 openvpnclient.example.com' >> /etc/hosts
     echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.conf
@@ -35,10 +33,10 @@ Vagrant.configure("2") do |config|
       
       if box.vm.hostname  == "vpn1" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
-        box.vm.network "private_network", ip: "#{ip_addresses_with_server[i-1]}"
+        box.vm.network "private_network", ip: "192.168.111.101", virtualbox__intnet: "server_net1"
       elsif box.vm.hostname  == "vpn2" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
-        box.vm.network "private_network", ip: "#{ip_addresses_with_client[i-2]}"
+        box.vm.network "private_network", ip: "192.168.111.102", virtualbox__intnet: "server_net2"
       end 
 
       box.vm.provision "shell", inline: "#{script}"
@@ -46,18 +44,18 @@ Vagrant.configure("2") do |config|
     end
   end
 
-  config.vm.define "separatehost1" do |box|
+  config.vm.define "separatehost3" do |box|
     box.vm.box = box_name
-    box.vm.network "private_network", ip: "#{ip_addresses_with_server[1]}"
-    box.vm.hostname = "separatehosts1"
+    box.vm.network "private_network", ip: "192.168.111.103", virtualbox__intnet: "server_net1"
+    box.vm.hostname = "separatehosts3"
     box.vm.provision "shell", inline: "#{script}"
   end
 
 
-  config.vm.define "separatehost2" do |box|
+  config.vm.define "separatehost4" do |box|
     box.vm.box = box_name
-    box.vm.network "private_network", ip: "#{ip_addresses_with_client[1]}"
-    box.vm.hostname = "separatehosts2"
+    box.vm.network "private_network", ip: "192.168.111.104", virtualbox__intnet: "server_net2"
+    box.vm.hostname = "separatehosts4"
     box.vm.provision "shell", inline: "#{script}"
   end
 
@@ -65,3 +63,27 @@ Vagrant.configure("2") do |config|
 
 
 end
+
+#####On client side
+####openvpn --mktun --dev tap0
+####brctl addbr br0
+####brctl addif br0 eth2
+####brctl addif br0 tap0
+####ifconfig eth2 0.0.0.0 up
+####ifconfig tap0 0.0.0.0 up
+####ifconfig br0 192.168.111.222 netmask 255.255.255.0 up
+####
+#####On server side
+####openvpn --mktun --dev tap0
+####brctl addbr br0
+####brctl addif br0 eth2
+####brctl addif br0 tap0
+####ifconfig eth2 0.0.0.0 up
+####ifconfig tap0 0.0.0.0 up
+####ifconfig br0 192.168.111.111 netmask 255.255.255.0 up
+
+
+
+
+
+

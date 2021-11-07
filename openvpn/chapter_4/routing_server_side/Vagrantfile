@@ -26,6 +26,7 @@ Vagrant.configure("2") do |config|
     chmod 700 /etc/openvpn/movpn
   SCRIPT
   
+
   config.vm.provider "virtualbox" do |v|
     v.memory = 1024
   end
@@ -38,12 +39,34 @@ Vagrant.configure("2") do |config|
       if box.vm.hostname  == "vpn1" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
         box.vm.network "private_network", ip: "#{ip_addresses_with_server[i-1]}"
+
+        box.vm.provision "file", source: "./ta.key", destination: "~/ta.key"
+        box.vm.provision "file", source: "./ca.crt", destination: "~/ca.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Server.crt", destination: "~/server.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Server.key", destination: "~/server.key"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Client.crt", destination: "~/client.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Client.key", destination: "~/client.key"
+        box.vm.provision "file", source: "./dh2048.pem", destination: "~/dh2048.pem"
+        box.vm.provision "file", source: "./server.conf", destination: "~/server.conf"
+        box.vm.provision "file", source: "./client.conf", destination: "~/client.conf"
+
       elsif box.vm.hostname  == "vpn2" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
 #        box.vm.network "private_network", ip: "#{ip_addresses_with_client[i-2]}"
-      end 
 
+        box.vm.provision "file", source: "./ta.key", destination: "~/ta.key"
+        box.vm.provision "file", source: "./ca.crt", destination: "~/ca.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Server.crt", destination: "~/server.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Server.key", destination: "~/server.key"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Client.crt", destination: "~/client.crt"
+        box.vm.provision "file", source: "./Mastering_OpenVPN_Client.key", destination: "~/client.key"
+        box.vm.provision "file", source: "./dh2048.pem", destination: "~/dh2048.pem"
+        box.vm.provision "file", source: "./server.conf", destination: "~/server.conf"
+        box.vm.provision "file", source: "./client.conf", destination: "~/client.conf"
+
+      end 
       box.vm.provision "shell", inline: "#{script}"
+      box.vm.provision "shell", inline: "mv /home/vagrant/* /etc/openvpn/movpn"
 
     end
   end
@@ -53,12 +76,6 @@ Vagrant.configure("2") do |config|
     box.vm.network "private_network", ip: "#{ip_addresses_with_server[1]}"
     box.vm.hostname = "separatehosts1"
     box.vm.provision "shell", inline: "#{script}"
-    box.vm.provision "file", source: "./ta.key", destination: "/etc/openvpn/movpn/ta.key"
-    box.vm.provision "file", source: "./ca.crt", destination: "/etc/openvpn/movpn/ca.crt"
-    box.vm.provision "file", source: "./Mastering_OpenVPN_Server.crt", destination: "/etc/openvpn/movpn/server.crt"
-    box.vm.provision "file", source: "./Mastering_OpenVPN_Server.key", destination: "/etc/openvpn/movpn/server.key"
-    box.vm.provision "file", source: "./Mastering_OpenVPN_Client.crt", destination: "/etc/openvpn/movpn/client.crt"
-    box.vm.provision "file", source: "./Mastering_OpenVPN_Client.key", destination: "/etc/openvpn/movpn/client.key"
   end
 
 #

@@ -33,10 +33,10 @@ Vagrant.configure("2") do |config|
       
       if box.vm.hostname  == "vpn1" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
-        box.vm.network "private_network", ip: "192.168.111.101", virtualbox__intnet: "server_net1"
+        box.vm.network "private_network", ip: "192.168.111.101", name: "server_net1"
       elsif box.vm.hostname  == "vpn2" then
         box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
-        box.vm.network "private_network", ip: "192.168.111.102", virtualbox__intnet: "server_net2"
+        box.vm.network "private_network", ip: "192.168.111.102", name: "server_net2"
       end 
 
       box.vm.provision "shell", inline: "#{script}"
@@ -46,7 +46,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "separatehost3" do |box|
     box.vm.box = box_name
-    box.vm.network "private_network", ip: "192.168.111.103", virtualbox__intnet: "server_net1"
+    box.vm.network "private_network", ip: "192.168.111.103", name: "server_net1"
     box.vm.hostname = "separatehosts3"
     box.vm.provision "shell", inline: "#{script}"
   end
@@ -54,7 +54,7 @@ Vagrant.configure("2") do |config|
 
   config.vm.define "separatehost4" do |box|
     box.vm.box = box_name
-    box.vm.network "private_network", ip: "192.168.111.104", virtualbox__intnet: "server_net2"
+    box.vm.network "private_network", ip: "192.168.111.104", name: "server_net2"
     box.vm.hostname = "separatehosts4"
     box.vm.provision "shell", inline: "#{script}"
   end

@@ -1,0 +1,85 @@
+Certificate:
+    Data:
+        Version: 3 (0x2)
+        Serial Number:
+            b1:a2:f8:76:4c:68:4b:24:38:fa:63:9c:ed:61:35:0d
+        Signature Algorithm: sha256WithRSAEncryption
+        Issuer: CN=Mastering OpenVPN
+        Validity
+            Not Before: Nov  7 10:47:46 2021 GMT
+            Not After : Feb 10 10:47:46 2024 GMT
+        Subject: CN=client1
+        Subject Public Key Info:
+            Public Key Algorithm: rsaEncryption
+                RSA Public-Key: (2048 bit)
+                Modulus:
+                    00:e8:79:44:6c:ec:fa:b2:88:74:f5:25:19:f2:06:
+                    cb:16:9b:1f:77:9e:7f:90:0f:ac:3d:07:71:ee:1d:
+                    46:4b:96:29:14:56:90:1b:86:07:1a:a7:f7:83:3a:
+                    ce:3b:85:3f:e8:77:d5:61:87:78:47:7f:33:0c:aa:
+                    e1:f8:a1:69:52:22:64:14:b2:a2:5c:df:33:c1:97:
+                    7e:6b:2c:cc:b9:b6:10:bc:51:46:14:f0:13:19:cb:
+                    d8:42:60:78:72:a9:73:8e:4b:1e:36:0b:d7:2e:26:
+                    fa:89:a4:99:2e:59:ae:d8:93:d7:c9:37:68:86:aa:
+                    1f:6a:36:be:89:a4:ea:f9:56:0e:b3:1b:f6:5e:5a:
+                    fc:5b:e6:35:19:d0:d1:da:d8:b0:0a:85:86:44:6e:
+                    73:90:71:f8:f0:96:87:a9:0d:50:82:3b:5b:37:7e:
+                    e6:50:cc:fc:b6:28:5a:ce:62:3b:35:bc:c1:77:c2:
+                    6f:7a:41:63:ae:cf:35:cf:92:b2:ed:26:17:c8:4b:
+                    97:18:14:35:f3:57:5b:09:45:6b:5b:8f:ff:de:cc:
+                    41:fc:5b:63:ee:9f:31:b0:48:e3:bd:88:46:3f:7f:
+                    0b:d1:33:e0:9a:7c:39:7e:db:f6:f5:c2:9c:7e:56:
+                    87:09:90:65:c1:d9:19:fa:4c:ff:f3:13:af:58:0d:
+                    87:33
+                Exponent: 65537 (0x10001)
+        X509v3 extensions:
+            X509v3 Basic Constraints: 
+                CA:FALSE
+            X509v3 Subject Key Identifier: 
+                96:33:99:26:A2:35:43:2E:86:47:C3:E2:7F:D8:F3:40:74:77:F3:33
+            X509v3 Authority Key Identifier: 
+                keyid:6E:A3:97:A2:CA:79:AC:0D:4F:64:10:2E:EF:06:65:3E:63:20:22:02
+                DirName:/CN=Mastering OpenVPN
+                serial:45:0F:BC:2C:F6:94:92:7B:89:90:E2:F2:94:20:8D:84:8E:7D:4F:CF
+
+            X509v3 Extended Key Usage: 
+                TLS Web Client Authentication
+            X509v3 Key Usage: 
+                Digital Signature
+    Signature Algorithm: sha256WithRSAEncryption
+         9b:46:ac:71:3f:62:f0:bb:59:7f:ed:bf:9c:05:cd:12:45:27:
+         04:65:fd:f1:59:62:aa:0c:d5:49:9f:62:24:61:b0:cc:72:71:
+         9b:fc:e8:96:40:5d:fc:ca:65:37:9e:30:1a:49:c5:b5:d3:ac:
+         40:5c:05:58:a0:f4:d3:ff:c3:21:87:ee:39:80:52:7f:9a:57:
+         08:9a:c7:14:ae:25:7d:ec:fb:6d:39:8a:08:91:69:e5:83:2a:
+         f1:0f:2f:04:b6:30:c3:b2:00:d5:8b:88:99:4c:9c:08:08:d7:
+         e7:c4:8e:45:0f:3e:cc:67:fa:d3:12:a0:ea:08:3d:45:1a:a6:
+         59:39:99:87:ac:29:95:a9:c3:bc:4c:ca:43:e7:19:58:2c:6b:
+         73:39:94:3d:97:cf:fe:bb:1e:85:ae:a8:7a:1a:f0:d9:8d:f9:
+         22:91:f3:7b:1a:a6:34:25:a4:5c:6e:d2:42:65:00:b4:41:39:
+         c3:21:4d:68:b2:c1:bc:62:2c:dc:8a:97:72:76:64:a3:02:d6:
+         13:f6:b6:c8:65:9b:ef:31:4c:e7:60:36:96:8e:9a:7b:5c:30:
+         d6:cb:61:16:75:ef:82:7c:10:3a:34:7e:2d:59:fa:2b:18:a8:
+         ca:33:c6:68:ee:92:0e:78:c5:3c:99:e0:2e:86:b4:9d:98:6e:
+         ef:4f:d4:77
+-----BEGIN CERTIFICATE-----
+MIIDYjCCAkqgAwIBAgIRALGi+HZMaEskOPpjnO1hNQ0wDQYJKoZIhvcNAQELBQAw
+HDEaMBgGA1UEAwwRTWFzdGVyaW5nIE9wZW5WUE4wHhcNMjExMTA3MTA0NzQ2WhcN
+MjQwMjEwMTA0NzQ2WjASMRAwDgYDVQQDDAdjbGllbnQxMIIBIjANBgkqhkiG9w0B
+AQEFAAOCAQ8AMIIBCgKCAQEA6HlEbOz6soh09SUZ8gbLFpsfd55/kA+sPQdx7h1G
+S5YpFFaQG4YHGqf3gzrOO4U/6HfVYYd4R38zDKrh+KFpUiJkFLKiXN8zwZd+ayzM
+ubYQvFFGFPATGcvYQmB4cqlzjkseNgvXLib6iaSZLlmu2JPXyTdohqofaja+iaTq
++VYOsxv2Xlr8W+Y1GdDR2tiwCoWGRG5zkHH48JaHqQ1QgjtbN37mUMz8tihazmI7
+NbzBd8JvekFjrs81z5Ky7SYXyEuXGBQ181dbCUVrW4//3sxB/Ftj7p8xsEjjvYhG
+P38L0TPgmnw5ftv29cKcflaHCZBlwdkZ+kz/8xOvWA2HMwIDAQABo4GoMIGlMAkG
+A1UdEwQCMAAwHQYDVR0OBBYEFJYzmSaiNUMuhkfD4n/Y80B0d/MzMFcGA1UdIwRQ
+ME6AFG6jl6LKeawNT2QQLu8GZT5jICICoSCkHjAcMRowGAYDVQQDDBFNYXN0ZXJp
+bmcgT3BlblZQToIURQ+8LPaUknuJkOLylCCNhI59T88wEwYDVR0lBAwwCgYIKwYB
+BQUHAwIwCwYDVR0PBAQDAgeAMA0GCSqGSIb3DQEBCwUAA4IBAQCbRqxxP2Lwu1l/
+7b+cBc0SRScEZf3xWWKqDNVJn2IkYbDMcnGb/OiWQF38ymU3njAaScW106xAXAVY
+oPTT/8Mhh+45gFJ/mlcImscUriV97PttOYoIkWnlgyrxDy8EtjDDsgDVi4iZTJwI
+CNfnxI5FDz7MZ/rTEqDqCD1FGqZZOZmHrCmVqcO8TMpD5xlYLGtzOZQ9l8/+ux6F
+rqh6GvDZjfkikfN7GqY0JaRcbtJCZQC0QTnDIU1ossG8YizcipdydmSjAtYT9rbI
+ZZvvMUznYDaWjpp7XDDWy2EWde+CfBA6NH4tWforGKjKM8Zo7pIOeMU8meAuhrSd
+mG7vT9R3
+-----END CERTIFICATE-----

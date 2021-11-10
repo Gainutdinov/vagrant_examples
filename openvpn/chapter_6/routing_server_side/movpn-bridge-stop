@@ -1,0 +1,5 @@
+ifconfig br0 down
+brctl delif br0 eth2
+brctl delif br0 tap0
+brctl delbr br0
+openvpn --rmtun --dev tap0

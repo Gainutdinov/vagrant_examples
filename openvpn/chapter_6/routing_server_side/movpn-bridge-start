@@ -1,5 +1,6 @@
 #!/bin/bash
-#in order to use TAP device for bridging make sure to reboot VM (server V    M) after adding custom br0 device!!!
+#in order to use TAP device for bridging make sure to reboot VM (server VM) after adding custom br0 device!!!
+#also make sure promiscious mode is set for 'All' if previous step didn't help
 br="br0"
 tap="tap0"
 eth="eth2"

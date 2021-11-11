@@ -1,8 +1,9 @@
 #!/bin/bash
+#in order to use TAP device for bridging make sure to reboot VM (server V    M) after adding custom br0 device!!!
 br="br0"
 tap="tap0"
 eth="eth2"
-br_ip="192.168.111.1"
+br_ip="192.168.111.101"
 br_netmask="255.255.255.0"
 br_broadcast="192.168.111.255"
 # Create the tap adapter

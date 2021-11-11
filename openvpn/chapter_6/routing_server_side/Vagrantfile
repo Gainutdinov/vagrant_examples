@@ -37,8 +37,8 @@ Vagrant.configure("2") do |config|
       box.vm.hostname = "vpn#{i}"
       
       if box.vm.hostname  == "vpn1" then
-        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
-        box.vm.network "private_network", ip: "#{ip_addresses_with_server[i-1]}"
+        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}", virtualbox__intnet: true
+				box.vm.network "private_network", ip: "#{ip_addresses_with_server[i-1]}", virtualbox__intnet: true
 
         box.vm.provision "file", source: "./ta.key", destination: "~/ta.key"
         box.vm.provision "file", source: "./ca.crt", destination: "~/ca.crt"
@@ -49,9 +49,10 @@ Vagrant.configure("2") do |config|
         box.vm.provision "file", source: "./dh2048.pem", destination: "~/dh2048.pem"
         box.vm.provision "file", source: "./server.conf", destination: "~/server.conf"
         box.vm.provision "file", source: "./client.conf", destination: "~/client.conf"
+        box.vm.provision "file", source: "./movpn-bridge-start", destination: "~/movpn-bridge-start"
 
       elsif box.vm.hostname  == "vpn2" then
-        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
+        box.vm.network "private_network", ip: "#{ip_addresses[i-1]}", virtualbox__intnet: true
 #        box.vm.network "private_network", ip: "#{ip_addresses_with_client[i-2]}"
 
         box.vm.provision "file", source: "./ta.key", destination: "~/ta.key"
@@ -63,17 +64,19 @@ Vagrant.configure("2") do |config|
         box.vm.provision "file", source: "./dh2048.pem", destination: "~/dh2048.pem"
         box.vm.provision "file", source: "./server.conf", destination: "~/server.conf"
         box.vm.provision "file", source: "./client.conf", destination: "~/client.conf"
+        box.vm.provision "file", source: "./movpn-bridge-start", destination: "~/movpn-bridge-start"
 
       end 
       box.vm.provision "shell", inline: "#{script}"
       box.vm.provision "shell", inline: "mv /home/vagrant/* /etc/openvpn/movpn"
+      box.vm.provision "shell", inline: "chmod 755 /etc/openvpn/movpn/movpn-bridge-start"
 
     end
   end
 
   config.vm.define "separatehost1" do |box|
     box.vm.box = box_name
-    box.vm.network "private_network", ip: "#{ip_addresses_with_server[1]}"
+    box.vm.network "private_network", ip: "#{ip_addresses_with_server[1]}", virtualbox__intnet: true
     box.vm.hostname = "separatehosts1"
     box.vm.provision "shell", inline: "#{script}"
   end

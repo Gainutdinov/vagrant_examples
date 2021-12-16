@@ -17,6 +17,20 @@ Vagrant.configure("2") do |config|
     
     DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client
     sudo service clickhouse-server start
+
+    cat << EOF > /etc/clickhouse-server/config.d/main.xml
+    <?xml version="1.0"?>
+    <clickhouse>
+        <http_port>8125</http_port>
+        <max_concurrent_queries>100</max_concurrent_queries>
+        <timezone>UTC</timezone>
+    </clickhouse>
+    EOF
+
+    systemctl restart clickhouse-server
+    systemctl status clickhouse-server
+    
+    curl http://localhost:8125
     
   SHELL
 end

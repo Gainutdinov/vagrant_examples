@@ -29,6 +29,7 @@ Vagrant.configure("2") do |config|
     EOF
     sed -i 's|<level>trace</level>|<level>information</level>|g' /etc/clickhouse-server/config.xml
     sed -i 's|<size>1000M</size>|<size>3000M</size>|g' /etc/clickhouse-server/config.xml
+    sed -i 's|<table>query_log</table>|<table>queries</table>|g' /etc/clickhouse-server/config.xml
 
     systemctl restart clickhouse-server
     systemctl status clickhouse-server
@@ -40,7 +41,7 @@ Vagrant.configure("2") do |config|
    # ch1.ru-central1.internal :) set log_queries = 1
    # ch1.ru-central1.internal :) set log_query_threads = 1
    # ch1.ru-central1.internal :) select 1;
-   # ch1.ru-central1.internal :) select * from system.query_log where query='select 1;';
+   # ch1.ru-central1.internal :) select * from system.queries where query='select 1;';
     
   SHELL
 end

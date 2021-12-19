@@ -1,0 +1,63 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2004"
+  config.vm.synced_folder"./","/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update
+    sudo apt-get install apt-transport-https ca-certificates dirmngr -y
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4
+    
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | sudo tee /etc/apt/sources.list.d/clickhouse.list
+    sudo apt-get update
+    
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client
+    sudo service clickhouse-server start
+
+#    cat << EOF > /etc/clickhouse-server/config.d/main.xml
+#    <?xml version="1.0"?>
+#    <clickhouse>
+#        <http_port>8125</http_port>
+#        <max_connections>100</max_connections>
+#        <timezone>UTC</timezone>
+#    </clickhouse>
+#    EOF
+#    sed -i 's|<level>trace</level>|<level>information</level>|g' /etc/clickhouse-server/config.xml
+#    sed -i 's|<size>1000M</size>|<size>3000M</size>|g' /etc/clickhouse-server/config.xml
+#    sed -i 's|<table>query_log</table>|<table>queries</table>|g' /etc/clickhouse-server/config.xml
+#    sed -i "s|</users>|\n        <ch_user>\n            <password>ch_password</password>\n            <access_management>0</access_management>\n            <networks>\n                <ip>127.0.0.1</ip>\n            </networks>\n            <profile>ronly</profile>\n            <quota>default</quota>\n        </ch_user>\n    </users>|" /etc/clickhouse-server/users.xml
+#sed -i "s|</profiles>|\n        <ronly>\n            <readonly>1</readonly>\n            <max_execution_time>180</max_execution_time>\n        </ronly>\n    </profiles>|" /etc/clickhouse-server/users.xml
+#    sed -i "s|</quotas>|\n        <user>\n            <interval>\n                <queries>100</queries>\n                <duration>3600</duration>\n                <read_rows>1000000000</read_rows>\n            </interval>\n        </user>\n    </quotas>|" /etc/clickhouse-server/users.xml
+    openssl req -subj "/CN=localhost" -new -newkey rsa:2048 -days 365 -nodes -x509 -keyout /etc/clickhouse-server/server.key -out /etc/clickhouse-server/server.crt
+    openssl dhparam -out /etc/clickhouse-server/dhparam.pem 4096
+    sed -i 's|<!-- <https_port>8443</https_port> -->|<https_port>8443</https_port>|g' /etc/clickhouse-server/config.xml
+    sed -i 's|<!-- <tcp_port_secure>9440</tcp_port_secure> -->|<tcp_port_secure>9440</tcp_port_secure>|g' /etc/clickhouse-server/config.xml
+#    sed -i 's|<verificationMode>none</verificationMode>|<verificationMode>none</verificationMode>|g' /etc/clickhouse-server/config.xml
+    sed -i 's|<http_port>8123</http_port>|<!-- <http_port>8123</http_port> -->|' /etc/clickhouse-server/config.xml
+    sed -i 's|<tcp_port>9000</tcp_port>|<!-- <tcp_port>9000</tcp_port> -->|' /etc/clickhouse-server/config.xml
+    cd /etc/clickhouse-server/
+    chown clickhouse:clickhouse dhparam.pem server.*
+    chmod 0400 server.key
+
+
+
+
+    systemctl restart clickhouse-server
+    systemctl status clickhouse-server
+    
+   # root@ch1:/etc/clickhouse-server# clickhouse-client
+   # ClickHouse client version 21.2.5.5 (official build).
+   # Connecting to localhost:9000 as user default.
+   # Connected to ClickHouse server version 21.2.5 revision 54447.
+   # ch1.ru-central1.internal :) set log_queries = 1
+   # ch1.ru-central1.internal :) set log_query_threads = 1
+   # ch1.ru-central1.internal :) select 1;
+   # ch1.ru-central1.internal :) select * from system.queries where query='select 1;';
+    
+  SHELL
+end

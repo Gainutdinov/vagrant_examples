@@ -30,9 +30,9 @@ Vagrant.configure("2") do |config|
 #    sed -i 's|<level>trace</level>|<level>information</level>|g' /etc/clickhouse-server/config.xml
 #    sed -i 's|<size>1000M</size>|<size>3000M</size>|g' /etc/clickhouse-server/config.xml
 #    sed -i 's|<table>query_log</table>|<table>queries</table>|g' /etc/clickhouse-server/config.xml
-    sed -i "s|</users>|\n        <ch_user>\n            <password>ch_password</password>\n            <access_management>0</access_management>\n            <networks>\n                <ip>127.0.0.1</ip>\n            </networks>\n            <profile>ronly</profile>\n            <quota>default</quota>\n        </ch_user>\n    </users>|" /etc/clickhouse-server/users.xml
-sed -i "s|</profiles>|\n        <ronly>\n            <readonly>1</readonly>\n            <max_execution_time>180</max_execution_time>\n        </ronly>\n    </profiles>|" /etc/clickhouse-server/users.xml
-
+#    sed -i "s|</users>|\n        <ch_user>\n            <password>ch_password</password>\n            <access_management>0</access_management>\n            <networks>\n                <ip>127.0.0.1</ip>\n            </networks>\n            <profile>ronly</profile>\n            <quota>default</quota>\n        </ch_user>\n    </users>|" /etc/clickhouse-server/users.xml
+#sed -i "s|</profiles>|\n        <ronly>\n            <readonly>1</readonly>\n            <max_execution_time>180</max_execution_time>\n        </ronly>\n    </profiles>|" /etc/clickhouse-server/users.xml
+    sed -i "s|</quotas>|\n        <user>\n            <interval>\n                <queries>100</queries>\n                <duration>3600</duration>\n                <read_rows>1000000000</read_rows>\n            </interval>\n        </user>\n    </quotas>|" /etc/clickhouse-server/users.xml
 
     systemctl restart clickhouse-server
     systemctl status clickhouse-server

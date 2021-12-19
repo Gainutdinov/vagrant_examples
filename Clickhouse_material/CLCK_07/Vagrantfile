@@ -37,7 +37,8 @@ Vagrant.configure("2") do |config|
     openssl dhparam -out /etc/clickhouse-server/dhparam.pem 4096
     sed -i 's|<!-- <https_port>8443</https_port> -->|<https_port>8443</https_port>|g' /etc/clickhouse-server/config.xml
     sed -i 's|<!-- <tcp_port_secure>9440</tcp_port_secure> -->|<tcp_port_secure>9440</tcp_port_secure>|g' /etc/clickhouse-server/config.xml
-#    sed -i 's|<verificationMode>none</verificationMode>|<verificationMode>none</verificationMode>|g' /etc/clickhouse-server/config.xml
+    sed -i 's|<!-- Use for self-signed: <verificationMode>none</verificationMode> -->|<verificationMode>none</verificationMode>|g' /etc/clickhouse-client/config.xml
+    sed -i 's|<name>RejectCertificateHandler</name>|<name>AcceptCertificateHandler</name>|g' /etc/clickhouse-client/config.xml
     sed -i 's|<http_port>8123</http_port>|<!-- <http_port>8123</http_port> -->|' /etc/clickhouse-server/config.xml
     sed -i 's|<tcp_port>9000</tcp_port>|<!-- <tcp_port>9000</tcp_port> -->|' /etc/clickhouse-server/config.xml
     cd /etc/clickhouse-server/

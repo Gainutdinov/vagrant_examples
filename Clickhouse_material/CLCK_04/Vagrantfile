@@ -1,0 +1,48 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2004"
+  config.vm.synced_folder"./","/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update
+    sudo apt-get install apt-transport-https ca-certificates dirmngr -y
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4
+    
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | sudo tee /etc/apt/sources.list.d/clickhouse.list
+    sudo apt-get update
+    
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client
+    sudo service clickhouse-server start
+
+#    cat << EOF > /etc/clickhouse-server/config.d/main.xml
+#    <?xml version="1.0"?>
+#    <clickhouse>
+#        <http_port>8125</http_port>
+#        <max_connections>100</max_connections>
+#        <timezone>UTC</timezone>
+#    </clickhouse>
+#    EOF
+#    sed -i 's|<level>trace</level>|<level>information</level>|g' /etc/clickhouse-server/config.xml
+#    sed -i 's|<size>1000M</size>|<size>3000M</size>|g' /etc/clickhouse-server/config.xml
+#    sed -i 's|<table>query_log</table>|<table>queries</table>|g' /etc/clickhouse-server/config.xml
+    sed -i "s|</users>|\n        <ch_user>\n            <password>ch_password</password>\n            <access_management>0</access_management>\n            <networks>\n                <ip>127.0.0.1</ip>\n            </networks>\n            <profile>default</profile>\n            <quota>default</quota>\n        </ch_user>\n    </users>|" /etc/clickhouse-server/users.xml
+
+    systemctl restart clickhouse-server
+    systemctl status clickhouse-server
+    
+   # root@ch1:/etc/clickhouse-server# clickhouse-client
+   # ClickHouse client version 21.2.5.5 (official build).
+   # Connecting to localhost:9000 as user default.
+   # Connected to ClickHouse server version 21.2.5 revision 54447.
+   # ch1.ru-central1.internal :) set log_queries = 1
+   # ch1.ru-central1.internal :) set log_query_threads = 1
+   # ch1.ru-central1.internal :) select 1;
+   # ch1.ru-central1.internal :) select * from system.queries where query='select 1;';
+    
+  SHELL
+end

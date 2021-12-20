@@ -1,0 +1,99 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2004"
+  config.vm.synced_folder"./","/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update && \
+    sudo apt-get install apt-transport-https ca-certificates dirmngr xmlstarlet -y && \
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4 && \
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | sudo tee /etc/apt/sources.list.d/clickhouse.list && \
+    sudo apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client && \
+    sudo service clickhouse-server start  
+    sed -i -n '1,/<remote_servers>/p;/<\/remote_servers>/,$p' config.xml
+    sed -i '/<\/remote_servers>/d' config.xml
+    sed -i  's|<remote_servers>|<remote_servers incl="clickhouse_remote_servers" />\n    <include_from>/etc/clickhouse-server/cluster.xml</include_from>|' config.xml
+
+    cat << EOF > /etc/clickhouse-server/cluster.xml
+<?xml version="1.0"?>
+<clickhouse>
+    <clickhouse_remote_servers>
+        <local> // Название кластера
+            <shard>
+                <replica>
+                    <host>167.99.142.32</host> // первая нода в нашем кластере
+                    <port>9000</port>
+                </replica>
+						</shard>
+						<shard>
+                <replica>
+                    <host>159.65.123.161</host> // вторая нода в нашем кластере
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </local>
+    </clickhouse_remote_servers>
+</clickhouse>
+EOF
+
+
+
+clickhouse-client -n <<-EOSQL
+CREATE TABLE ch_local
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = MergeTree()
+PARTITION BY date
+ORDER BY id;
+EOSQL
+
+clickhouse-client -n <<-EOSQL
+CREATE TABLE ch_distributed
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = Distributed('local', 'default', 'ch_local', rand());
+EOSQL
+
+clickhouse-client -n <<-EOSQL
+CREATE TABLE ch_distributed
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = Distributed('local', 'default', 'ch_local', rand());
+EOSQL
+
+for i in $(seq 1 1 10)
+do
+clickhouse-client -n <<-EOSQL
+INSERT INTO default.ch_distributed (*) VALUES ("$i", 'a', 'description', 'content', 2021-12-12)
+EOSQL
+done
+
+    chown clickhouse:clickhouse /etc/clickhouse-server/cluster.xml
+
+
+    systemctl restart clickhouse-server
+    systemctl status clickhouse-server
+    
+  SHELL
+end

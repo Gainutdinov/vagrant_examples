@@ -1,0 +1,146 @@
+
+
+    Установите clickhouse на обе ноды.
+sudo apt update && \                                                           
+    sudo apt-get install apt-transport-https ca-certificates dirmngr xmlstarlet -y && \
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4 && \
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | tee /etc/apt/sources.list.d/clickhouse.list && \
+    apt-get update && \                                                       
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client && \
+    sudo service clickhouse-server start
+
+    Установите zookeper на первую ноду.
+apt update && apt install default-jre-headless -y && \
+java --version && \
+mkdir -p /opt/zookeeper && \
+cd /opt/zookeeper && \
+wget https://apache.volia.net/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz && \
+tar xzfv apache-zookeeper-3.6.3-bin.tar.gz && \
+mv apache-zookeeper-3.6.3-bin/* ./ && \
+rm -rf apache-zookeeper-3.6.3-bin apache-zookeeper-3.6.3-bin.tar.gz && \
+ls
+cat << EOF > conf/zoo.cfg
+tickTime=2000
+dataDir=/var/lib/zookeeper
+clientPort=2181
+EOF
+useradd -M zookeeper  && \
+chown -R zookeeper:zookeeper /opt/zookeeper/ && \
+mkdir -p /var/lib/zookeeper && \
+chown -R zookeeper:zookeeper /var/lib/zookeeper/ && \
+cat << EOF > /lib/systemd/system/zookeeper.service
+Description=zookeeper:3.6.3
+After=network.target
+
+[Service]
+Type=forking
+User=zookeeper
+Group=zookeeper
+
+WorkingDirectory=/opt/zookeeper
+
+ExecStart=/opt/zookeeper/bin/zkServer.sh start
+ExecStop=/opt/zookeeper/bin/zkServer.sh stop
+ExecReload=/opt/zookeeper/bin/zkServer.sh restart
+
+RestartSec=30
+Restart=always
+
+PrivateTmp=yes
+PrivateDevices=yes
+
+LimitCORE=infinity
+LimitNOFILE=500000
+
+[Install]
+WantedBy=multi-user.target
+Alias=zookeeper.service
+EOF
+service zookeeper start
+service zookeeper status
+    Добавьте в конфигурационный файл кластера (/etc/clickhouse-server/cluster.xml) ClickHouse информацию о Zookeeper ноде на обоих серверах.
+cat << EOF > /etc/clickhouse-server/cluster.xml
+<?xml version="1.0"?>
+<clickhouse>
+    <clickhouse_remote_servers>
+        <mycluster> // Название кластера
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>188.166.167.230</host> // Первая нода одного шарда
+                    <port>9000</port>
+                </replica>
+                <replica>
+                    <host>142.93.101.56</host> // Вторая нода одного шарда
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </mycluster>
+    </clickhouse_remote_servers>
+
+    <zookeeper-servers>
+        <node index="1">
+            <host>188.166.167.230</host> // сервер зукипер
+            <port>2181</port> // порт для подключения
+        </node>
+    </zookeeper-servers>
+
+    <macros>
+	<cluster>mycluster</cluster> // название кластера
+        <replica>188.166.167.230</replica> // Адрес данной машины
+        <shard>01</shard> // Шард данной машины
+    </macros>
+</clickhouse>
+EOF
+chown clickhouse:clickhouse /etc/clickhouse-server/cluster.xml
+    Добавьте в тот же файл конфигурации макросы для каждой ноды - {replica}, {cluster}
+    Перезагрузите clickhouse-server сервис и убедитесь, что вы не наблюдаете никаких ошибок в логах ClickHouse.
+
+    <include_from>/etc/clickhouse-server/cluster.xml</include_from>
+    <remote_servers incl="clickhouse_remote_servers" />
+    <zookeeper incl="zookeeper-servers" optional="true" />
+    <macros incl="macros" optional="true" />
+    <listen_host>::</listen_host>
+
+
+    Создайте в кластере локальные (ch_replicated_local) и distributed (ch_replicated_distributed) таблицы, используя макросы и ON CLUSTER. Структуру таблиц используйте, указанную ниже.
+
+CREATE TABLE ch_replicated_local ON CLUSTER mycluster
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = ReplicatedMergeTree('/clickhouse/{cluster}/tables/ch_replicated_local', '{replica}')
+PARTITION BY date
+ORDER BY id;
+
+
+CREATE TABLE ch_replicated_distributed ON CLUSTER 'mycluster'
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = Distributed('{cluster}', 'default', 'ch_replicated_local', rand());
+    Вставьте 5 строк данных в одну реплику. Проверьте, что данные корректно реплицируются и что они появились на второй реплике.
+      for i in $(seq 1 1 5) 
+      do
+        #To test distributed ENGINE uncomment and etc.
+        clickhouse-client -n <<-EOSQL
+        INSERT INTO default.ch_replicated_local (*) VALUES (${i}, 'a', 'description', 'content', 2021-12-12)
+EOSQL
+      done
+
+    Если вы справились — отправляйте задание на проверку.
+
+
+
+
+
+
+

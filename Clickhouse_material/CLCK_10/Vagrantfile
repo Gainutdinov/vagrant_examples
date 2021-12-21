@@ -2,12 +2,17 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
+<<<<<<< HEAD
+=======
+  number_of_machines = 2
+>>>>>>> bc952d96197d9e9683c8a287158eb87d4e3c23f5
   config.vm.box = "generic/ubuntu2004"
   config.vm.synced_folder"./","/vagrant"
 
   config.vm.provider "virtualbox" do |vb|
     vb.memory = "1024"
   end
+<<<<<<< HEAD
   config.vm.provision "shell", inline: <<-SHELL
     apt install default-jre-headless -y
     java --version
@@ -65,4 +70,98 @@ EOF
     service zookeeper status
 
   SHELL
+=======
+
+  script = <<-SCRIPT
+    sudo apt update && \
+    sudo apt-get install apt-transport-https ca-certificates dirmngr xmlstarlet -y && \
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4 && \
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | sudo tee /etc/apt/sources.list.d/clickhouse.list && \
+    sudo apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client && \
+    sudo service clickhouse-server start  
+    sed -i -n '1,/<remote_servers>/p;/<\/remote_servers>/,$p' /etc/clickhouse-server/config.xml
+    sed -i '/<\/remote_servers>/d' /etc/clickhouse-server/config.xml
+    sed -i  's|<remote_servers>|<remote_servers incl="clickhouse_remote_servers" />\n    <include_from>/etc/clickhouse-server/cluster.xml</include_from>|' /etc/clickhouse-server/config.xml
+    sed -i  's|<!-- <listen_host>::</listen_host> -->|<listen_host>::</listen_host>|' /etc/clickhouse-server/config.xml
+
+    cat << EOF > /etc/clickhouse-server/cluster.xml
+<?xml version="1.0"?>
+<clickhouse>
+    <clickhouse_remote_servers>
+        <local> // Название кластера
+            <shard>
+                <replica>
+                    <host>167.99.142.32</host> // первая нода в нашем кластере
+                    <port>9000</port>
+                </replica>
+						</shard>
+						<shard>
+                <replica>
+                    <host>159.65.123.161</host> // вторая нода в нашем кластере
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </local>
+    </clickhouse_remote_servers>
+</clickhouse>
+EOF
+
+    chown clickhouse:clickhouse /etc/clickhouse-server/cluster.xml
+
+
+clickhouse-client -n <<-EOSQL
+CREATE TABLE ch_local
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = MergeTree()
+PARTITION BY date
+ORDER BY id;
+EOSQL
+
+clickhouse-client -n <<-EOSQL
+CREATE TABLE ch_distributed
+(
+    id Int64,
+    title String,
+    description String,
+    content String,
+    date Date
+)
+ENGINE = Distributed('local', 'default', 'ch_local', rand());
+EOSQL
+
+    systemctl restart clickhouse-server
+    systemctl status clickhouse-server
+    
+SCRIPT
+
+
+  (1..number_of_machines).each do |i|
+    config.vm.define "click#{i}" do |box|
+      box.vm.hostname = "click#{i}"
+      box.vm.provision "shell", inline: "#{script}"
+
+    end
+  end
+
+  config.vm.define "click1" do |box1|
+    box1.vm.provision "shell", inline: <<-SHELL                                                                                                                                            
+      for i in $(seq 1 1 10)
+      do
+#To test distributed ENGINE uncomment and etc.
+#clickhouse-client -n <<-EOSQL
+#INSERT INTO default.ch_distributed (*) VALUES (${i}, 'a', 'description', 'content', 2021-12-12)
+#EOSQL
+echo '$i'
+      done
+    SHELL
+  end
+
+>>>>>>> bc952d96197d9e9683c8a287158eb87d4e3c23f5
 end

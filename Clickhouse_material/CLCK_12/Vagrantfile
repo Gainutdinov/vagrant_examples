@@ -1,0 +1,59 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+Vagrant.configure("2") do |config|
+  config.vm.box = "generic/ubuntu2004"
+  config.vm.synced_folder"./","/vagrant"
+
+  config.vm.provider "virtualbox" do |vb|
+    vb.memory = "1024"
+  end
+  config.vm.provision "shell", inline: <<-SHELL
+    sudo apt update && \
+    sudo apt-get install apt-transport-https ca-certificates dirmngr -y && \
+    sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv E0C56BD4 && \
+    echo "deb https://repo.clickhouse.com/deb/stable/ main/" | sudo tee /etc/apt/sources.list.d/clickhouse.list && \
+    sudo apt-get update && \
+    DEBIAN_FRONTEND=noninteractive apt-get install -y clickhouse-server clickhouse-client && \
+    sudo service clickhouse-server start && \
+    clickhouse-client -n <<-EOSQL
+      CREATE TABLE local_posts
+      (
+          id Int64,
+          title String,
+          description String,
+          content String,
+          user_id Int64,
+          date Date
+      ) 
+      ENGINE = MergeTree()
+      PARTITION BY date
+      ORDER BY id;
+EOSQL
+    cat << EOF > /var/lib/clickhouse/user_files/users.csv
+user_id,email
+1,marat@mail.ru
+2,denis@gmail.com
+EOF
+    chown clickhouse:clickhouse /var/lib/clickhouse/user_files/users.csv
+    clickhouse-client -n <<-EOSQL
+CREATE DICTIONARY dicts.geoip_country_blocks_ipv4 (
+    network String DEFAULT '',
+    geoname_id UInt64 DEFAULT 0,
+    registered_country_geoname_id UInt64 DEFAULT 0,
+    represented_country_geoname_id UInt64 DEFAULT 0,
+    is_anonymous_proxy UInt8 DEFAULT 0,
+    is_satellite_provider UInt8 DEFAULT 0
+) 
+PRIMARY KEY network
+SOURCE(FILE(
+    path '/var/lib/clickhouse/user_files/GeoIP2-Country-Blocks-IPv4.csv'
+    format 'CSVWithNames'
+))
+LAYOUT(IP_TRIE())
+LIFETIME(300);
+EOSQL
+
+
+  SHELL
+end

@@ -1,0 +1,13 @@
+---
+- hosts: all
+  become: true
+  vars:
+    doc_root: /vagrant/web
+    server_name: "{{ ansible_eth1.ipv4.address }}"
+    sys_packages: [ 'curl', 'vim', 'git', 'apt-transport-https', 'ca-certificates', 'dirmngr']
+    php_packages: [ 'php7.0-curl', 'php7.0-cli' ]
+    clickhouse_databases: ['db', 'db_restore']
+  roles:
+    - init
+    - installclickhouse
+#    - nginxphp

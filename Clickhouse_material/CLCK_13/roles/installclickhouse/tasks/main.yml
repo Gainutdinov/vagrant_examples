@@ -1,0 +1,87 @@
+---
+- name: Update apt
+  apt: update_cache=yes
+
+- name: Add the APT Key for ClickHouse.
+  apt_key:
+    keyserver: hkp://keyserver.ubuntu.com:80
+    id: E0C56BD4
+    state: present
+  become: true
+
+- name: add clickhouse repo
+  ansible.builtin.apt_repository:
+    repo: deb https://repo.clickhouse.com/deb/stable/ main/
+    state: present
+    filename: clickhouse.list
+
+- name: Install Clickhouse Packages
+  apt: name={{ item }} state=latest
+  loop:
+    - 'clickhouse-server'
+    - 'clickhouse-client'
+
+- name: Restart service clickhouse service 
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: clickhouse-server
+
+#- name: Create ClickHouse databases
+#  command: clickhouse-client --query="CREATE DATABASE {{ item }};"
+#  loop: "{{ clickhouse_databases | default([]) }}"
+#  register: command_result
+#  changed_when: command_result.rc == 0
+#  failed_when: command_result.rc != 0 and command_result.rc != 82
+
+- name: Create ClickHouse destination table
+  changed_when: no
+  command: >
+    clickhouse-client --query
+    "CREATE TABLE IF NOT EXISTS default.local_posts (
+       id Int64,
+       title String,
+       description String,
+       content String,
+       user_id Int64,
+       date Date
+    )
+    ENGINE = MergeTree()
+    PARTITION BY toYYYYMM(date)
+    ORDER BY id;"
+
+- name: Create CSV file /var/lib/clickhouse/user_files/users.csv
+  changed_when: no
+  shell: |
+    cat <<' EOF' > /var/lib/clickhouse/user_files/users.csv 
+    user_id,email
+    1,marat@mail.ru
+    2,denis@mail.ru
+    EOF
+
+- name: sleep for 10 seconds and continue with play
+  wait_for:
+    timeout: 10
+
+- name: Create Dictionary local_users_dict which will use CSV file /var/lib/clickhouse/user_files/users.csv
+  changed_when: no
+  command: >
+    clickhouse-client --query
+    "
+    CREATE DICTIONARY dicts.local_users_dict (
+        network String DEFAULT '',
+        geoname_id UInt64 DEFAULT 0,
+        registered_country_geoname_id UInt64 DEFAULT 0,
+        represented_country_geoname_id UInt64 DEFAULT 0,
+        is_anonymous_proxy UInt8 DEFAULT 0,
+        is_satellite_provider UInt8 DEFAULT 0
+    ) 
+    PRIMARY KEY network
+    SOURCE(FILE(
+        path '/var/lib/clickhouse/user_files/users.csv'
+        format 'CSVWithNames'
+    ))
+    LAYOUT(IP_TRIE())
+    LIFETIME(300);
+    "
+

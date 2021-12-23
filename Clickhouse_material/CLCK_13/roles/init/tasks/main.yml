@@ -1,0 +1,7 @@
+---
+- name: Update apt
+  apt: update_cache=yes
+
+- name: Install Sys Packages
+  apt: name={{ item }} state=latest
+  loop: "{{ sys_packages|flatten }}"

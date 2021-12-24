@@ -50,6 +50,15 @@
     PARTITION BY toYYYYMM(date)
     ORDER BY id;"
 
+- name: Add entry to default.local_posts
+  changed_when: no
+  command: >
+    clickhouse-client --query
+    "INSERT INTO default.local_posts VALUES
+        (1,'title1','description1','content1',1,2020-10-10),
+        (2,'title2','description2','content2',1,2020-10-10);
+    "
+
 - name: Create CSV file /var/lib/clickhouse/user_files/users.csv
   changed_when: no
   shell: |
@@ -69,19 +78,27 @@
     clickhouse-client --query
     "
     CREATE DICTIONARY dicts.local_users_dict (
-        network String DEFAULT '',
-        geoname_id UInt64 DEFAULT 0,
-        registered_country_geoname_id UInt64 DEFAULT 0,
-        represented_country_geoname_id UInt64 DEFAULT 0,
-        is_anonymous_proxy UInt8 DEFAULT 0,
-        is_satellite_provider UInt8 DEFAULT 0
+        user_id UInt64 DEFAULT 0,
+        email String
     ) 
-    PRIMARY KEY network
+    PRIMARY KEY user_id
     SOURCE(FILE(
         path '/var/lib/clickhouse/user_files/users.csv'
         format 'CSVWithNames'
     ))
-    LAYOUT(IP_TRIE())
-    LIFETIME(300);
+    LAYOUT(FLAT())
+    LIFETIME(10);
     "
+
+
+
+#SELECT 
+#        dictGetString('dicts.local_users_dict', 'email', user_id) AS email_addr,
+#        title,
+#        description,
+#        content
+#    FROM local_posts
+#);
+
+
 

@@ -1,0 +1,55 @@
+---
+- name: Install Java Package
+  apt: name=default-jre-headless state=latest
+
+- name: Add the user 'zookeeper' with a bash shell
+  ansible.builtin.user:
+    name: zookeeper
+    append: yes
+    system: yes
+    create_home: no
+
+- name: Create /opt/zookeeper directory
+  file:
+    path: /opt/zookeeper
+    state: directory
+    mode: 0755
+    owner: zookeeper
+    group: zookeeper
+
+- name: Download zookeeper
+  get_url: url=https://apache.volia.net/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz dest=/tmp/apache-zookeeper-3.6.3-bin.tar.gz
+
+- name: Download, install zookeeper, remove redundant files
+  changed_when: no
+  shell: |
+    cd /opt/zookeeper && \
+    wget https://apache.volia.net/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz && \
+    tar xzfv apache-zookeeper-3.6.3-bin.tar.gz && \
+    mv apache-zookeeper-3.6.3-bin/* ./ && \
+    rm -rf apache-zookeeper-3.6.3-bin apache-zookeeper-3.6.3-bin.tar.gz 
+
+- name: Create zookeeper file 
+  changed_when: no
+  shell: |
+    cat << EOF > /opt/zookeeper/conf/zoo.cfg
+    tickTime=2000
+    dataDir=/var/lib/zookeeper
+    clientPort=2181
+    EOF
+
+- name: Change owner for /opt/zookeeper
+  ansible.builtin.file:
+    path: /opt/zookeeper
+    recurse: yes
+    mode:  0644
+    owner: zookeeper
+    group: zookeeper
+
+- name: zookeeper | Create Unit file
+  template: src=zookeeper.service.j2 dest=/lib/systemd/system/zookeeper.service mode=644
+  notify:
+    - reload systemctl
+
+- name: zookeeper | Start zookeeper.service
+  service: name=zookeeper.service state=started enabled=yes

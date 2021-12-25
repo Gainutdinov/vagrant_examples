@@ -1,0 +1,38 @@
+---
+- name: Update apt
+  apt: update_cache=yes
+
+- name: Add the APT Key for ClickHouse.
+  apt_key:
+    keyserver: hkp://keyserver.ubuntu.com:80
+    id: E0C56BD4
+    state: present
+  become: true
+
+- name: add clickhouse repo
+  ansible.builtin.apt_repository:
+    repo: deb https://repo.clickhouse.com/deb/stable/ main/
+    state: present
+    filename: clickhouse.list
+
+- name: Install Clickhouse Packages
+  apt: name={{ item }} state=latest
+  loop:
+    - 'clickhouse-server'
+    - 'clickhouse-client'
+
+- name: Restart service clickhouse service 
+  ansible.builtin.systemd:
+    state: restarted
+    daemon_reload: yes
+    name: clickhouse-server
+     
+- name: create zookeeper config for replicas and sharding
+  template: 
+    src:   cluster.xml.j2
+    dest:  /etc/clickhouse-server/cluster.xml
+    mode:  644 
+    owner: clickhouse
+    group: clickhouse
+
+

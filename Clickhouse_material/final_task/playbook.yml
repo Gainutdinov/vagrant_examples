@@ -1,5 +1,5 @@
 ---
-- hosts: all
+- hosts: server1,server2,server3,server4
   become: true
   vars:
     doc_root: /vagrant/web
@@ -8,6 +8,12 @@
     php_packages: [ 'php7.0-curl', 'php7.0-cli' ]
     clickhouse_databases: ['db', 'db_restore']
   roles:
-    - init
-    - installclickhouse
-#    - nginxphp
+    - clickhouse
+
+- hosts: server1,server2,server3
+  become: true
+  vars:
+    clickhouse_databases: ['db', 'db_restore']
+  roles:
+    - zookeeper
+

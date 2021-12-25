@@ -1,0 +1,10 @@
+[zookeepers]
+server1 ansible_user=root ansible_host=134.209.234.180 ansible_user=root shard_number=01
+server2 ansible_user=root ansible_host=159.223.29.191 ansible_user=root shard_number=02
+server3 ansible_user=root ansible_host=157.230.115.22 ansible_user=root shard_number=03
+
+[clickhouse_hosts]
+server1 ansible_user=root ansible_host=134.209.234.180 ansible_user=root shard_number=01
+server2 ansible_user=root ansible_host=159.223.29.191 ansible_user=root shard_number=02
+server3 ansible_user=root ansible_host=157.230.115.22 ansible_user=root shard_number=03
+server4 ansible_user=root ansible_host=134.209.233.209 ansible_user=root shard_number=04

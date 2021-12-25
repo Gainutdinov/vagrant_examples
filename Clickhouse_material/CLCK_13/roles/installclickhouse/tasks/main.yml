@@ -49,6 +49,8 @@
     ENGINE = MergeTree()
     PARTITION BY toYYYYMM(date)
     ORDER BY id;"
+  retries: 3
+  delay: 5
 
 - name: Add entry to default.local_posts
   changed_when: no
@@ -63,15 +65,47 @@
   changed_when: no
   shell: |
     cat << EOF > /var/lib/clickhouse/user_files/users.csv 
-    user_id,email
     1,marat@mail.ru
     2,denis@mail.ru
     EOF
 
+
+#- name: Create CSV file /var/lib/clickhouse/user_files/users.csv
+#  changed_when: no
+#  shell: |
+#    cat << EOF > /etc/clickhouse-server/csv_dictionary.xml
+#    <?xml version="1.0"?>
+#    <yandex>
+#    <dictionary>
+#        <name>local_users_dict</name>
+#        <source>
+#           <file>
+#              <path>/var/lib/clickhouse/user_files/users.csv</path>
+#              <format>CSV</format>
+#           </file>
+#        </source>
+#        <layout>
+#           <flat />
+#        </layout>
+#        <structure>
+#           <id>
+#             <name>user_id</name>
+#           </id>
+#           <attribute>
+#              <name>email</name>
+#              <type>String</type>
+#              <null_value>Null</null_value>
+#           </attribute>
+#        </structure>
+#        <lifetime>10</lifetime>
+#    </dictionary>
+#    </yandex>
+#    EOF
+
 - name: Create CSV file /var/lib/clickhouse/user_files/users.csv
   changed_when: no
   shell: |
-    chown clickhouse:clickhouse /var/lib/clickhouse/user_files/users.csv 
+    chown clickhouse:clickhouse /var/lib/clickhouse/user_files/users.csv
 
 - name: sleep for 10 seconds and continue with play
   wait_for:
@@ -89,11 +123,12 @@
     PRIMARY KEY user_id
     SOURCE(FILE(
         path '/var/lib/clickhouse/user_files/users.csv'
-        format 'CSVWithNames'
+        format 'CSV'
     ))
     LAYOUT(FLAT())
     LIFETIME(10);
     "
+
 
 - name: Create SQL Query in order to load the Dictionary
   changed_when: no

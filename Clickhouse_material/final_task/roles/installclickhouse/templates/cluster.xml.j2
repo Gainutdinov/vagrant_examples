@@ -1,0 +1,51 @@
+<?xml version="1.0"?>
+<clickhouse>
+    <clickhouse_remote_servers>
+        <mycluster> // Название кластера
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>{{ hostvars['server1']['ansible_default_ipv4']['address'] }}</host> // Первая нода первого шарда
+                    <port>9000</port>
+                </replica>
+                <replica>
+                    <host>{{ hostvars['server2']['ansible_default_ipv4']['address'] }}</host> // Вторая нода первого шарда
+                    <port>9000</port>
+                </replica>
+            </shard>
+            <shard>
+                <internal_replication>true</internal_replication>
+                <replica>
+                    <host>{{ hostvars['server3']['ansible_default_ipv4']['address']  }}</host> // Третья нода второго шарда
+                    <port>9000</port>
+                </replica>
+                <replica>
+                    <host>{{ hostvars['server4']['ansible_default_ipv4']['address'] }}</host> // Четвертая нода второго шарда
+                    <port>9000</port>
+                </replica>
+            </shard>
+        </mycluster>
+    </clickhouse_remote_servers>
+
+    <zookeeper-servers>
+        <node index="1">
+            <host>{{ hostvars['server1']['ansible_default_ipv4']['address'] }}</host> // сервер зукипер
+            <port>2181</port> // порт для подключения
+        </node>
+        <node index="2">
+            <host>{{ hostvars['server2']['ansible_default_ipv4']['address'] }}</host> // сервер зукипер
+            <port>2181</port> // порт для подключения
+        </node>
+        <node index="3">
+            <host>{{ hostvars['server3']['ansible_default_ipv4']['address'] }}</host> // сервер зукипер
+            <port>2181</port> // порт для подключения
+        </node>
+    </zookeeper-servers>
+
+    <macros>
+        <cluster>mycluster</cluster> // название кластера
+        <replica>{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}</replica> // Адрес данной машины
+        <shard>{{ hostvars[host].shard_number }}</shard> // Шард данной машины
+    </macros>
+</clickhouse>
+

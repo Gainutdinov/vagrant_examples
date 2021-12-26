@@ -1,6 +1,6 @@
-server1 ansible_user=root ansible_host=164.90.231.3     ansible_user=root shard_number=01
-server2 ansible_user=root ansible_host=164.90.231.5     ansible_user=root shard_number=02
-server3 ansible_user=root ansible_host=164.90.231.2     ansible_user=root shard_number=03
-server4 ansible_user=root ansible_host=164.90.231.4     ansible_user=root shard_number=04
+server1 ansible_user=root ansible_host=207.154.235.26     ansible_user=root shard_number=01
+server2 ansible_user=root ansible_host=207.154.196.126    ansible_user=root shard_number=02
+server3 ansible_user=root ansible_host=138.68.75.242      ansible_user=root shard_number=03
+server4 ansible_user=root ansible_host=138.68.84.248      ansible_user=root shard_number=04
 
 #ansible-playbook --inventory ./my_hosts ./playbook.yml

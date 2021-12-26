@@ -6,12 +6,21 @@
   ansible.builtin.user:
     name: zookeeper
     append: yes
-    system: yes
+    shell:  /bin/bash
     create_home: no
 
 - name: Create /opt/zookeeper directory
   file:
     path: /opt/zookeeper
+    state: directory
+    mode: 0755
+    owner: zookeeper
+    group: zookeeper
+    recurse: yes
+
+- name: Create /opt/zookeeper directory
+  file:
+    path: /var/lib/zookeeper
     state: directory
     mode: 0755
     owner: zookeeper
@@ -42,7 +51,7 @@
   ansible.builtin.file:
     path: /opt/zookeeper
     recurse: yes
-    mode:  0644
+    mode:  0755
     owner: zookeeper
     group: zookeeper
 

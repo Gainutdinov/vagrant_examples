@@ -17,3 +17,93 @@
   roles:
     - zookeeper
 
+
+#####В кластере необходимо создать таблицу events_local реплицируемую в каждом шарде
+#####Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
+####- hosts: server1,server2,server3,server4
+####  become: true
+####  vars:
+####    clickhouse_table_name: 'events_local'
+####  name: Create ClickHouse local table 'events_local'
+####    command: >
+####        clickhouse-client --query 
+####          "CREATE TABLE IF NOT EXISTS default.{{ clickhouse_table_name }} (
+####             id Int64,
+####             title String,
+####             description String,
+####             content String,
+####             user_id Int64,
+####             date Date
+####          )
+####          ENGINE = MergeTree()
+####          PARTITION BY toYYYYMM(date)
+####          ORDER BY id;"
+####    register: command_result
+####    changed_when: command_result.rc == 0
+####    failed_when: command_result.rc != 0 and command_result.rc != 82
+####    retries: 3
+####    delay: 5
+####
+#####Так же нужно создать таблицу events_distributed, которая будет смотреть на два шарда и реплики в них
+#####Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
+####- hosts: server1,server2,server3,server4
+####  become: true
+####  vars:
+####    clickhouse_table_name: 'events_local'
+####  name: Create ClickHouse local table 'events_local'
+####    command: >
+####        clickhouse-client --query 
+####          "CREATE TABLE IF NOT EXISTS default.{{ clickhouse_table_name }} (
+####             id Int64,
+####             title String,
+####             description String,
+####             content String,
+####             user_id Int64,
+####             date Date
+####          )
+####          ENGINE = MergeTree()
+####          PARTITION BY toYYYYMM(date)
+####          ORDER BY id;"
+####    register: command_result
+####    changed_when: command_result.rc == 0
+####    failed_when: command_result.rc != 0 and command_result.rc != 82
+####    retries: 3
+####    delay: 5
+####
+####- hosts: server1,server3
+####  name: insert data into local_data
+####  changed_when: no
+####    command: >
+####      clickhouse-client --query    
+####      "{{ item }}"
+####    loop:
+####      - "INSERT INTO default.events_local (*) VALUES (1, 'title1', 'description1', 'content1', '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (2, 'title2', 'description2', 'content2', '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (3, 'title3', 'description3', 'content3', '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (4, 'title4', 'description4', 'content4', '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (5, 'title5', 'description5', 'content5', '2020-10-10')"
+####    register: command_result
+####    changed_when: command_result.rc == 0
+####    failed_when: command_result.rc != 0 and command_result.rc != 82
+
+
+
+
+####  name: Create ClickHouse destination table
+####  changed_when: no
+####  command: >
+####    clickhouse-client --query
+####    "CREATE TABLE IF NOT EXISTS default.local_posts (
+####       id Int64,
+####       title String,
+####       description String,
+####       content String,
+####       user_id Int64,
+####       date Date
+####    )
+####    ENGINE = MergeTree()
+####    PARTITION BY toYYYYMM(date)
+####    ORDER BY id;"
+####  retries: 3
+####  delay: 5
+

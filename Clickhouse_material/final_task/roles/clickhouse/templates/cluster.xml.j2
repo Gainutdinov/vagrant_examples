@@ -45,7 +45,7 @@
     <macros>
         <cluster>mycluster</cluster> // название кластера
         <replica>{{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}</replica> // Адрес данной машины
-        <shard>{{ hostvars[host].shard_number }}</shard> // Шард данной машины
+        <shard>{{ shard_number }}</shard> // Шард данной машины
     </macros>
 </clickhouse>
 

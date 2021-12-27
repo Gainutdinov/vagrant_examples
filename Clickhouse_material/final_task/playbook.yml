@@ -18,58 +18,72 @@
     - zookeeper
 
 
-#####В кластере необходимо создать таблицу events_local реплицируемую в каждом шарде
-#####Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
-####- hosts: server1,server2,server3,server4
-####  become: true
-####  vars:
-####    clickhouse_table_name: 'events_local'
-####  name: Create ClickHouse local table 'events_local'
-####    command: >
-####        clickhouse-client --query 
-####          "CREATE TABLE IF NOT EXISTS default.{{ clickhouse_table_name }} (
-####             id Int64,
-####             title String,
-####             description String,
-####             content String,
-####             user_id Int64,
-####             date Date
-####          )
-####          ENGINE = MergeTree()
-####          PARTITION BY toYYYYMM(date)
-####          ORDER BY id;"
-####    register: command_result
-####    changed_when: command_result.rc == 0
-####    failed_when: command_result.rc != 0 and command_result.rc != 82
-####    retries: 3
-####    delay: 5
-####
-#####Так же нужно создать таблицу events_distributed, которая будет смотреть на два шарда и реплики в них
-#####Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
-####- hosts: server1,server2,server3,server4
-####  become: true
-####  vars:
-####    clickhouse_table_name: 'events_local'
-####  name: Create ClickHouse local table 'events_local'
-####    command: >
-####        clickhouse-client --query 
-####          "CREATE TABLE IF NOT EXISTS default.{{ clickhouse_table_name }} (
-####             id Int64,
-####             title String,
-####             description String,
-####             content String,
-####             user_id Int64,
-####             date Date
-####          )
-####          ENGINE = MergeTree()
-####          PARTITION BY toYYYYMM(date)
-####          ORDER BY id;"
-####    register: command_result
-####    changed_when: command_result.rc == 0
-####    failed_when: command_result.rc != 0 and command_result.rc != 82
-####    retries: 3
-####    delay: 5
-####
+- hosts: server1,server2,server3,server4
+  become: true
+  name: Configure ClickHouse to use cluster.xml file
+    shell: >
+      sed -i -n '1,/<remote_servers>/p;/<\/remote_servers>/,$p' /etc/clickhouse-server/config.xml
+      sed -i '/<\/remote_servers>/d' /etc/clickhouse-server/config.xml
+      sed -i  's|<remote_servers>|<remote_servers incl="clickhouse_remote_servers" />\n    <include_from>/etc/clickhouse-server/cluster.xml</include_from>|' /etc/clickhouse-server/config.xml
+      sed -i  's|<!-- <listen_host>::</listen_host> -->|<listen_host>::</listen_host>|' /etc/clickhouse-server/config.xml
+      systemctl restart clickhouse-server
+    register: command_result
+    changed_when: command_result.rc == 0
+    failed_when: command_result.rc != 0
+
+#В кластере необходимо создать таблицу events_local реплицируемую в каждом шарде
+#Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
+- hosts: server1,server2,server3,server4
+  become: true
+  name: Create ClickHouse local table 'events_local'
+    command: >
+      clickhouse-client --query 
+        "CREATE TABLE default.events_local
+         (
+             id Int64,
+             title String,
+             description String,
+             content String,
+             event_type String,
+             datetime DateTime
+         )
+         ENGINE = MergeTree()
+         PARTITION BY toYYYYMM(date)
+         ORDER BY id;"
+    register: command_result
+    changed_when: command_result.rc == 0
+    failed_when: command_result.rc != 0 and command_result.rc != 82
+    retries: 3
+    delay: 5
+
+#Так же нужно создать таблицу events_distributed, которая будет смотреть на два шарда и реплики в них
+#Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
+- hosts: server1,server2,server3,server4
+  become: true
+  vars:
+    clickhouse_table_name: 'events_local'
+  name: Create ClickHouse local table 'events_local'
+    command: >
+      clickhouse-client --query 
+      "CREATE TABLE default.events_distributed
+      (
+           id Int64,
+           title String,
+           description String,
+           content String,
+           event_type String,
+           datetime DateTime
+      )
+      ENGINE = Distributed('mycluster', 'default', 'events_local', rand());"
+    register: command_result
+    changed_when: command_result.rc == 0
+    failed_when: command_result.rc != 0 and command_result.rc != 82
+    retries: 3
+    delay: 5
+
+
+
+
 ####- hosts: server1,server3
 ####  name: insert data into local_data
 ####  changed_when: no

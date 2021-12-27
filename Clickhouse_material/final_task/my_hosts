@@ -1,10 +1,10 @@
-server1 ansible_user=root ansible_host=164.90.227.94          ansible_user=root shard_number=01
-server2 ansible_user=root ansible_host=164.90.227.97          ansible_user=root shard_number=02
-server3 ansible_user=root ansible_host=164.90.227.103         ansible_user=root shard_number=03
-server4 ansible_user=root ansible_host=164.90.227.102         ansible_user=root shard_number=04
+server1 ansible_user=root ansible_host=64.225.99.197         ansible_user=root shard_number=01
+server2 ansible_user=root ansible_host=64.227.112.35         ansible_user=root shard_number=01
+server3 ansible_user=root ansible_host=64.227.112.116        ansible_user=root shard_number=02
+server4 ansible_user=root ansible_host=64.225.107.227        ansible_user=root shard_number=02
 
 #ansible-playbook --inventory ./my_hosts ./playbook.yml
-#server1: connect command: ssh user@164.90.227.94 password: ievrfeowyqbo
-#server2: connect command: ssh user@164.90.227.97 password: xywamrjfzwjw
-#server3: connect command: ssh user@164.90.227.103 password: ubyjicmulbmp
-#server4: connect command: ssh user@164.90.227.102 password: kblowmonxkpx
+#server1: connect command: ssh user@64.225.99.197 password: oyaacwgfyzkk
+#server2: connect command: ssh user@64.227.112.35 password: bowahbmilvfw
+#server3: connect command: ssh user@64.227.112.116 password: doeutbtweiou
+#server4: connect command: ssh user@64.225.107.227 password: fbqfkntarvde

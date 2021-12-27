@@ -1,4 +1,11 @@
 ---
+- hosts: server1,server2,server3
+  become: true
+  vars:
+    clickhouse_databases: ['db', 'db_restore']
+  roles:
+    - zookeeper
+
 - hosts: server1,server2,server3,server4
   become: true
   vars:
@@ -10,17 +17,9 @@
   roles:
     - clickhouse
 
-- hosts: server1,server2,server3
-  become: true
-  vars:
-    clickhouse_databases: ['db', 'db_restore']
-  roles:
-    - zookeeper
-
-#   <macros incl="macros" optional="true" /> 
 #В кластере необходимо создать таблицу events_local реплицируемую в каждом шарде
 #Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
-- hosts: server1,server2,server3,server4
+- hosts: server1
   become: true
   debugger: on_failed
   tasks:
@@ -39,11 +38,6 @@
          ENGINE = ReplicatedMergeTree('/clickhouse/{cluster}/tables/events_local', '{replica}') 
          PARTITION BY toYYYYMM(datetime)
          ORDER BY id;"
-    register: command_result
-    changed_when: command_result.rc == 0
-    failed_when: command_result.rc != 0 and command_result.rc != 82
-    retries: 3
-    delay: 5
 
 #Так же нужно создать таблицу events_distributed, которая будет смотреть на два шарда и реплики в них
 #Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
@@ -53,7 +47,7 @@
   - name: Create ClickHouse local table 'events_local'
     command: >
       clickhouse-client --query "
-      CREATE TABLE default.events_distributed on 'mycluster'
+      CREATE TABLE default.events_distributed ON CLUSTER 'mycluster'
       (
            id Int64,
            title String,
@@ -63,12 +57,11 @@
            datetime DateTime
       )
       ENGINE = Distributed('{cluster}', 'default', 'events_local', rand());"
-    register: command_result
-    changed_when: command_result.rc == 0
-    failed_when: command_result.rc != 0 and command_result.rc != 82
-    retries: 3
-    delay: 5
-
+####    changed_when: command_result.rc == 0
+####    failed_when: command_result.rc != 0 and command_result.rc != 82
+####    retries: 3
+####    delay: 5
+####
 
 
 ####- hosts: server1,server3
@@ -78,11 +71,11 @@
 ####      clickhouse-client --query    
 ####      "{{ item }}"
 ####    loop:
-####      - "INSERT INTO default.events_local (*) VALUES (1, 'title1', 'description1', 'content1', '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (2, 'title2', 'description2', 'content2', '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (3, 'title3', 'description3', 'content3', '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (4, 'title4', 'description4', 'content4', '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (5, 'title5', 'description5', 'content5', '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (1, 'title1', 'description1', 'content1', 1, '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (2, 'title2', 'description2', 'content2', 2, '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (3, 'title3', 'description3', 'content3', 3, '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (4, 'title4', 'description4', 'content4', 4, '2020-10-10')"
+####      - "INSERT INTO default.events_local (*) VALUES (5, 'title5', 'description5', 'content5', 5, '2020-10-10')"
 ####    register: command_result
 ####    changed_when: command_result.rc == 0
 ####    failed_when: command_result.rc != 0 and command_result.rc != 82

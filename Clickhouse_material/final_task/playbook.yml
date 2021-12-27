@@ -17,30 +17,17 @@
   roles:
     - zookeeper
 
-
-- hosts: server1,server2,server3,server4
-  become: true
-  name: Configure ClickHouse to use cluster.xml file
-    shell: >
-      sed -i -n '1,/<remote_servers>/p;/<\/remote_servers>/,$p' /etc/clickhouse-server/config.xml
-      sed -i '/<\/remote_servers>/d' /etc/clickhouse-server/config.xml
-      sed -i  's|<remote_servers>|<remote_servers incl="clickhouse_remote_servers" />\n    <include_from>/etc/clickhouse-server/cluster.xml</include_from>|' /etc/clickhouse-server/config.xml
-      sed -i  's|<!-- <listen_host>::</listen_host> -->|<listen_host>::</listen_host>|' /etc/clickhouse-server/config.xml
-#     <zookeeper incl="zookeeper-servers" optional="true" /> 
-#     <macros incl="macros" optional="true" /> 
-      systemctl restart clickhouse-server
-    register: command_result
-    changed_when: command_result.rc == 0
-    failed_when: command_result.rc != 0
-
+#   <macros incl="macros" optional="true" /> 
 #В кластере необходимо создать таблицу events_local реплицируемую в каждом шарде
 #Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
 - hosts: server1,server2,server3,server4
   become: true
-  name: Create ClickHouse local table 'events_local'
+  debugger: on_failed
+  tasks:
+  - name: Create ClickHouse local table 'events_local'
     command: >
-      clickhouse-client --query 
-        "CREATE TABLE default.events_local on CLUSTER mycluster
+      clickhouse-client --query "
+        CREATE TABLE default.events_local on CLUSTER mycluster
          (
              id Int64,
              title String,
@@ -50,7 +37,7 @@
              datetime DateTime
          )
          ENGINE = ReplicatedMergeTree('/clickhouse/{cluster}/tables/events_local', '{replica}') 
-         PARTITION BY toYYYYMM(date)
+         PARTITION BY toYYYYMM(datetime)
          ORDER BY id;"
     register: command_result
     changed_when: command_result.rc == 0
@@ -62,12 +49,11 @@
 #Таблицу можно сделать по примерам из 9ого или 11ого заданий - она должна содержать datetime поле, event_type - идентификатор события
 - hosts: server1
   become: true
-  vars:
-    clickhouse_table_name: 'events_local'
-  name: Create ClickHouse local table 'events_local'
+  tasks:
+  - name: Create ClickHouse local table 'events_local'
     command: >
-      clickhouse-client --query 
-      "CREATE TABLE default.events_distributed on 'mycluster'
+      clickhouse-client --query "
+      CREATE TABLE default.events_distributed on 'mycluster'
       (
            id Int64,
            title String,
@@ -82,7 +68,6 @@
     failed_when: command_result.rc != 0 and command_result.rc != 82
     retries: 3
     delay: 5
-
 
 
 

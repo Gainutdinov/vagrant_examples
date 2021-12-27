@@ -35,4 +35,34 @@
     owner: clickhouse
     group: clickhouse
 
+- name: Configure ClickHouse to use cluster.xml file
+  shell: |
+    sed -i -n '1,/<remote_servers>/p;/<\/remote_servers>/,$p' /etc/clickhouse-server/config.xml
+    sed -i '/<\/remote_servers>/d' /etc/clickhouse-server/config.xml
+    sed -i  's|<remote_servers>|<remote_servers incl="clickhouse_remote_servers" />\n    <include_from>/etc/clickhouse-server/cluster.xml</include_from>|' /etc/clickhouse-server/config.xml
+    sed -i  's|<!-- <listen_host>::</listen_host> -->|<listen_host>::</listen_host>|' /etc/clickhouse-server/config.xml
+    chmod 644 /etc/clickhouse-server/config.xml
+  register: command_result
+  changed_when: command_result.rc == 0
+  failed_when: command_result.rc != 0
+
+- name: Configure macros to use config.xml file
+  replace:
+    path: /etc/clickhouse-server/config.xml
+    regexp: '<\!--\n    <macros>\n        <shard>01<\/shard>\n        <replica>example01-01-1<\/replica>\n    <\/macros>\n    -->\n'
+    replace: |-
+      <macros incl="macros" optional="true" />
+
+- name: Configure zookeeper-servers to use config.xml file
+  replace:
+    path: /etc/clickhouse-server/config.xml
+    regexp: '<\!--\n    <zookeeper>\n        <node>\n            <host>example1<\/host>\n            <port>2181<\/port>\n        <\/node>\n        <node>\n            <host>example2<\/host>\n            <port>2181<\/port>\n        <\/node>\n        <node>\n            <host>example3<\/host>\n            <port>2181<\/port>\n        <\/node>\n    <\/zookeeper>\n    -->'
+    replace: |-
+          <zookeeper incl="zookeeper-servers" optional="true" />
+
+- name: Restart Clickhouse-server
+  shell: |
+    chmod 755 /etc/clickhouse-server/config.xml
+    chmod 755 /etc/clickhouse-server/cluster.xml
+    systemctl restart clickhouse-server
 

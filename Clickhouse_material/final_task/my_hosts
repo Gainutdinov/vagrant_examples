@@ -1,10 +1,11 @@
-server1 ansible_user=root ansible_host=64.225.99.197         ansible_user=root shard_number=01
-server2 ansible_user=root ansible_host=64.227.112.35         ansible_user=root shard_number=01
-server3 ansible_user=root ansible_host=64.227.112.116        ansible_user=root shard_number=02
-server4 ansible_user=root ansible_host=64.225.107.227        ansible_user=root shard_number=02
+server1 ansible_user=root ansible_host=46.101.230.39                            ansible_ssh_pass=addqskmfgkhe                ansible_user=user shard_number=01 zookeeper_id=1
+server2 ansible_user=root ansible_host=46.101.181.93                            ansible_ssh_pass=olmczggaxlfo                ansible_user=user shard_number=01 zookeeper_id=2
+server3 ansible_user=root ansible_host=139.59.209.9                             ansible_ssh_pass=sbewsxsdftee                ansible_user=user shard_number=02 zookeeper_id=3
+server4 ansible_user=root ansible_host=46.101.148.131                           ansible_ssh_pass=qhwsulvbfiyt                ansible_user=user shard_number=02
+
 
 #ansible-playbook --inventory ./my_hosts ./playbook.yml
-#server1: connect command: ssh user@64.225.99.197 password: oyaacwgfyzkk
-#server2: connect command: ssh user@64.227.112.35 password: bowahbmilvfw
-#server3: connect command: ssh user@64.227.112.116 password: doeutbtweiou
-#server4: connect command: ssh user@64.225.107.227 password: fbqfkntarvde
+#server1: connect command: ssh user@46.101.230.39 password: addqskmfgkhe
+#server2: connect command: ssh user@46.101.181.93 password: olmczggaxlfo
+#server3: connect command: ssh user@139.59.209.9  password: sbewsxsdftee
+#server4: connect command: ssh user@46.101.148.131 password:qhwsulvbfiyt

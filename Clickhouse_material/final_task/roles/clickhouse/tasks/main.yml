@@ -60,6 +60,13 @@
     replace: |-
           <zookeeper incl="zookeeper-servers" optional="true" />
 
+- name: Configure interserver_http_host parameter in config.xml file
+  replace:
+    path: /etc/clickhouse-server/config.xml
+    regexp: '<!--\n    <interserver_http_host>example\.yandex\.ru<\/interserver_http_host>\n    -->'
+    replace: |-
+          <interserver_http_host>{{ inventory_hostname }}</interserver_http_host>
+
 - name: Restart Clickhouse-server
   shell: |
     chmod 755 /etc/clickhouse-server/config.xml

@@ -1,4 +1,13 @@
 ---
+- hosts: server1,server2,server3,server4
+  become: true
+  tasks:
+  - lineinfile:
+      dest: /etc/hosts
+      line: "{{ hostvars[item]['ansible_default_ipv4']['address'] }} {{ hostvars[item].inventory_hostname }}"
+      state: present
+    loop: "{{ play_hosts }}"
+
 - hosts: server1,server2,server3
   become: true
   vars:
@@ -8,6 +17,7 @@
 
 - hosts: server1,server2,server3,server4
   become: true
+  debugger: on_failed
   vars:
     doc_root: /vagrant/web
     server_name: "{{ ansible_eth1.ipv4.address }}"
@@ -26,7 +36,7 @@
   - name: Create ClickHouse local table 'events_local'
     command: >
       clickhouse-client --query "
-        CREATE TABLE default.events_local on CLUSTER mycluster
+        CREATE TABLE default.events_local on CLUSTER '{cluster}'
          (
              id Int64,
              title String,
@@ -35,7 +45,7 @@
              event_type String,
              datetime DateTime
          )
-         ENGINE = ReplicatedMergeTree('/clickhouse/{cluster}/tables/events_local', '{replica}') 
+         ENGINE = ReplicatedMergeTree('/clickhouse/tables/default/events_local/{shard}', '{replica}') 
          PARTITION BY toYYYYMM(datetime)
          ORDER BY id;"
 
@@ -47,7 +57,7 @@
   - name: Create ClickHouse local table 'events_local'
     command: >
       clickhouse-client --query "
-      CREATE TABLE default.events_distributed ON CLUSTER 'mycluster'
+      CREATE TABLE default.events_distributed ON CLUSTER '{cluster}'
       (
            id Int64,
            title String,
@@ -64,40 +74,45 @@
 ####
 
 
-####- hosts: server1,server3
-####  name: insert data into local_data
-####  changed_when: no
-####    command: >
-####      clickhouse-client --query    
-####      "{{ item }}"
-####    loop:
-####      - "INSERT INTO default.events_local (*) VALUES (1, 'title1', 'description1', 'content1', 1, '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (2, 'title2', 'description2', 'content2', 2, '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (3, 'title3', 'description3', 'content3', 3, '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (4, 'title4', 'description4', 'content4', 4, '2020-10-10')"
-####      - "INSERT INTO default.events_local (*) VALUES (5, 'title5', 'description5', 'content5', 5, '2020-10-10')"
-####    register: command_result
-####    changed_when: command_result.rc == 0
-####    failed_when: command_result.rc != 0 and command_result.rc != 82
+- hosts: server1
+  become: true
+  tasks:
+  - name: insert data into local_data
+    command: >
+      clickhouse-client --query    
+      "{{ item }}"
+    loop:
+      - "INSERT INTO default.events_local (*) VALUES (1, 'title1', 'description1', 'content1', 1, '2020-10-11 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (2, 'title2', 'description2', 'content2', 2, '2020-10-12 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (3, 'title3', 'description3', 'content3', 3, '2020-10-13 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (4, 'title4', 'description4', 'content4', 4, '2020-10-14 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (5, 'title5', 'description5', 'content5', 5, '2020-10-15 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (6, 'title6', 'description6', 'content6', 6, '2020-10-16 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (7, 'title7', 'description7', 'content7', 7, '2020-10-17 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (8, 'title8', 'description8', 'content8', 8, '2020-10-18 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (9, 'title9', 'description9', 'content9', 9, '2020-10-19 00:00:00')"
+    register: command_result
+    changed_when: command_result.rc == 0
+    failed_when: command_result.rc != 0 and command_result.rc != 82
 
-
-
-
-####  name: Create ClickHouse destination table
-####  changed_when: no
-####  command: >
-####    clickhouse-client --query
-####    "CREATE TABLE IF NOT EXISTS default.local_posts (
-####       id Int64,
-####       title String,
-####       description String,
-####       content String,
-####       user_id Int64,
-####       date Date
-####    )
-####    ENGINE = MergeTree()
-####    PARTITION BY toYYYYMM(date)
-####    ORDER BY id;"
-####  retries: 3
-####  delay: 5
+- hosts: server3
+  become: true
+  tasks:
+  - name: insert data into local_data
+    command: >
+      clickhouse-client --query    
+      "{{ item }}"
+    loop:
+      - "INSERT INTO default.events_local (*) VALUES (10, 'title10', 'description10', 'content10', 10, '2021-10-11 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (11, 'title11', 'description11', 'content11', 11, '2021-10-12 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (12, 'title12', 'description12', 'content11', 12, '2021-10-13 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (13, 'title13', 'description13', 'content11', 13, '2021-10-14 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (14, 'title14', 'description14', 'content11', 14, '2021-10-15 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (15, 'title15', 'description15', 'content11', 15, '2021-10-16 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (16, 'title16', 'description16', 'content11', 16, '2021-10-17 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (17, 'title17', 'description17', 'content11', 17, '2021-10-18 00:00:00')"
+      - "INSERT INTO default.events_local (*) VALUES (18, 'title18', 'description18', 'content11', 18, '2021-10-19 00:00:00')"
+    register: command_result
+    changed_when: command_result.rc == 0
+    failed_when: command_result.rc != 0 and command_result.rc != 82
 

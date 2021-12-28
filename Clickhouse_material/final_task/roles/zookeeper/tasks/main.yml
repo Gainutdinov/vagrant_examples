@@ -42,13 +42,7 @@
     rm -rf apache-zookeeper-3.6.3-bin apache-zookeeper-3.6.3-bin.tar.gz 
 
 - name: Create zookeeper file 
-  changed_when: no
-  shell: |
-    cat << EOF > /opt/zookeeper/conf/zoo.cfg
-    tickTime=2000
-    dataDir=/var/lib/zookeeper
-    clientPort=2181
-    EOF
+  template: src=zoo.cfg.j2 dest=/opt/zookeeper/conf/zoo.cfg mode=644
 
 - name: Change owner for /opt/zookeeper
   ansible.builtin.file:
@@ -57,6 +51,11 @@
     mode:  0755
     owner: zookeeper
     group: zookeeper
+
+- name: add myid to zookeeper server
+  shell: |
+    echo "{{ zookeeper_id }}" > /var/lib/zookeeper/myid
+
 
 - name: zookeeper | Create Unit file
   template: src=zookeeper.service.j2 dest=/lib/systemd/system/zookeeper.service mode=644

@@ -1,0 +1,33 @@
+---
+
+
+# * Напишите конфигурационный файл nginx, который реализует следующую функциональность:
+#
+# * Логи должны писаться в файл /var/log/nginx/xip.access.log.
+# * В роли root используется /var/www/html/.
+# * В роли index - /var/www/html/index.nginx-debian.html, которая должна возвращаться при обращении к /.
+# * Путь /rbm_images/* должен отдавать файлы из /var/www/rebrain/images/, где должен быть расположен файл http://rebrainme.com/files/logo_rebrain_black.png под именем logo.png.
+#
+# * В ответе пришлите:
+#
+# * конфигурационный файл для основного сервера и путь до него;
+# * список файлов в /etc/nginx/modules-enabled/.
+
+- hosts: server1
+  become: true
+  tasks:
+  - name: Установите пакет nginx-full.
+    apt:
+      name: nginx-full
+      update_cache: yes
+  - name: Отключен модуль mail.
+    file:
+      src: /etc/nginx/modules-enabled/50-mod-mail.conf
+      dest: /tmp/50-mod-mail.conf
+      owner: nginx
+      group: nginx
+      state: file
+
+
+# * В отдельном конфигурационном файле должен быть описан server, который слушает на 80 порту и использует домен, полученный при помощи сервиса http://xip.io/.
+# * Используется формат логов с именем logz, который содержит только информацию о том, откуда был произведен запрос, в какое время, какой был произведен запрос и какой HTTP код был возвращен при запросе.

@@ -22,12 +22,50 @@
       update_cache: yes
   - name: Отключен модуль mail.
     file:
-      src: /etc/nginx/modules-enabled/50-mod-mail.conf
-      dest: /tmp/50-mod-mail.conf
-      owner: nginx
-      group: nginx
-      state: file
+      path: /etc/nginx/modules-enabled/50-mod-mail.conf
+      state: absent
 
+  - name: Create directory /var/www/rebrain/images/
+    file:
+      dest: /var/www/rebrain/images
+      owner: root
+      group: root
+      state: directory
+
+  - name: Download rebrain logo
+    get_url:
+      url: http://rebrainme.com/files/logo_rebrain_black.png
+      dest: /var/www/rebrain/images/logo.png 
+      mode: '0644'
+
+  - name: Put a new nginx file
+    get_url:
+      url: http://rebrainme.com/files/logo_rebrain_black.png
+      dest: /var/www/rebrain/images/logo.png 
+      mode: '0644'
+
+  - name: Template a file to /etc/nginx/sites-enabled/default
+    vars:
+      domain: '157.230.30.66.nip.io'
+    ansible.builtin.template:
+      src: ./default.j2
+      dest: /etc/nginx/sites-enabled/default
+      owner: root
+      group: root
+      mode: '0644'
+ 
+  - name: Restart nginx
+    service: name=nginx state=restarted 
+
+  - name: check_mode example
+    command:
+      cmd: cat /etc/nginx/sites-enabled/default
+    register: nginx_conf
+
+  - name: Output /etc/nginx/sites-enabled/default
+    debug:
+      msg: Nginx.conf file has content {{ nginx_conf }}
+  
 
 # * В отдельном конфигурационном файле должен быть описан server, который слушает на 80 порту и использует домен, полученный при помощи сервиса http://xip.io/.
 # * Используется формат логов с именем logz, который содержит только информацию о том, откуда был произведен запрос, в какое время, какой был произведен запрос и какой HTTP код был возвращен при запросе.

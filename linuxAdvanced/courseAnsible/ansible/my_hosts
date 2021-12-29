@@ -1,0 +1,11 @@
+[webservers]
+web01 ansible_user=root ansible_host=157.230.102.129
+web02 ansible_user=root ansible_host=68.183.221.137
+
+[databases]
+db01  ansible_user=root ansible_host=68.183.220.9
+db02  ansible_user=root ansible_host=68.183.216.147
+
+
+
+

@@ -4,7 +4,18 @@
   become: true
 
   tasks:
+    - name: Load variable from encrypted file
+      include_vars:
+        file: secret
+
+    - name: Display the encrypted variable
+      debug:
+        msg: "{{ secret }}"
+      no_log: true
+
     - name: User gets created
       user:
-        name: test
-        state: absent
+        name: "{{ username['test']['uname'] }}"
+        comment: "{{ username['test']['description'] }}"
+        password: "{{ username['test']['password'] }}"
+        state: present

@@ -1,0 +1,34 @@
+---
+- name: Utilize block, rescue and always
+  hosts: databases
+  become: true
+
+  tasks:
+    - name: Update database
+      block:
+        - name: Display an update message
+          debug:
+            msg: "Updating database"
+
+        - name: Update postgreSQL server to latest version
+          apt:
+            name: postgresql-server
+            state: latest
+
+      rescue:
+        - name: Display error message that database will be restarted
+          debug:
+            msg: "Update failed. Restarting database to correct issues."
+
+        - name: Restart the database if upgrade failed
+          service:
+            name: postgresql
+
+      always:
+        - name: Notify user of reboot after update attempt
+          debug:
+            msg: "Update process has completed. see previous output for status. Rebooting system now."
+
+        - name: Restart the system
+          reboot:
+

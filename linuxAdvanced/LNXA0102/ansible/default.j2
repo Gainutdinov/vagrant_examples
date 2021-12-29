@@ -16,7 +16,7 @@ server {
   auth_basic "Restricted";
   auth_basic_user_file /etc/nginx/passwdfile;
 
-  server_name {{ domain }};
+  server_name 157.230.30.66.nip.io;
 
   location / {
     try_files $uri $uri/ =404;
@@ -32,7 +32,9 @@ server {
   }
 
   location = /example/ {
-    proxy_pass http://backend;
+    proxy_pass https://backend;
+    proxy_set_header Host 'example.com';
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP $remote_addr;
   }
-#Запрос на /example/ должен проксироваться на https://example.com/, обращение к которому производится через upstream.
 }

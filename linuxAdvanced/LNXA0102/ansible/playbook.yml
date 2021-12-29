@@ -1,6 +1,5 @@
 ---
 
-
 # * Напишите конфигурационный файл nginx, который реализует следующую функциональность:
 #
 # * Логи должны писаться в файл /var/log/nginx/xip.access.log.
@@ -63,7 +62,7 @@
       mode: '0644'
 
   - name: Add a user to a password file and ensure permissions are set
-    community.general.htpasswd:
+    htpasswd:
       path: /etc/nginx/passwdfile
       name: rebrain
       password: 'linux'

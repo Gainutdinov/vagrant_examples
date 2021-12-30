@@ -1,0 +1,56 @@
+log_format logz '$remote_addr - $time_local - $request - $status';
+deny 10.10.10.10;
+
+upstream backend {
+    server example.com:443;
+}
+
+server {
+  listen 80 default_server;
+  listen [::]:80 default_server;
+  root /var/www/html;
+  # Add index.php to the list if you are using PHP
+  index index.nginx-debian.html;
+  access_log /var/log/nginx/xip.access.log logz;
+
+  auth_basic "Restricted";
+  auth_basic_user_file /etc/nginx/passwdfile;
+
+  server_name 157.230.30.66.nip.io;
+
+  location / {
+    try_files $uri $uri/ =404;
+  }
+
+  location ~ /noauth/* {
+    auth_basic off;
+    try_files $uri $uri/ =404;
+  }
+
+  location /rbm_images/ {
+    alias /var/www/rebrain/images/;
+  }
+
+  location = /example/ {
+    proxy_pass https://backend;
+    proxy_set_header Host 'example.com';
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Real-IP $remote_addr;
+  }
+
+  location = /browser/ {
+    if ($http_user_agent ~ Firefox) {
+        set $browser Firefox;
+    }
+    if ($http_user_agent ~ Chrome) {
+        set $browser Chrome;
+    }
+    if ($browser ~ "^$") {
+        set $browser "Noname";
+    }
+    add_header Content-Type text/plain;
+    return 200 'Hello, $browser';
+
+  }
+
+}

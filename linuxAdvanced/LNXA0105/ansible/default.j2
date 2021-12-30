@@ -1,0 +1,29 @@
+server {
+  listen 8081 default;
+
+  server_name _;
+
+  root /var/www/html;
+
+  index index.php index.html;
+
+  location ~* \.(jpg|jpeg|gif|png|css|js|ico|xml|html)$ {
+    try_files         $uri $uri/ /index.php?$query_string;
+    access_log        off;
+    log_not_found     off;
+    expires           1d;
+  }
+
+  location / {
+    client_max_body_size 8m;
+    client_body_buffer_size 128k;
+    try_files $uri $uri/ /index.php?$query_string;
+  }
+
+  location ~ \.php$ {
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    fastcgi_pass 127.0.0.1:9000;
+    fastcgi_index index.php;
+    include fastcgi_params; # может содержать директивы передачи параметров по протоколу FastCGI
+  }
+}

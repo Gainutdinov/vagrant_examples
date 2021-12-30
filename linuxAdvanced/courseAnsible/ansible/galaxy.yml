@@ -1,0 +1,7 @@
+---
+- name: Use a galaxy role to isntall apache2
+  hosts: webservers
+  become: True
+
+  roles:
+    - weareinteractive.apache2

@@ -1,0 +1,69 @@
+
+#https://timeweb.com/ru/community/articles/kak-ispolzovat-apache-v-kachestve-obratnogo-proksi-pri-pomoshchi-mod-proxy-na-ubuntu-16-04-1
+#
+#<LocationMatch ^rbm_images/.*$>
+#DocumentRoot /var/www/html
+#
+#</LocationMatch>
+ServerName 157.230.30.66.nip.io
+<VirtualHost *:80>
+
+        ServerAdmin webmaster@localhost
+        DocumentRoot /var/www/html
+        DirectoryIndex index.nginx-debian.html
+
+
+        ErrorLog ${APACHE_LOG_DIR}/error.log
+#       LogFormat "%h - %t - %m - %s" logz
+#        CustomLog ${APACHE_LOG_DIR}/xip.access.log logz
+
+
+        <Location "/">
+                Order Deny,Allow
+                Deny from 10.10.10.10
+                Allow from all
+#               AuthType Basic
+#               AuthName "Restricted Content"
+#               AuthUserFile /etc/apache2/htpasswd
+#               Require valid-user
+        </Location>
+
+
+        <Location "/noauth/">
+                Order Deny,Allow
+                Deny from 10.10.10.10
+                Allow from all
+                Satisfy any
+        </Location>
+
+        Alias "/rbm_images/" "/var/www/rebrain/images/"
+
+        <Location "/rbm_images/">
+                Order Deny,Allow
+                Deny from 10.10.10.10
+                Allow from all
+        </Location>
+
+        <Proxy balancer://myupstream>
+                SSLProxyEngine on
+                SSLProxyVerify none 
+                SSLProxyCheckPeerCN off
+                SSLProxyCheckPeerName off
+                SSLProxyCheckPeerExpire off
+                BalancerMember "https://example.com/"
+        </Proxy>
+
+        <Location "/example/">
+                Order Deny,Allow
+                Deny from 10.10.10.10
+                Allow from all
+                RequestHeader set Host "example.com"
+#               ProxyPreserveHost On
+                ProxyPass balancer://myupstream/
+#               ProxyPassReverse balancer://myupstream/
+        </Location>
+
+
+</VirtualHost>
+
+

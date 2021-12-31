@@ -1,8 +1,5 @@
 ---
 
-####    Установите apache веб-сервер на вашем сервере (отправьте команду для установки).
-####    Напишите конфигурационный файл apache2, который реализует следующую функциональность:
-####
 ####    Должен быть реализован конфиг для обработки запросов по умолчанию, описанный в лекции.
 ####    В отдельном конфигурационном файле должен быть описан server, который слушает на 8080 порту и использует домен, полученный при помощи сервиса http://xip.io/.
 ####    Используется формат логов с именем logz, который содержит только информацию о том, откуда был произведен запрос, в какое время, какой был произведен запрос и какой HTTP код был возвращен при запросе.
@@ -22,7 +19,7 @@
 ####    Содержимое файла, используемого для basic auth
 
 
-- hosts: webservers
+- hosts: server1
   become: true
   tasks:
   - name: Installing packages
@@ -31,7 +28,7 @@
         - apache2
         - nginx
         - apache2-utils
-        - python-pip3
+        - python3-pip
       state: present
 
 
@@ -48,12 +45,11 @@
       owner: root
       group: root
       mode: '0644'
-      state: present
     notify:
     - Restart apache
-
+  
   - name: Add a user to a password file and ensure permissions are set
-    community.general.htpasswd:
+    htpasswd:
       path: /etc/apache2/passwdfile
       name: rebrain
       password: 'linux'
@@ -79,6 +75,37 @@
       url: http://rebrainme.com/files/logo_rebrain_black.png
       dest: /var/www/rebrain/images/logo.png 
       mode: '0644'
+
+  - name: Enable the Apache2 module 'proxy'
+    community.general.apache2_module:
+      state: present
+      name: proxy
+
+  - name: Enable the Apache2 module 'proxy_http'
+    community.general.apache2_module:
+      state: present
+      name: proxy_http
+
+  - name: Enable the Apache2 module 'proxy_balancer'
+    community.general.apache2_module:
+      state: present
+      name: proxy_balancer
+
+  - name: Enable the Apache2 module 'lbmethod_byrequests'
+    community.general.apache2_module:
+      state: present
+      name: lbmethod_byrequests
+
+  - name: Enable the Apache2 module 'headers'
+    community.general.apache2_module:
+      state: present
+      name: headers
+
+  - name: Enable the Apache2 module 'ssl'
+    community.general.apache2_module:
+      state: present
+      name: ssl
+
 
 
 

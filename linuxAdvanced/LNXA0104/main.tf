@@ -29,17 +29,17 @@ provider "digitalocean" {
   token = var.do_token
 }
 
-resource "digitalocean_droplet" "web" {
-  image    = "ubuntu-20-04-x64"
-  name     = "first-task-1"
-  region   = "FRA1"
-  size     = "s-2vcpu-4gb"
-  ssh_keys = [ 
-    data.digitalocean_ssh_key.mentorsKey.id,
-    data.digitalocean_ssh_key.myKey.id
-  ]
-  tags = [
-    "m_gaynutdinov_at_mail_ru",
-    "linux",
-  ]
-}
+#resource "digitalocean_droplet" "web" {
+#  image    = "ubuntu-20-04-x64"
+#  name     = "first-task-1"
+#  region   = "FRA1"
+#  size     = "s-2vcpu-4gb"
+#  ssh_keys = [ 
+#    data.digitalocean_ssh_key.mentorsKey.id,
+#    data.digitalocean_ssh_key.myKey.id
+#  ]
+#  tags = [
+#    "m_gaynutdinov_at_mail_ru",
+#    "linux",
+#  ]
+#}

@@ -22,6 +22,7 @@
       pkg: 
       - nginx-full
       - php7.4-fpm
+      - php-fpm
       - vim-nox
       update_cache: yes
 
@@ -32,12 +33,65 @@
       group: www-data
       state: directory
 
-  - name: Download php file
-    get_url:
-      url: http://rebrainme.com/files/logo_rebrain_black.png
-      dest: /var/www/rebrain/images/logo.png 
+  - name: Change default pool name from 'www' to 'rebrainme'
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: '\[www\]'
+      replace: |-
+        [rebrainme]
+  
+  - name: Make pool number static
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: 'pm = dynamic'
+      replace: |-
+        pm = static
+
+  - name: Fix number of processes
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: 'pm.max_children = 5'
+      replace: |-
+        pm.max_children = 10
+    notify:
+    - Restart service php7.4-fpm
+
+
+  - name: Copy index.php file to server
+    copy:
+      src: templates/index.php.j2
+      dest: /var/www/phpinfo/index.php
+      owner: www-data
+      group: www-data
       mode: '0644'
 
+  - name: Template a file to /etc/nginx/sites-enabled/default
+    ansible.builtin.template:
+      src: templates/default.j2
+      dest: /etc/nginx/sites-enabled/default
+      owner: root
+      group: root
+      mode: '0644'
+    notify:
+    - Restart service nginx
+
+  handlers:
+  - name: Restart service php7.4-fpm
+    service:
+      name: php7.4-fpm
+      state: restarted
+
+  - name: Restart service nginx 
+    service:
+      name: nginx
+      state: restarted
+
+
+####  - name: Download php file
+####    get_url:
+####      url: http://rebrainme.com/files/logo_rebrain_black.png
+####      dest: /var/www/rebrain/images/logo.png 
+####      mode: '0644'
 ####  - name: Install passlib python package
 ####    pip:
 ####      name: passlib

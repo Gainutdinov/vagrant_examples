@@ -12,20 +12,18 @@ ServerName 157.230.30.66.nip.io
         DocumentRoot /var/www/html
         DirectoryIndex index.nginx-debian.html
 
-
         ErrorLog ${APACHE_LOG_DIR}/error.log
-#       LogFormat "%h - %t - %m - %s" logz
-#        CustomLog ${APACHE_LOG_DIR}/xip.access.log logz
-
+        LogFormat "%h - %t - %m - %s" logz
+        CustomLog ${APACHE_LOG_DIR}/xip.access.log logz
 
         <Location "/">
                 Order Deny,Allow
                 Deny from 10.10.10.10
                 Allow from all
-#               AuthType Basic
-#               AuthName "Restricted Content"
-#               AuthUserFile /etc/apache2/htpasswd
-#               Require valid-user
+                AuthType Basic
+                AuthName "Restricted Content"
+                AuthUserFile /etc/apache2/passwdfile
+                Require valid-user
         </Location>
 
 
@@ -42,11 +40,15 @@ ServerName 157.230.30.66.nip.io
                 Order Deny,Allow
                 Deny from 10.10.10.10
                 Allow from all
+                AuthType Basic
+                AuthName "Restricted Content"
+                AuthUserFile /etc/apache2/passwdfile
+                Require valid-user
         </Location>
 
         <Proxy balancer://myupstream>
                 SSLProxyEngine on
-                SSLProxyVerify none 
+                SSLProxyVerify none
                 SSLProxyCheckPeerCN off
                 SSLProxyCheckPeerName off
                 SSLProxyCheckPeerExpire off
@@ -58,12 +60,15 @@ ServerName 157.230.30.66.nip.io
                 Deny from 10.10.10.10
                 Allow from all
                 RequestHeader set Host "example.com"
-#               ProxyPreserveHost On
                 ProxyPass balancer://myupstream/
-#               ProxyPassReverse balancer://myupstream/
+                ProxyPassReverse balancer://myupstream/
+
+                AuthType Basic
+                AuthName "Restricted Content"
+                AuthUserFile /etc/apache2/passwdfile
+                Require valid-user
         </Location>
 
 
 </VirtualHost>
-
 

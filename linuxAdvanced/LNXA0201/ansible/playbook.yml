@@ -140,7 +140,6 @@
         interactive_timeout = 60
         wait_timeout = 60
         max_connections = 200
-        max_connections = 200
         query_cache_size = 256M
 
   - name: restart mariadb

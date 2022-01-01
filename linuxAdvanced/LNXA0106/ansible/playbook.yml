@@ -1,153 +1,109 @@
 ---
-#    Установите пакет php-fpm (сохраните команду для установки).
-#    Напишите конфигурационный файл для PHP-FPM pool, который устанавливает следующие параметры:
-#
-#    имя pool - rebrainme;
-#    пользователь и группа, от имени которых запущен pool, - www-data;
-#    pool должен слушать на Unix-сокете;
-#    использовал фиксированно 10 процессов для обработки запросов.
-#
-#    Напишите конфигурационный файл для nginx, который реализует следующую функциональность:
-#
-#    слушает на порте 8081;
-#    проксирует все запросы на описанный PHP-FPM pool;
-#    в роли index использовать файл с phpinfo из https://www.php.net/manual/ru/function.phpinfo.php из директории /var/www/phpinfo.
-#
+
+####    Сгенерируйте самоподписанный сертификат для домена test.linux.example.com при помощи утилиты openssl с использованием параметра -subj (сохраните команду и сертификат).
+####    Установите certbot (сохраните команды для установки).
+####    Получите сертификат для вашего доменного имени при помощи webroot через nginx, используя директорию /var/www/html как корень (сохраните команды запуска).
+####    Настройте автоматическое обновление сертификата и применения его на стороне nginx при помощи hook (сохраните команды).
+####    Дополните конфигурационный файл nginx на использование TLS.
+####    Добавить правило для автоматичесого редиректа на HTTPS в default конфиге.
+####    Предоставить команды, конфигурационные файлы nginx, сертификат (полученный в п.3 Задания) и ссылку на сайт.
+
 
 - hosts: server1
   become: true
+  vars:
+    - server_hostname: test.linux.example.com
+    - key_size: 4096
+    - passphrase: # Set if you want passphrase
+    - key_type: RSA # Others include DSA, ECC, Ed25519, Ed448, X25519, X448
+    - country_name: RU
+    - email_address: admin@mail.ru
+    - organization_name: rebrainme
   tasks:
   - name: Установите пакет nginx-full,apache2-utils,python3-pip.
     apt:
       pkg: 
       - nginx-full
-      - php7.4-fpm
-      - php-fpm
       - vim-nox
+      - certbot
       update_cache: yes
 
-  - name: Create directory /var/www/phpinfo
+  - name: Genearte self-singed certificates for 'test.linux.example.com' domain
+    shell: openssl req -x509 -sha256 -nodes -days 365 -newkey rsa:2048 -keyout privateKey.key -out certificate.crt -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=test.linux.example.com"
+    args:
+      executable: /bin/bash
+      chdir: /etc/nginx
+
+  - name: Create a directory if it does not exist
     file:
-      dest: /var/www/phpinfo
-      owner: www-data
-      group: www-data
+      path: /var/www/acme
       state: directory
+      mode: '0777'
 
-  - name: Change default pool name from 'www' to 'rebrainme'
-    replace:
-      path: /etc/php/7.4/fpm/pool.d/www.conf
-      regexp: '\[www\]'
-      replace: |-
-        [rebrainme]
-  
-  - name: Make pool number static
-    replace:
-      path: /etc/php/7.4/fpm/pool.d/www.conf
-      regexp: 'pm = dynamic'
-      replace: |-
-        pm = static
-
-  - name: Fix number of processes
-    replace:
-      path: /etc/php/7.4/fpm/pool.d/www.conf
-      regexp: 'pm.max_children = 5'
-      replace: |-
-        pm.max_children = 10
-    notify:
-    - Restart service php7.4-fpm
-
-
-  - name: Copy index.php file to server
-    copy:
-      src: templates/index.php.j2
-      dest: /var/www/phpinfo/index.php
-      owner: www-data
-      group: www-data
-      mode: '0644'
-
-  - name: Template a file to /etc/nginx/sites-enabled/default
-    ansible.builtin.template:
-      src: templates/default.j2
-      dest: /etc/nginx/sites-enabled/default
+  - name: Template a file to /etc/nginx/sites-enabled/acme
+    template:
+      src: templates/acme.j2
+      dest: /etc/nginx/sites-enabled/acme
       owner: root
       group: root
       mode: '0644'
-    notify:
-    - Restart service nginx
 
-  handlers:
-  - name: Restart service php7.4-fpm
-    service:
-      name: php7.4-fpm
-      state: restarted
-
-  - name: Restart service nginx 
+  - name: Restart service nginx, in all cases
     service:
       name: nginx
       state: restarted
 
+  - name: Get certificates from Let's encrypt
+    shell: |
+      certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --webroot --webroot-path /var/www/acme/ --domain {{ ansible_host }}.nip.io
+    args:
+      executable: /bin/bash
+      chdir: /root
+    register: current_version
+    failed_when: "current_version.rc != 0"
 
-####  - name: Download php file
-####    get_url:
-####      url: http://rebrainme.com/files/logo_rebrain_black.png
-####      dest: /var/www/rebrain/images/logo.png 
-####      mode: '0644'
-####  - name: Install passlib python package
-####    pip:
-####      name: passlib
-####
-####  - name: Отключен модуль mail.
-####    file:
-####      path: /etc/nginx/modules-enabled/50-mod-mail.conf
-####      state: absent
-####
-####  - name: Create directory /var/www/rebrain/images/
-####    file:
-####      dest: /var/www/rebrain/images
-####      owner: root
-####      group: root
-####      state: directory
-####
-####  - name: Download rebrain logo
-####    get_url:
-####      url: http://rebrainme.com/files/logo_rebrain_black.png
-####      dest: /var/www/rebrain/images/logo.png 
-####      mode: '0644'
-####
-####  - name: Put a new nginx file
-####    get_url:
-####      url: http://rebrainme.com/files/logo_rebrain_black.png
-####      dest: /var/www/rebrain/images/logo.png 
-####      mode: '0644'
-####
-####  - name: Template a file to /etc/nginx/sites-enabled/default
-####    vars:
-####      domain: '157.230.30.66.nip.io'
-####    ansible.builtin.template:
-####      src: ./default.j2
-####      dest: /etc/nginx/sites-enabled/default
-####      owner: root
-####      group: root
-####      mode: '0644'
-####
-####  - name: Add a user to a password file and ensure permissions are set
-####    htpasswd:
-####      path: /etc/nginx/passwdfile
-####      name: rebrain
-####      password: 'linux'
-####      owner: root
-####      group: www-data
-####      mode: 0640
-#### 
-####  - name: Restart nginx
-####    service: name=nginx state=restarted 
-####
-####  - name: check_mode example
-####    command:
-####      cmd: cat /etc/nginx/sites-enabled/default
-####    register: nginx_conf
-####
-####  - name: Output /etc/nginx/sites-enabled/default
-####    debug:
-####      msg: Nginx.conf file has content {{ nginx_conf }}
+  - name: Add post-hook (nginx restart) for certbot
+    copy:
+      src: files/nginx_restart.sh
+      dest: /etc/letsencrypt/renewal-hooks/post/nginx_restart.sh
+      owner: root
+      group: root
+      mode: '0777'
+
+  - name: Creates a cron for cronjob
+    cron:
+      name: certbot renew
+      minute: "1"
+      hour: "1"
+      day: "*/1"
+      month: "*"
+      weekday: "*"
+      user: root
+      job: "certbot renew"
+  
+
+#### - Obtain a new certificate via webroot authorization, but do not install it automatically:
+####   sudo certbot certonly --webroot --webroot-path {{path/to/webroot}} --domain {{subdomain.example.com}}  
 ####  
+####  tasks:
+####    - name: Generate an OpenSSL private key
+####      openssl_privatekey:
+####        path: "./certificates/{{ server_hostname }}_privkey.pem"
+####        size: "{{ key_size }}"
+####        type: "{{ key_type }}"
+####        backup: yes
+####    - name: Generate an OpenSSL Certificate Signing Request with Subject information
+####      openssl_csr:
+####        path: "./certificates/{{ server_hostname }}.csr"
+####        privatekey_path: "./certificates/{{ server_hostname }}_privkey.pem"
+####        country_name: "{{ country_name }}"
+####        organization_name: "{{ organization_name }}"
+####        email_address: "{{ email_address }}"
+####        common_name: "{{ server_hostname }}"
+####    - name: Generate a Self Signed OpenSSL certificate
+####      openssl_certificate:
+####        path: "./certificates/{{ server_hostname }}_cert.pem"
+####        privatekey_path: "./certificates/{{ server_hostname }}_privkey.pem"
+####        csr_path: "./certificates/{{ server_hostname }}.csr"
+####        provider: selfsigned
+####

@@ -56,6 +56,34 @@
     notify:
     - Restart service php7.4-fpm
 
+  - name: Comment unnecesary lines
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: 'pm.start_servers = 2'
+      replace: |-
+        ;pm.start_servers = 2
+    notify:
+    - Restart service php7.4-fpm
+
+  - name: Comment unnecesary lines
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: 'pm.min_spare_servers = 1'
+      replace: |-
+        ;pm.min_spare_servers = 1
+    notify:
+    - Restart service php7.4-fpm
+
+
+  - name: Comment unnecesary lines
+    replace:
+      path: /etc/php/7.4/fpm/pool.d/www.conf
+      regexp: 'pm.max_spare_servers = 3'
+      replace: |-
+        ;pm.max_spare_servers = 3
+    notify:
+    - Restart service php7.4-fpm
+
 
   - name: Copy index.php file to server
     copy:

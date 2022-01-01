@@ -1,6 +1,5 @@
 ---
 
-
 - hosts: server1
   become: true
   vars:
@@ -35,7 +34,6 @@
       - mariadb-server-core-10.3=1:10.3.22-1ubuntu1
       - mariadb-client-core-10.3=1:10.3.22-1ubuntu1
       - python3-mysqldb
-      - sysbench
       force: yes
       state: present
       update_cache: yes
@@ -89,8 +87,7 @@
     when: check_passwd_root.rc == 0
 
   - name: Flush Priviliges
-    command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
-  
+    command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES" 
   - name: Remove all anonymous user
     mysql_user:
       login_user: root
@@ -147,4 +144,39 @@
       name: mariadb
       enabled: true
       state: restarted
+
+  - name: sysbench install repo
+    shell: >
+      curl -s https://packagecloud.io/install/repositories/akopytov/sysbench/script.deb.sh | sudo bash
+    changed_when: false
+    ignore_errors: true
+
+  - name: Install sysbench package
+    apt:
+      pkg: 
+      - sysbench
+      state: present
+      update_cache: yes
+
+  - name: Clone sysbench tests
+    git:
+      repo: 'https://github.com/akopytov/sysbench.git'
+      dest: /tmp
+
+  - name: Clone sysbench tests
+    git:
+      repo: 'https://github.com/akopytov/sysbench.git'
+      dest: /tmp
+
+  - name: "Print commands to run on the host to prepare for test"
+    debug:
+      msg: sysbench /tmp/sysbench/src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 prepare
+
+  - name: "Print commands to run on the host to test"
+    debug:
+#      msg: sysbench /tmp/sysbench/src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --max-time=60 --oltp-read-only=on --max-requests=200 --num-threads=8 run
+#      msg: sysbench ./src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --time=60 --events=200 --threads=8 run
+      msg: root@first-task-1:~/sysbench# sysbench ./src/lua/oltp_read_write.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --time=120 --events=10000 --threads=200 run
+
+
 

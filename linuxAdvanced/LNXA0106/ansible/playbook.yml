@@ -4,8 +4,7 @@
 ####    Установите certbot (сохраните команды для установки).
 ####    Получите сертификат для вашего доменного имени при помощи webroot через nginx, используя директорию /var/www/html как корень (сохраните команды запуска).
 ####    Настройте автоматическое обновление сертификата и применения его на стороне nginx при помощи hook (сохраните команды).
-####    Дополните конфигурационный файл nginx на использование TLS.
-####    Добавить правило для автоматичесого редиректа на HTTPS в default конфиге.
+####    Дополните конфигурационный файл nginx на использование TLS.  ####    Добавить правило для автоматичесого редиректа на HTTPS в default конфиге.
 ####    Предоставить команды, конфигурационные файлы nginx, сертификат (полученный в п.3 Задания) и ссылку на сайт.
 
 
@@ -40,12 +39,18 @@
       state: directory
       mode: '0777'
 
-  - name: Template a file to /etc/nginx/sites-enabled/acme
+  - name: Template a file to /etc/nginx/sites-enabled/default_1.j2
     template:
-      src: templates/acme.j2
-      dest: /etc/nginx/sites-enabled/acme
+      src: templates/default_1.j2
+      dest: /etc/nginx/sites-enabled/default
       owner: root
       group: root
+      mode: '0644'
+
+  - name: Download dhparam
+    get_url:
+      url: https://ssl-config.mozilla.org/ffdhe2048.txt
+      dest: /etc/nginx/dhparam.txt
       mode: '0644'
 
   - name: Restart service nginx, in all cases
@@ -62,14 +67,12 @@
     register: current_version
     failed_when: "current_version.rc != 0"
 
-  - name: Add post-hook (nginx restart) for certbot
-    copy:
-      src: files/nginx_restart.sh
-      dest: /etc/letsencrypt/renewal-hooks/post/nginx_restart.sh
-      owner: root
-      group: root
-      mode: '0777'
-
+  - name: Add a line to a file if the file does not exist, without passing regexp
+    lineinfile:
+      path: /etc/letsencrypt/cli.ini
+      line: deploy-hook = systemctl reload nginx
+      create: yes
+  
   - name: Creates a cron for cronjob
     cron:
       name: certbot renew
@@ -81,29 +84,16 @@
       user: root
       job: "certbot renew"
   
+  - name: Template a file to /etc/nginx/sites-enabled/default_2.j2
+    template:
+      src: templates/default_2.j2
+      dest: /etc/nginx/sites-enabled/default
+      owner: root
+      group: root
+      mode: '0644'
 
-#### - Obtain a new certificate via webroot authorization, but do not install it automatically:
-####   sudo certbot certonly --webroot --webroot-path {{path/to/webroot}} --domain {{subdomain.example.com}}  
-####  
-####  tasks:
-####    - name: Generate an OpenSSL private key
-####      openssl_privatekey:
-####        path: "./certificates/{{ server_hostname }}_privkey.pem"
-####        size: "{{ key_size }}"
-####        type: "{{ key_type }}"
-####        backup: yes
-####    - name: Generate an OpenSSL Certificate Signing Request with Subject information
-####      openssl_csr:
-####        path: "./certificates/{{ server_hostname }}.csr"
-####        privatekey_path: "./certificates/{{ server_hostname }}_privkey.pem"
-####        country_name: "{{ country_name }}"
-####        organization_name: "{{ organization_name }}"
-####        email_address: "{{ email_address }}"
-####        common_name: "{{ server_hostname }}"
-####    - name: Generate a Self Signed OpenSSL certificate
-####      openssl_certificate:
-####        path: "./certificates/{{ server_hostname }}_cert.pem"
-####        privatekey_path: "./certificates/{{ server_hostname }}_privkey.pem"
-####        csr_path: "./certificates/{{ server_hostname }}.csr"
-####        provider: selfsigned
-####
+  - name: Restart service nginx last time
+    service:
+      name: nginx
+      state: restarted
+

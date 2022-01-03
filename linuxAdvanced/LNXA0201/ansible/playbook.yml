@@ -72,6 +72,15 @@
       - allow_remote_connections
       - check_passwd_root.rc == 0
 
+
+  - name: Create test database for sysbench
+    shell: >
+      mysql -u root
+      -h localhost
+      -e "CREATE DATABASE IF NOT EXISTS test"
+    changed_when: false
+    ignore_errors: true
+
   - name: Set MariaDB root password for 127.0.0.1, localhost
     mysql_user:
       name: root
@@ -161,21 +170,14 @@
   - name: Clone sysbench tests
     git:
       repo: 'https://github.com/akopytov/sysbench.git'
-      dest: /tmp
-
-  - name: Clone sysbench tests
-    git:
-      repo: 'https://github.com/akopytov/sysbench.git'
-      dest: /tmp
+      dest: /tmp/sysbench
 
   - name: "Print commands to run on the host to prepare for test"
     debug:
-      msg: sysbench /tmp/sysbench/src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 prepare
+      msg: sysbench /tmp/sysbench/src/lua/oltp_read_write.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 prepare
 
   - name: "Print commands to run on the host to test"
     debug:
-#      msg: sysbench /tmp/sysbench/src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --max-time=60 --oltp-read-only=on --max-requests=200 --num-threads=8 run
-#      msg: sysbench ./src/lua/oltp_common.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --time=60 --events=200 --threads=8 run
       msg: root@first-task-1:~/sysbench# sysbench ./src/lua/oltp_read_write.lua --table-size=1000000 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --time=120 --events=10000 --threads=200 run
 
 

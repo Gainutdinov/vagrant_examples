@@ -73,16 +73,16 @@
       line: deploy-hook = systemctl reload nginx
       create: yes
   
-  - name: Creates a cron for cronjob
-    cron:
-      name: certbot renew
-      minute: "1"
-      hour: "1"
-      day: "*/1"
-      month: "*"
-      weekday: "*"
-      user: root
-      job: "certbot renew"
+#  - name: Creates a cron for cronjob
+#    cron:
+#      name: certbot renew
+#      minute: "1"
+#      hour: "1"
+#      day: "*/1"
+#      month: "*"
+#      weekday: "*"
+#      user: root
+#      job: "certbot renew"
   
   - name: Template a file to /etc/nginx/sites-enabled/default_2.j2
     template:

@@ -49,7 +49,7 @@
 
   - name: "Print commands to insert into tasks"
     debug:
-      msg: as postgres user execute: psql --dbname=rebrain "INSERT INTO tasks(id, name) VALUES  (nextval('task_id'),'first_task'), (nextval('task_id'),'second_task') ;"
+      msg: "as postgres user execute: psql --dbname=rebrain \"INSERT INTO tasks(id, name) VALUES  (nextval('task_id'),'first_task'), (nextval('task_id'),'second_task') ;\""
 
   - name: "Print commands for the last task"
     debug:

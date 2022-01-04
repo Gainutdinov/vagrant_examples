@@ -1,5 +1,16 @@
 ---
 
+####sysbench ./src/lua/oltp_common.lua     --table-size=10000000 --tables=3 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 cleanup
+####
+#########tmp_table_size for connection
+########sysbench ./src/lua/oltp_read_write.lua     --table-size=10000000 --tables=3 --threads=200 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 prepare
+########
+########sysbench ./src/lua/oltp_read_write.lua     --table-size=10000000 --tables=3 --threads=200 --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 warmup
+####
+####sysbench ./src/lua/oltp_read_write.lua --table-size=10000000 --tables=3 --threads=200  --db-driver=mysql --mysql-db=test --mysql-user=root --mysql-password=Password1 --time=600 run
+
+
+
 - hosts: server1
   become: true
   vars:

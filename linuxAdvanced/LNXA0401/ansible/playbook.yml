@@ -1,0 +1,107 @@
+---
+
+- hosts: server1
+  become: true
+  vars:
+    - mysql_root_password: "Password1"
+  tasks:
+  - name: Install BIND packages
+    apt:
+      pkg: 
+      - bind9
+      - bind9utils 
+      - bind9-doc
+      state: present
+      update_cache: yes
+
+  - name: Template a file to /etc/bind/named.conf.local
+    template:
+      src: templates/rebrainme.com.conf
+      dest: /etc/bind/rebrainme.com.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Template a file to /etc/bind/rebrainme.com.zone
+    template:
+      src: templates/rebrainme.com.zone
+      dest: /etc/bind/rebrainme.com.zone
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Add a line to a file if the file does not exist, without passing regexp
+    lineinfile:
+      path: /etc/bind/named.conf
+      line: 'include "/etc/bind/rebrainme.com.conf";'
+      create: yes
+
+  - name: Restart service bind9, in all cases
+    service:
+      name: bind9
+      state: restarted
+
+  - debug:
+      msg: dig rebrainme.com @{{ ansible_host }}
+
+####  - name: myhostname = rebrainme.local
+####    replace:
+####      path: /etc/postfix/main.cf
+####      regexp: 'myhostname = rebrainme.local'
+####      replace: |-
+####        myhostname = rebrainme.local
+####
+####  - name: Add the user 'rebrainme-mail' and a primary group of 'admin'
+####    user:
+####      name: rebrainme-mail
+####      comment: rebrainme-mail
+####      shell: /bin/bash
+####      group: admin
+####      append: yes
+####  
+####  
+####  - name: Сконфигурируйте Redis на RDB метод бэкапа, с тем, чтобы он сохранял дамп 
+####    replace:
+####      path: /etc/redis/redis.conf
+####      regexp: 'save 900 1\nsave 300 10\nsave 60 10000\n'
+####      replace: |-
+####        save 3600 1
+####        save 1800 10
+####        save 300 10000
+####
+####  - name: максимально разрешенное количество клиентов до 10000
+####    replace: 
+####      path: /etc/redis/redis.conf
+####      regexp: '# maxclients 10000'
+####      replace: |-
+####        maxclients 10000
+####
+####  - name: policy to 'volatile-lru'
+####    replace:
+####      path: /etc/redis/redis.conf
+####      regexp: '# maxmemory-policy noeviction'
+####      replace: |-
+####        maxmemory-policy allkeys-lfu
+####
+####  - name: tcp-backlog increase also increase somaxconn and net.ipv4.tcp_max_syn_backlog
+####    replace:
+####      path: /etc/redis/redis.conf
+####      regexp: 'tcp-backlog 511'
+####      replace: |-
+####        tcp-backlog 65356
+####
+####  - name: restart redis-server
+####    service:
+####      name: redis-server
+####      state=restarted
+####      enabled=yes
+####
+####  - name: Воспользуйтесь утилитой redis-benchmark и протестируйте вашу инсталляцию, имитируя 100 параллельных соединений (имитация количества клиентов). Протестировав 200000 запросов, данные выведите в quiet-формате. Также протестируйте задержку с помощью redis-cli. Команды и вывод приведите в качестве ответа.
+####    debug:
+####      msg: redis-benchmark -h localhost -c 100 -n 200000 -q
+####
+####
+####  - name: Также протестируйте задержку с помощью redis-cli. Команды и вывод приведите в качестве ответа.
+####    debug:
+####      msg: redis-cli --latency -h 127.0.0.1 -p 6379
+####

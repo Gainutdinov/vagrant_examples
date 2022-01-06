@@ -1,0 +1,80 @@
+
+* Установите DNS сервер BIND на вашей публичной виртуальной машине.
+
+```
+root@first-task-1:/etc/bind# dpkg -l | grep bind9
+ii  bind9                          1:9.16.1-0ubuntu2.9                   amd64        Internet Domain Name Server
+ii  bind9-dnsutils                 1:9.16.1-0ubuntu2.9                   amd64        Clients provided with BIND 9
+ii  bind9-doc                      1:9.16.1-0ubuntu2.9                   all          Documentation for BIND 9
+ii  bind9-host                     1:9.16.1-0ubuntu2.8                   amd64        DNS Lookup Utility
+ii  bind9-libs:amd64               1:9.16.1-0ubuntu2.9                   amd64        Shared Libraries used by BIND 9
+ii  bind9-utils                    1:9.16.1-0ubuntu2.9                   amd64        Utilities for BIND 9
+ii  bind9utils                     1:9.16.1-0ubuntu2.9                   all          Transitional package for bind9-utils
+
+```
+
+* Настройте BIND в роли авторитетного сервера для домена rebrainme.com и задайте на нем отдачу корневой A-записи адреса вашего сервера.
+* При помощи утилиты host проверьте корректную работу сервера по запросу rebrainme.com.
+
+```
+host rebrainme.com 139.59.151.64
+Using domain server:
+Name: 139.59.151.64
+Address: 139.59.151.64#53
+Aliases:
+
+rebrainme.com has address 139.59.151.64
+rebrainme.com mail is handled by 10 mail1.rebrainme.com.
+
+
+
+```
+
+* На проверку отправьте адрес вашего сервера, конфигурационные файлы BIND и DNS зоны, а также выводы вызова команд.
+
+```
+root@first-task-1:/etc/bind# cat ./named.conf
+// This is the primary configuration file for the BIND DNS server named.
+//
+// Please read /usr/share/doc/bind9/README.Debian.gz for information on the
+// structure of BIND configuration files in Debian, *BEFORE* you customize
+// this configuration file.
+//
+// If you are just adding zones, please do that in /etc/bind/named.conf.local
+
+include "/etc/bind/named.conf.options";
+include "/etc/bind/named.conf.local";
+include "/etc/bind/named.conf.default-zones";
+include "/etc/bind/rebrainme.com.conf";
+
+root@first-task-1:/etc/bind# cat ./rebrainme.com.conf
+zone "rebrainme.com" IN {
+      type master;
+      file "/etc/bind/rebrainme.com.zone";
+};
+
+
+t@first-task-1:/etc/bind# cat ./rebrainme.com.zone
+$TTL 3H
+@   IN SOA  ns1.rebrainme.com. admin.rebrainme.com. (
+                  0   ; serial
+                  1D  ; refresh
+                  1H  ; retry
+                  1W  ; expire
+                  3H  ; minimum
+);
+
+  NS  ns1.rebrainme.com.
+  MX  10  mail1.rebrainme.com.
+
+          IN    A     139.59.151.64
+ns1       IN    A     172.31.110.149
+fakename  IN    A     172.31.39.243
+mail1     IN    A     172.31.39.243
+
+www       IN    CNAME ns1
+db1       IN    CNAME fakename
+
+
+```
+

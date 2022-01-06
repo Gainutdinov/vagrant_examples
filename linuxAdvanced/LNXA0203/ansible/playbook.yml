@@ -34,7 +34,14 @@
       path: /etc/redis/redis.conf
       regexp: '# maxmemory-policy noeviction'
       replace: |-
-        maxmemory-policy volatile-lru
+        maxmemory-policy allkeys-lfu
+
+  - name: tcp-backlog increase also increase somaxconn and net.ipv4.tcp_max_syn_backlog
+    replace:
+      path: /etc/redis/redis.conf
+      regexp: 'tcp-backlog 511'
+      replace: |-
+        tcp-backlog 65356
 
   - name: restart redis-server
     service:

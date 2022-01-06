@@ -1,0 +1,97 @@
+На удаленном виртуальном сервере установите postfix.
+Настройте сервер postfix для работы на домене rebrainme.local с работой на localhost без доступа извне.
+
+```
+root@first-task-1:/etc/postfix# cat ./main.cf
+# See /usr/share/postfix/main.cf.dist for a commented, more complete version
+
+
+# Debian specific:  Specifying a file name will cause the first
+# line of that file to be used as the name.  The Debian default
+# is /etc/mailname.
+#myorigin = /etc/mailname
+
+smtpd_banner = $myhostname ESMTP $mail_name (Ubuntu)
+biff = no
+
+# appending .domain is the MUA's job.
+append_dot_mydomain = no
+
+# Uncomment the next line to generate "delayed mail" warnings
+#delay_warning_time = 4h
+
+readme_directory = no
+
+# See http://www.postfix.org/COMPATIBILITY_README.html -- default to 2 on
+# fresh installs.
+compatibility_level = 2
+
+
+
+# TLS parameters
+smtpd_tls_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem
+smtpd_tls_key_file=/etc/ssl/private/ssl-cert-snakeoil.key
+smtpd_tls_security_level=may
+
+smtp_tls_CApath=/etc/ssl/certs
+smtp_tls_security_level=may
+smtp_tls_session_cache_database = btree:${data_directory}/smtp_scache
+
+
+smtpd_relay_restrictions = permit_mynetworks permit_sasl_authenticated defer_unauth_destination
+myhostname = first-task-1.rebrainme.local
+mydomain = rebrainme.local
+alias_maps = hash:/etc/aliases
+alias_database = hash:/etc/aliases
+mydestination = rebrainme.local, localhost.localdomain, , localhost
+relayhost = 
+mynetworks = 127.0.0.0/8 [::ffff:127.0.0.0]/104 [::1]/128
+mailbox_size_limit = 0
+recipient_delimiter = 
+inet_interfaces = loopback-only
+inet_protocols = all
+disable_dns_lookups = yes
+myorigin = /etc/mailname
+default_transport = error
+relay_transport = error
+root@first-task-1:/etc/postfix#
+
+```
+
+
+Создайте пользователя rebrainme-mail на удаленном сервере.
+
+```
+root@first-task-1:/etc/postfix# cat /etc/passwd | grep rebrainme
+rebrainme-mail:x:1000:116:rebrainme-mail:/home/rebrainme-mail:/bin/bash
+
+```
+Отправьте письмо от пользователя root@rebrainme.local пользователю rebrainme-mail@rebrainme.local из консоли (команду и вывод сохраните).
+Прочитайте отправленное письмо из почтового ящика пользователя rebrainme-mail (команду и вывод сохраните).
+На проверку отправьте конфигурационные файлы postfix, сохраненные команды и их выводы.
+
+```
+root@first-task-1:/etc/postfix# echo "Postfix test" | mail -s "Subject" rebrainme-mail@rebrainme.local
+root@first-task-1:/etc/postfix# su - rebrainme-mail 
+rebrainme-mail@first-task-1:~$ mail
+"/var/mail/rebrainme-mail": 1 message 1 new
+>N   1 root               Wed Jan  5 12:14  13/492   Subject
+? 1
+Return-Path: <root@first-task-1>
+X-Original-To: rebrainme-mail@rebrainme.local
+Delivered-To: rebrainme-mail@rebrainme.local
+Received: by first-task-1.rebrainme.local (Postfix, from userid 0)
+        id A562F3F2FF; Wed,  5 Jan 2022 12:14:18 +0000 (UTC)
+Subject: Subject
+To: <rebrainme-mail@rebrainme.local>
+X-Mailer: mail (GNU Mailutils 3.7)
+Message-Id: <20220105121418.A562F3F2FF@first-task-1.rebrainme.local>
+Date: Wed,  5 Jan 2022 12:14:18 +0000 (UTC)
+From: root <root@first-task-1>
+
+Postfix test
+? q
+Saved 1 message in /home/rebrainme-mail/mbox
+Held 0 messages in /var/mail/rebrainme-mail
+
+```

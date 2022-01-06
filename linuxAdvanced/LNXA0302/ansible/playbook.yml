@@ -10,15 +10,22 @@
       pkg: 
       - postfix
       - mailutils
+      - mutt
+      - dovecot-imapd 
+      - dovecot-ldap
       state: present
       update_cache: yes
 
-  - name: myhostname = rebrainme.local
-    replace:
-      path: /etc/postfix/main.cf
-      regexp: 'myhostname = rebrainme.local'
-      replace: |-
-        myhostname = rebrainme.local
+####  - name: myhostname = rebrainme.local
+####    replace:
+####      path: /etc/postfix/main.cf
+####      regexp: 'myhostname = rebrainme.local'
+####      replace: |-
+####        myhostname = rebrainme.local
+
+  - name: dpkg-reconfigure postfix
+    debug:
+      msg: dpkg-reconfigure postfix
 
   - name: Add the user 'rebrainme-mail' and a primary group of 'admin'
     user:

@@ -28,6 +28,9 @@
       group: admin
       append: yes
   
+  - name: add config for masquerade_domains and append_dot_mydomain to make sender domain appear on the recipient mailbox
+    debug:
+      msg: /main.cf  'masquerade_domains = $mydomain' + 'append_dot_mydomain = yes'
   
 ####  - name: Сконфигурируйте Redis на RDB метод бэкапа, с тем, чтобы он сохранял дамп 
 ####    replace:

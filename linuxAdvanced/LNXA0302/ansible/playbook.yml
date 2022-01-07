@@ -35,6 +35,9 @@
       group: admin
       append: yes
   
+  - name: useful link to test a SASL for POSTFIX
+    debug:
+      msg: https://www.linuxtopia.org/online_books/mail_systems/postfix_documentation/SASL_README_009.html && make sure to replace username twice!! for all username occurences
   
 ####  - name: Сконфигурируйте Redis на RDB метод бэкапа, с тем, чтобы он сохранял дамп 
 ####    replace:

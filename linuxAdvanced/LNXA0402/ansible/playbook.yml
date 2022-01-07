@@ -1,0 +1,43 @@
+---
+
+- hosts: server1
+  become: true
+  vars:
+    - mysql_root_password: "Password1"
+  tasks:
+  - name: Install BIND packages
+    apt:
+      pkg: 
+      - unbound
+      state: present
+      update_cache: yes
+
+####  - name: Template a file to /etc/bind/named.conf.local
+####    template:
+####      src: templates/rebrainme.com.conf
+####      dest: /etc/bind/rebrainme.com.conf
+####      owner: root
+####      group: root
+####      mode: '0644'
+####
+####  - name: Template a file to /etc/bind/rebrainme.com.zone
+####    template:
+####      src: templates/rebrainme.com.zone
+####      dest: /etc/bind/rebrainme.com.zone
+####      owner: root
+####      group: root
+####      mode: '0644'
+####
+####  - name: Add a line to a file if the file does not exist, without passing regexp
+####    lineinfile:
+####      path: /etc/bind/named.conf
+####      line: 'include "/etc/bind/rebrainme.com.conf";'
+####      create: yes
+####
+####  - name: Restart service bind9, in all cases
+####    service:
+####      name: bind9
+####      state: restarted
+####
+####  - debug:
+####      msg: dig rebrainme.com @{{ ansible_host }}

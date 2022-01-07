@@ -1,0 +1,130 @@
+---
+
+- hosts: server1
+  become: true
+  vars:
+    - mysql_root_password: "Password1"
+    - allow_remote_connections: true
+    - mariadb_socket: /run/mysqld/mysqld.sock
+  tasks:
+  - name: Install powerDNS related packages
+    apt:
+      pkg: 
+      - software-properties-common
+      state: present
+      update_cache: yes
+
+  - name: Add an Apt signing key, uses whichever key is at the URL
+    apt_key:
+      url: https://mariadb.org/mariadb_release_signing_key.asc
+      state: present
+
+  - apt_repository:
+      repo: deb [arch=amd64,arm64,ppc64el] http://mirrors.ukfast.co.uk/sites/mariadb/repo/10.5/ubuntu focal main
+      state: present
+      filename: mariadb-server
+  
+  - name: Install mariadb-server related packages
+    apt:
+      pkg: 
+      - mariadb-server
+      - pdns-server
+      - pdns-backend-mysql
+      state: present
+      update_cache: yes
+
+  - debug:
+      msg: https://kifarunix.com/easily-install-and-setup-powerdns-on-ubuntu-20-04/
+
+  - name: Check if mysql root password was not set
+    shell: >
+      mysql -u root
+      -h localhost
+      -e "quit"
+    changed_when: false
+    ignore_errors: true
+    register: check_passwd_root
+
+  - name: Check if unix_socket plugin is enabled
+    shell: >
+      mysql -u root
+      -h localhost
+      -e "SELECT plugin from mysql.user WHERE user = 'root'"
+    ignore_errors: true
+    register: check_unix_socket_plugin
+    changed_when: check_unix_socket_plugin.stdout is search('socket')
+    when: check_passwd_root.rc == 0
+
+  - name: Delete remote login connection
+    shell: >
+      mysql -u root
+      -h localhost
+      -e "delete from mysql.user where User='root' and Host NOT IN ('localhost', '127.0.0.1');"
+    when:
+      - allow_remote_connections
+      - check_passwd_root.rc == 0
+
+
+  - name: Create test database for sysbench
+    shell: >
+      mysql -u root
+      -h localhost
+      -e "CREATE DATABASE IF NOT EXISTS test"
+    changed_when: false
+    ignore_errors: true
+
+  - name: Set MariaDB root password for 127.0.0.1, localhost
+    mysql_user:
+      name: root
+      password: "{{ mysql_root_password }}"
+      host: "{{ item }}"
+      login_user: root
+      #login_password: "{{ mysql_root_password }}"
+      login_unix_socket: "{{ mariadb_socket }}"
+      state: present
+    with_items:
+      - 127.0.0.1
+      - localhost
+    when: check_passwd_root.rc == 0
+
+  - name: Flush Priviliges
+    command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
+
+  - name: Remove all anonymous user
+    mysql_user:
+      login_user: root
+      login_password: "{{ mysql_root_password }}"
+      name: 'ansible'
+      host_all: yes
+      state: absent
+    notify: Flush Priviliges
+
+  - name: Remove test database
+    mysql_db:
+      login_user: "root"
+      login_password: "{{ mysql_root_password }}"
+      db: "test"
+      state: absent
+    register: remove_test_db
+
+
+  - name: start mariadb
+    service:
+      name: mariadb
+      enabled: true
+      state: started
+
+
+
+
+
+####  - name: Template a file to /etc/bind/named.conf.local
+####    template:
+####      src: templates/rebrainme.com.conf
+####      dest: /etc/bind/rebrainme.com.conf
+####      owner: root
+####      group: root
+####      mode: '0644'
+####
+####  - debug:
+####      msg: dig rebrainme.com @{{ ansible_host }}

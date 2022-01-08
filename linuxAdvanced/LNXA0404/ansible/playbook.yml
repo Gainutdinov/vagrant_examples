@@ -1,0 +1,82 @@
+---
+
+- hosts: server1
+  become: true
+  vars:
+    - mysql_root_password: "Password1"
+    - allow_remote_connections: true
+    - mariadb_socket: /run/mysqld/mysqld.sock
+  tasks:
+  - name: Install dnsmasq related packages
+    apt:
+      pkg: 
+      - dnsmasq
+      - dnscrypt-proxy
+      state: present
+      update_cache: yes
+
+  - name: Template a file to /etc/dnsmasq.conf
+    template:
+      src: templates/dnsmasq.conf.j2
+      dest: /etc/dnsmasq.conf
+      owner: root
+      group: root
+      mode: '0640'
+
+  - name: Add a line to a file if the file does not exist rebrain.me
+    lineinfile:
+      path: /etc/hosts
+      line: 139.59.151.64 rebrain.me
+      create: yes
+
+  - name: Add a line to a file if the file does not exist ns1.rebrain.me
+    lineinfile:
+      path: /etc/hosts
+      line: 139.59.151.64 ns1.rebrain.me
+      create: yes
+
+  - name: Restart dnsmasq service 
+    service:
+      name: dnsmasq
+      state: restarted
+  
+  - debug:
+      msg:
+      - "dig ns1.rebrain.me @127.0.0.1 -p 5353"
+
+  - name: Template a file to /etc/dnscrypt-proxy/dnscrypt-proxy.toml
+    template:
+      src: templates/dnscrypt-proxy.toml.j2
+      dest: /etc/dnscrypt-proxy/dnscrypt-proxy.toml
+      owner: root
+      group: root
+      mode: '0640'
+  
+  - name: systemctl edit dnscrypt-proxy.service
+    template:
+      src: templates/dnscrypt-proxy.service
+      dest: /etc/systemd/system/dnscrypt-proxy.service
+      owner: root
+      group: root
+      mode: '0640'
+  
+  - name:  systemctl daemon-reload
+    shell: systemctl daemon-reload
+
+  - name: dnscrypt-proxy.service restart
+    service:
+      name: dnscrypt-proxy.service
+      enabled: true
+      state: restarted
+  
+  - name: edit resolv.conf
+    template:
+      src: templates/resolv.conf
+      dest: /etc/resolv.conf
+      owner: root
+      group: root
+      mode: '0640'
+  
+  - debug:
+      msg: dig rebrainme.com @localhost 
+

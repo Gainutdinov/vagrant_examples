@@ -11,8 +11,17 @@
     apt:
       pkg: 
       - software-properties-common
+      - bind9-utils
+      - bind9utils
+      - bind9-dnsutils
+      - python3-pip
       state: present
       update_cache: yes
+
+  - name: Make sure pymysql is present
+    pip:
+      name: pymysql
+      state: present
 
   - name: Add an Apt signing key, uses whichever key is at the URL
     apt_key:
@@ -85,7 +94,7 @@
     with_items:
       - 127.0.0.1
       - localhost
-    when: check_passwd_root.rc == 0
+#    when: check_passwd_root.rc == 0
 
   - name: Flush Priviliges
     command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
@@ -114,8 +123,63 @@
       enabled: true
       state: started
 
+  - name: CREATE database powerdns
+    command: mysql -u root -p{{ mysql_root_password }} -e "CREATE DATABASE IF NOT EXISTS powerdns"
 
+  - name: grant privileges
+    command: mysql -u root -p{{ mysql_root_password }} -e "grant all on powerdns.* to pdnsadmin@localhost identified by 'Password1';"
 
+  - name: Flush Priviliges
+    command: mysql -u root -p{{ mysql_root_password }} -e "FLUSH PRIVILEGES"
+
+  - name: create schema for powerdns database
+    shell: mysql -u pdnsadmin -p{{ mysql_root_password }} -Dpowerdns < /usr/share/pdns-backend-mysql/schema/schema.mysql.sql 
+
+  - name: Template a file to /etc/powerdns/pdns.d/pdns.local.gmysql.conf
+    template:
+      src: templates/pdns.local.gmysql.conf.j2
+      dest: /etc/powerdns/pdns.d/pdns.local.gmysql.conf
+      owner: root
+      group: root
+      mode: '0640'
+
+  - name: Insert1
+    command: mysql -u pdnsadmin -pPassword1 -Dpowerdns -e "INSERT INTO domains (name, type) values ('rebrainme.com', 'NATIVE');"
+
+  - name: Insert2
+    command: mysql -u pdnsadmin -pPassword1 -Dpowerdns -e "INSERT INTO powerdns.records (domain_id, name, content, type,ttl,prio) VALUES (1,'rebrainme.com','localhost admin.rebrainme.com 1 10380 3600 604800 3600','SOA',86400,NULL);"
+
+  - name: Insert3
+    command: mysql -u pdnsadmin -pPassword1 -Dpowerdns -e "INSERT INTO records (domain_id, name, content, type,ttl,prio) VALUES (1,'rebrainme.com','ns1.rebrainme.com','NS',86400,NULL);"
+
+  - name: Insert4
+    command: mysql -u pdnsadmin -pPassword1 -Dpowerdns -e "INSERT INTO records (domain_id, name, content, type,ttl,prio) VALUES (1,'ns1.rebrainme.com','139.59.151.64','A',120,NULL);"
+
+  - name: Insert5
+    command: mysql -u pdnsadmin -pPassword1 -Dpowerdns -e "INSERT INTO records (domain_id, name, content, type,ttl,prio) VALUES (1,'rebrainme.com','139.59.151.64','A',120,NULL);"
+
+  - name: unlink resolv.conf
+    command: unlink /etc/resolv.conf
+    ignore_errors: yes
+
+  - name: Template a file to /etc/resolv.conf
+    template:
+      src: templates/resolv.conf.j2
+      dest: /etc/resolv.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: stop systemd-resolved
+    service:
+      name: systemd-resolved
+      state: stopped
+    ignore_errors: yes
+
+  - name: Restart pdns
+    service:
+      name: pdns
+      state: restarted
 
 
 ####  - name: Template a file to /etc/bind/named.conf.local

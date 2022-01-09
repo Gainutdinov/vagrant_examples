@@ -35,6 +35,16 @@
       line: 139.59.151.64 ns1.rebrain.me
       create: yes
 
+  - name: Stop dnscrypt-proxy.service 
+    service:
+      name: dnscrypt-proxy.service
+      state: stopped
+  
+  - name: Stop dnscrypt-proxy.socket
+    service:
+      name: dnscrypt-proxy.socket
+      state: stopped
+  
   - name: Restart dnsmasq service 
     service:
       name: dnsmasq
@@ -50,8 +60,16 @@
       dest: /etc/dnscrypt-proxy/dnscrypt-proxy.toml
       owner: root
       group: root
-      mode: '0640'
-  
+      mode: '0777'
+
+  - name: Template a file to /lib/systemd/system/dnscrypt-proxy.socket
+    template:
+      src: templates/dnscrypt-proxy.socket.j2
+      dest: /lib/systemd/system/dnscrypt-proxy.socket
+      owner: root
+      group: root
+      mode: '0777'
+
   - name: systemctl edit dnscrypt-proxy.service
     template:
       src: templates/dnscrypt-proxy.service

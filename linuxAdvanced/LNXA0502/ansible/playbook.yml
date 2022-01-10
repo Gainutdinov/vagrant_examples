@@ -1,0 +1,30 @@
+---
+
+- hosts: server1
+  roles:
+    - role: geerlingguy.mysql
+      mysql_user_home: /root
+      mysql_user_name: root
+      mysql_user_password: root
+    - role: community.zabbix.zabbix_server
+      zabbix_server_database: mysql
+      zabbix_server_database_long: mysql
+      zabbix_server_dbport: 3306
+      zabbix_server_dbpassword: root
+    - role: geerlingguy.apache
+    - role: geerlingguy.php
+      php_memory_limit: "128M"
+      php_max_execution_time: "300"
+      php_upload_max_filesize: "256M"
+      php_packages:
+        - php
+        - php-fpm
+        - php-apcu
+    - role: geerlingguy.apache-php-fpm
+    - role: community.zabbix.zabbix_web
+      zabbix_api_server_url: 164.90.183.126.nip.io
+      zabbix_server_database: mysql
+      zabbix_server_database_long: mysql
+      zabbix_server_dbpassword: root
+      zabbix_server_dbport: 3306
+    - role: community.zabbix.zabbix_agent

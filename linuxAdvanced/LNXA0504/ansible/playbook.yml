@@ -32,17 +32,28 @@
     ansible.builtin.systemd:
       state: restarted
       daemon_reload: yes
-      name: grafana-server.service
+      name: 'grafana-server.service'
   
   - name: create prometheus datasource
-    community.grafana.grafana_datasource:
+    grafana_datasource:
       name: prometheus
       ds_type: prometheus
       ds_url: "http://{{ ansible_host }}:9090"
-      url: "http://{{ ansible_host }}:3000"
+      grafana_url: "http://{{ ansible_host }}:3000"
       access: direct
       tls_skip_verify: true
-
+  
+  - name: Create a Grafana user
+    community.grafana.grafana_user:
+      url: "http://{{ ansible_host }}:3000"
+      url_username: admin
+      url_password: admin
+      name: "admin"
+      email: admin@google.com
+      login: admin
+      password: rebrainme
+      is_admin: true
+      state: present
 #  
 #
 #sudo apt-get install -y software-properties-common wget

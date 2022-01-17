@@ -11,11 +11,13 @@
     ansible.builtin.ping:
   - name: Install python3-psycopg2
     dnf:
-      name: python3-psycopg2-2.7.5-7.el8.x86_64
+      name: 
+       - python3-psycopg2-2.7.5-7.el8.x86_64
+       - vim
       state: present
 
   - name: Disable SELinux
-    ansible.posix.selinux:
+    selinux:
       state: disabled
 
   - name: install postgresql:10
@@ -27,7 +29,7 @@
       path: /etc/systemd/system/postgresql.service.d
       state: directory
       recurse: yes
-      mode: 644
+      mode: 0644
 
   - name: rewrite PGDATA env
     ansible.builtin.copy:
@@ -35,7 +37,16 @@
       content: |
         [Service]
         Environment=PGDATA=/mnt/db/db01
-      mode: 644
+      mode: 0644
+
+
+  - name: add permissions for directory
+    ansible.builtin.file:
+      path: /mnt/db
+      owner: root 
+      group: root
+      state: directory
+      mode: 0755
 
   - name: Recursively change ownership of a directory
     ansible.builtin.file:
@@ -43,8 +54,7 @@
       owner: postgres 
       group: postgres
       state: directory
-      recurse: yes
-      mode: 700
+      mode: 0700
 
   - name: Just force systemd to reread configs 
     ansible.builtin.systemd:
@@ -62,11 +72,27 @@
     shell: systemctl status postgresql
     register: postgres_service_output
 
+#  - name: output postgres
+#    debug: 
+#      var: postgres_service_output.stdout
+
+  - name: store the statistics of /mnt/db/db01 
+    find:
+      paths: /mnt/db/db01
+      file_type: directory
+    register: folder_stat
+
+#  - name: output folder stats
+#    debug: 
+#      var: folder_stat
+
   - name: Initialize postgres data_dir
-    ansible.builtin.shell: /usr/bin/postgresql-setup --initdb
+    shell: /usr/bin/postgresql-setup --initdb
     args:
       executable: /bin/bash
-    when: '"-D /mnt/db/db01" not in postgres_service_ouput.stdout'
+    when: 
+      - '"-D /mnt/db/db01" not in postgres_service_output.stdout'
+      - folder_stat.examined == 0
 
   - name: restart postgresql service
     ansible.builtin.systemd:

@@ -50,18 +50,23 @@
     ansible.builtin.systemd:
       daemon_reload: yes
 
-  - name: collect facts about system services
-    service_facts:
-    register: services_state
-  
-  - name: Debug
-    debug:
-      var: services_state
-    
+#  - name: collect facts about system services
+#    service_facts:
+#    register: services_state
+#  
+#  - name: Debug
+#    debug:
+#      var: services_state
+#
+  - name: register postgres
+    shell: systemctl status postgresql
+    register: postgres_service_output
+
   - name: Initialize postgres data_dir
     ansible.builtin.shell: /usr/bin/postgresql-setup --initdb
     args:
       executable: /bin/bash
+    when: '"-D /mnt/db/db01" not in postgres_service_ouput.stdout'
 
   - name: restart postgresql service
     ansible.builtin.systemd:

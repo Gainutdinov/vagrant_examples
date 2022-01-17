@@ -49,7 +49,15 @@
   - name: Just force systemd to reread configs 
     ansible.builtin.systemd:
       daemon_reload: yes
+
+  - name: collect facts about system services
+    service_facts:
+    register: services_state
   
+  - name: Debug
+    debug:
+      var: services_state
+    
   - name: Initialize postgres data_dir
     ansible.builtin.shell: /usr/bin/postgresql-setup --initdb
     args:

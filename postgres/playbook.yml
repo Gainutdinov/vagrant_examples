@@ -1,0 +1,10 @@
+---
+- hosts: server01
+  become: yes
+  vars:
+    http_port: 80
+    max_clients: 200
+  tasks:
+  - name: Example from an Ansible Playbook
+    ansible.builtin.ping:
+  

@@ -4,7 +4,60 @@
   vars:
     http_port: 80
     max_clients: 200
+#    - role: geerlingguy.postgresql
+#  roles:
   tasks:
   - name: Example from an Ansible Playbook
     ansible.builtin.ping:
+  - name: Install python3-psycopg2
+    dnf:
+      name: python3-psycopg2-2.7.5-7.el8.x86_64
+      state: present
+
+  - name: Disable SELinux
+    ansible.posix.selinux:
+      state: disabled
+
+  - name: install postgresql:10
+    include_role:
+      name: geerlingguy.postgresql
+
+  - name: file to rewrite  systemd unit file
+    ansible.builtin.file:
+      path: /etc/systemd/system/postgresql.service.d
+      state: directory
+      recurse: yes
+      mode: 644
+
+  - name: rewrite PGDATA env
+    ansible.builtin.copy:
+      dest: /etc/systemd/system/postgresql.service.d/override.conf
+      content: |
+        [Service]
+        Environment=PGDATA=/mnt/db/db01
+      mode: 644
+
+  - name: Recursively change ownership of a directory
+    ansible.builtin.file:
+      path: /mnt/db/db01
+      owner: postgres 
+      group: postgres
+      state: directory
+      recurse: yes
+      mode: 700
+
+  - name: Just force systemd to reread configs 
+    ansible.builtin.systemd:
+      daemon_reload: yes
   
+  - name: Initialize postgres data_dir
+    ansible.builtin.shell: /usr/bin/postgresql-setup --initdb
+    args:
+      executable: /bin/bash
+
+  - name: restart postgresql service
+    ansible.builtin.systemd:
+      name: postgresql
+      state: restarted
+
+

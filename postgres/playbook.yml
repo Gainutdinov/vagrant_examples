@@ -143,7 +143,7 @@
   
   - name: synchronous_standby_names change
     ansible.builtin.lineinfile:
-      path: /mnt/db/db01/pg_hba.conf
+      path: /mnt/db/db01/postgresql.conf
       regexp: "^#synchronous_standby_names = ''"
       line: "synchronous_standby_names = '*' # standby servers that provide sync rep "
     when: "inventory_hostname == 'db01'"
@@ -162,17 +162,16 @@
       replace: '#host    replication     all             ::1/128                 ident'
     when: "inventory_hostname == 'db01'"
 
+  - name: Add a line to a file if the file does not exist with rep_user
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/pg_hba.conf
+      line: "{{ item }}"
+    loop:
+       - 'host    replication     rep_user        172.172.2.62/32            md5'
+       - 'host    replication     rep_user        172.172.2.63/32            md5'
+       - 'host    replication     rep_user        172.172.31.62/32           md5'
+       - 'host    replication     rep_user        172.172.31.63/32           md5'
 
-
-##### end line : comment out existing lines and all new lines
-####
-##### host replication [replication user] [allowed network] [authentication method]
-####
-#####host    replication     all             127.0.0.1/32            ident
-#####host    replication     all             ::1/128                 ident
-####host    replication     rep_user        10.0.0.30/32            md5
-####host    replication     rep_user        10.0.0.51/32            md5
-####
 
 
 

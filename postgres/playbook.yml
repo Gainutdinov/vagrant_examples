@@ -1,5 +1,5 @@
 ---
-- hosts: server01
+- hosts: db01
   become: yes
   vars:
     http_port: 80
@@ -100,8 +100,79 @@
       state: restarted
 
   - name: listen_address change
-  ansible.builtin.lineinfile:
-    path: /mnt/db/db01/postgresql.conf
-    regexp: "^#listen_addresses = 'localhost'"
-    line: "listen_addresses = '*'"
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#listen_addresses = 'localhost'"
+      line: "listen_addresses = '*'          # what IP address(es) to listen on;"
+    when: "inventory_hostname == 'db01'"
+
+  - name: wal_level change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#wal_level = replica"
+      line: "#wal_level = replica                     # minimal, replica, or logical"
+    when: "inventory_hostname == 'db01'"
+
+  - name: synchronous_commit change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#synchronous_commit = on"
+      line: "synchronous_commit = on                 # synchronization level;"
+    when: "inventory_hostname == 'db01'"
+
+  - name: max_wal_senders change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#max_wal_senders = 10"
+      line: "max_wal_senders = 10            # max number of walsender processes"
+    when: "inventory_hostname == 'db01'"
+
+  - name: wal_keep_segments change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#wal_keep_segments = 0"
+      line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"
+    when: "inventory_hostname == 'db01'"
+  
+  - name: synchronous_standby_names change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "^#synchronous_standby_names = ''"
+      line: "synchronous_standby_names = '*' # standby servers that provide sync rep "
+    when: "inventory_hostname == 'db01'"
+  
+  - name: synchronous_standby_names change
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/pg_hba.conf
+      regexp: "^#synchronous_standby_names = ''"
+      line: "synchronous_standby_names = '*' # standby servers that provide sync rep "
+    when: "inventory_hostname == 'db01'"
+
+  - name: Comment 1st
+    ansible.builtin.replace:
+      dest: /mnt/db/db01/pg_hba.conf
+      regexp: '^host    replication     all             127.0.0.1/32            ident'
+      replace: '#host    replication     all             127.0.0.1/32            ident'
+    when: "inventory_hostname == 'db01'"
+  
+  - name: Comment 2nd
+    ansible.builtin.replace:
+      dest: /mnt/db/db01/pg_hba.conf
+      regexp: '^host    replication     all             ::1/128                 ident'
+      replace: '#host    replication     all             ::1/128                 ident'
+    when: "inventory_hostname == 'db01'"
+
+
+
+##### end line : comment out existing lines and all new lines
+####
+##### host replication [replication user] [allowed network] [authentication method]
+####
+#####host    replication     all             127.0.0.1/32            ident
+#####host    replication     all             ::1/128                 ident
+####host    replication     rep_user        10.0.0.30/32            md5
+####host    replication     rep_user        10.0.0.51/32            md5
+####
+
+
 

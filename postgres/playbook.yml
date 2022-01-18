@@ -1,5 +1,5 @@
 ---
-- hosts: db01
+- hosts: all
   become: yes
   vars:
     http_port: 80
@@ -72,19 +72,11 @@
     shell: systemctl status postgresql
     register: postgres_service_output
 
-#  - name: output postgres
-#    debug: 
-#      var: postgres_service_output.stdout
-
   - name: store the statistics of /mnt/db/db01 
     find:
       paths: /mnt/db/db01
       file_type: directory
     register: folder_stat
-
-#  - name: output folder stats
-#    debug: 
-#      var: folder_stat
 
   - name: Initialize postgres data_dir
     shell: /usr/bin/postgresql-setup --initdb
@@ -94,100 +86,59 @@
       - '"-D /mnt/db/db01" not in postgres_service_output.stdout'
       - folder_stat.examined == 0
 
+  - name: restart postgresql service
+    ansible.builtin.systemd:
+      name: postgresql
+      state: restarted
+
   - name: Create user for replication
     become: yes
     become_user: postgres
     postgresql_user:
       name: rep_user
-      password: v8V2MAzhVy
-      role_attr_flags: REPLICATION
+      password: pass1234
+      role_attr_flags: REPLICATION,LOGIN
 
 
-  - name: configure postgresql.conf
-    ansible.builtin.lineinfile:
-      path: /mnt/db/db01/postgresql.conf
-      regexp: "{{ item.regexp }}"
-      line: "{{ item.line }}"
-    loop:
-      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-      - { regexp: "^#wal_level = replica",            line: "#wal_level = replica                     # minimal, replica, or logical" }
-      - { regexp: "^#synchronous_commit = on",        line: "synchronous_commit = on                 # synchronization level;" }
-      - { regexp: "^#max_wal_senders = 10",           line:  "max_wal_senders = 10            # max number of walsender processes" }
-      - { regexp: "^#wal_keep_segments = 0",          line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"}
-      - { regexp: "^#synchronous_standby_names = ''", line: "synchronous_standby_names = '*' # standby servers that provide sync rep "}
-    when: "inventory_hostname == 'db01'"
-      
-#  - name: listen_address change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#listen_addresses = 'localhost'"
-#      line: "listen_addresses = '*'          # what IP address(es) to listen on;"
-#    when: "inventory_hostname == 'db01'"
-#
-#  - name: wal_level change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#wal_level = replica"
-#      line: "#wal_level = replica                     # minimal, replica, or logical"
-#    when: "inventory_hostname == 'db01'"
-#
-#  - name: synchronous_commit change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#synchronous_commit = on"
-#      line: "synchronous_commit = on                 # synchronization level;"
-#    when: "inventory_hostname == 'db01'"
-#
-#  - name: max_wal_senders change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#max_wal_senders = 10"
-#      line: "max_wal_senders = 10            # max number of walsender processes"
-#    when: "inventory_hostname == 'db01'"
-#
-#  - name: wal_keep_segments change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#wal_keep_segments = 0"
-#      line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"
-#    when: "inventory_hostname == 'db01'"
-#  
-#  - name: synchronous_standby_names change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#synchronous_standby_names = ''"
-#      line: "synchronous_standby_names = '*' # standby servers that provide sync rep "
-#    when: "inventory_hostname == 'db01'"
-#
-#  - name: synchronous_standby_names change
-#    ansible.builtin.lineinfile:
-#      path: /mnt/db/db01/postgresql.conf
-#      regexp: "^#synchronous_standby_names = ''"
-#      line: "synchronous_standby_names = '*' # standby servers that provide sync rep "
-#    when: "inventory_hostname == 'db01'"
-
-  - name: Comment 1st
-    ansible.builtin.replace:
-      dest: /mnt/db/db01/pg_hba.conf
-      regexp: '^host    replication     all             127.0.0.1/32            ident'
-      replace: '#host    replication     all             127.0.0.1/32            ident'
-    when: "inventory_hostname == 'db01'"
-  
-  - name: Comment 2nd
-    ansible.builtin.replace:
-      dest: /mnt/db/db01/pg_hba.conf
-      regexp: '^host    replication     all             ::1/128                 ident'
-      replace: '#host    replication     all             ::1/128                 ident'
-    when: "inventory_hostname == 'db01'"
-
-  - name: Add a line to a file if the file does not exist with rep_user
-    ansible.builtin.lineinfile:
-      path: /mnt/db/db01/pg_hba.conf
-      line: "{{ item }}"
-    loop:
-       - 'host    replication     rep_user        172.172.2.0/24            md5'
-       - 'host    replication     rep_user        172.172.31.0/24           md5'
-
+####  - name: configure postgresql.conf
+####    ansible.builtin.lineinfile:
+####      path: /mnt/db/db01/postgresql.conf
+####      regexp: "{{ item.regexp }}"
+####      line: "{{ item.line }}"
+####    loop:
+####      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
+####      - { regexp: "^#wal_level = replica",            line: "#wal_level = replica                     # minimal, replica, or logical" }
+####      - { regexp: "^#synchronous_commit = on",        line: "synchronous_commit = on                 # synchronization level;" }
+####      - { regexp: "^#max_wal_senders = 10",           line:  "max_wal_senders = 10            # max number of walsender processes" }
+####      - { regexp: "^#wal_keep_segments = 0",          line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"}
+####      - { regexp: "^#synchronous_standby_names = ''", line: "synchronous_standby_names = '*' # standby servers that provide sync rep "}
+####    when: "inventory_hostname == 'db01'"
+####      
+####  - name: Comment 1st
+####    ansible.builtin.replace:
+####      dest: /mnt/db/db01/pg_hba.conf
+####      regexp: '^host    replication     all             127.0.0.1/32            ident'
+####      replace: '#host    replication     all             127.0.0.1/32            ident'
+####    when: "inventory_hostname == 'db01'"
+####  
+####  - name: Comment 2nd
+####    ansible.builtin.replace:
+####      dest: /mnt/db/db01/pg_hba.conf
+####      regexp: '^host    replication     all             ::1/128                 ident'
+####      replace: '#host    replication     all             ::1/128                 ident'
+####    when: "inventory_hostname == 'db01'"
+####
+####  - name: Add a line to a file if the file does not exist with rep_user
+####    ansible.builtin.lineinfile:
+####      path: /mnt/db/db01/pg_hba.conf
+####      line: "{{ item }}"
+####    loop:
+####       - 'local   replication     all                                       md5'
+####       - 'host    replication     rep_user        172.172.2.0/24            md5'
+####       - 'host    replication     rep_user        172.172.31.0/24           md5'
+####       - 'host    replication     all             127.0.0.1/32              md5'
+####       - 'host    replication     all             ::1/128                   md5'
+####
   - name: restart postgresql service
     ansible.builtin.systemd:
       name: postgresql

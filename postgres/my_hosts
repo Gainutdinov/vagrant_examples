@@ -1,2 +1,2 @@
-db01 ansible_python_interpreter=/usr/bin/python3 ansible_user=cloud_user ansible_password=RJFC6322nqwd1 ansible_host=3.8.173.61
-db02 ansible_python_interpreter=/usr/bin/python3 ansible_user=cloud_user ansible_password=UWWD7074htqd1 ansible_host=13.40.98.179
+db01 ansible_python_interpreter=/usr/bin/python3 ansible_user=cloud_user ansible_password=UUTK2688sqhv1 ansible_host=13.40.166.144
+db02 ansible_python_interpreter=/usr/bin/python3 ansible_user=cloud_user ansible_password=HURL2663ytgk1 ansible_host=18.132.97.21

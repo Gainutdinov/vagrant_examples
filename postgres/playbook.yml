@@ -99,4 +99,9 @@
       name: postgresql
       state: restarted
 
+  - name: listen_address change
+  ansible.builtin.lineinfile:
+    path: /mnt/db/db01/postgresql.conf
+    regexp: "^#listen_addresses = 'localhost'"
+    line: "listen_addresses = '*'"
 

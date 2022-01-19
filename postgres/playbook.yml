@@ -4,6 +4,8 @@
   vars:
     http_port: 80
     max_clients: 200
+    rep_user_pass: pass1234
+    db01_int_ip:  "172.31.124.50"
 #    - role: geerlingguy.postgresql
 #  roles:
   tasks:
@@ -99,48 +101,88 @@
       password: pass1234
       role_attr_flags: REPLICATION,LOGIN
 
+  - name: configure postgresql.conf
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/postgresql.conf
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
+      - { regexp: "^#wal_level = replica",            line: "#wal_level = replica                     # minimal, replica, or logical" }
+      - { regexp: "^#synchronous_commit = on",        line: "synchronous_commit = on                 # synchronization level;" }
+      - { regexp: "^#max_wal_senders = 10",           line:  "max_wal_senders = 10            # max number of walsender processes" }
+      - { regexp: "^#wal_keep_segments = 0",          line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"}
+      - { regexp: "^#synchronous_standby_names = ''", line: "synchronous_standby_names = '*' # standby servers that provide sync rep "}
+    when: "inventory_hostname == 'db01'"
+      
+  - name: Comment 1st
+    ansible.builtin.replace:
+      dest: /mnt/db/db01/pg_hba.conf
+      regexp: '^host    replication     all             127.0.0.1/32            ident'
+      replace: '#host    replication     all             127.0.0.1/32            ident'
+    when: "inventory_hostname == 'db01'"
+  
+  - name: Comment 2nd
+    ansible.builtin.replace:
+      dest: /mnt/db/db01/pg_hba.conf
+      regexp: '^host    replication     all             ::1/128                 ident'
+      replace: '#host    replication     all             ::1/128                 ident'
+    when: "inventory_hostname == 'db01'"
 
-####  - name: configure postgresql.conf
-####    ansible.builtin.lineinfile:
-####      path: /mnt/db/db01/postgresql.conf
-####      regexp: "{{ item.regexp }}"
-####      line: "{{ item.line }}"
-####    loop:
-####      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-####      - { regexp: "^#wal_level = replica",            line: "#wal_level = replica                     # minimal, replica, or logical" }
-####      - { regexp: "^#synchronous_commit = on",        line: "synchronous_commit = on                 # synchronization level;" }
-####      - { regexp: "^#max_wal_senders = 10",           line:  "max_wal_senders = 10            # max number of walsender processes" }
-####      - { regexp: "^#wal_keep_segments = 0",          line: "wal_keep_segments = 10            # in logfile segments, 16MB each; 0 disables"}
-####      - { regexp: "^#synchronous_standby_names = ''", line: "synchronous_standby_names = '*' # standby servers that provide sync rep "}
-####    when: "inventory_hostname == 'db01'"
-####      
-####  - name: Comment 1st
-####    ansible.builtin.replace:
-####      dest: /mnt/db/db01/pg_hba.conf
-####      regexp: '^host    replication     all             127.0.0.1/32            ident'
-####      replace: '#host    replication     all             127.0.0.1/32            ident'
-####    when: "inventory_hostname == 'db01'"
-####  
-####  - name: Comment 2nd
-####    ansible.builtin.replace:
-####      dest: /mnt/db/db01/pg_hba.conf
-####      regexp: '^host    replication     all             ::1/128                 ident'
-####      replace: '#host    replication     all             ::1/128                 ident'
-####    when: "inventory_hostname == 'db01'"
-####
-####  - name: Add a line to a file if the file does not exist with rep_user
-####    ansible.builtin.lineinfile:
-####      path: /mnt/db/db01/pg_hba.conf
-####      line: "{{ item }}"
-####    loop:
-####       - 'local   replication     all                                       md5'
-####       - 'host    replication     rep_user        172.172.2.0/24            md5'
-####       - 'host    replication     rep_user        172.172.31.0/24           md5'
-####       - 'host    replication     all             127.0.0.1/32              md5'
-####       - 'host    replication     all             ::1/128                   md5'
-####
+  - name: Add a line to a file if the file does not exist with rep_user
+    ansible.builtin.lineinfile:
+      path: /mnt/db/db01/pg_hba.conf
+      line: "{{ item }}"
+    loop:
+       - 'host    replication     rep_user        172.172.2.0/24            md5'
+       - 'host    replication     rep_user        172.172.31.0/24           md5'
+       - 'host    replication     rep_user        0.0.0.0/0                 md5'
+    when: "inventory_hostname == 'db01'"
+
   - name: restart postgresql service
     ansible.builtin.systemd:
       name: postgresql
       state: restarted
+
+  - name: Create .pgpass file
+    copy:
+      content: '*:*:*:rep_user:pass1234'
+      dest: /var/lib/pgsql/.pgpass
+      owner: postgres
+      group: postgres
+      mode: '0600'
+    when: "inventory_hostname == 'db02'"
+
+  - name: Remove previous content from postgres DB
+    shell: /bin/rm -rf /mnt/db/db01/*
+    when: "inventory_hostname == 'db02'"
+
+  - name: Execute pg_basebackup to recover from master node
+    become: yes
+    become_user: postgres
+    command: /usr/bin/pg_basebackup -R -h {{ db01_int_ip }} -U rep_user -D /mnt/db/db01 --progress
+#    args:
+#      executable: /bin/bash
+    when: "inventory_hostname == 'db02'"
+
+  - name: uncomment hot_standby
+    ansible.builtin.replace:
+      dest: /mnt/db/db01/postgresql.conf
+      regexp: '^#hot_standby = on'
+      replace: 'hot_standby = on'
+    when: "inventory_hostname == 'db02'"
+
+  - name: append application_name to the recovery.conf
+    lineinfile:
+      path: "/mnt/db/db01/recovery.conf"
+      backrefs: yes
+      regexp: "^(.*target_session_attrs=any.*')$"
+      line: '\1 application_name=db01'
+    when: "inventory_hostname == 'db02'"
+
+  - name: start postgresql service
+    ansible.builtin.systemd:
+      name: postgresql
+      state: started
+    when: "inventory_hostname == 'db02'"
 

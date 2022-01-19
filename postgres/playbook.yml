@@ -176,8 +176,8 @@
     lineinfile:
       path: "/mnt/db/db01/recovery.conf"
       backrefs: yes
-      regexp: "^(.*target_session_attrs=any.*')$"
-      line: '\1 application_name=db01'
+      regexp: "(.*target_session_attrs=any)'"
+      line: "\\1 application_name=db01' "
     when: "inventory_hostname == 'db02'"
 
   - name: start postgresql service

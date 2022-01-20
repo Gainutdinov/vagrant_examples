@@ -38,7 +38,7 @@
       dest: /etc/systemd/system/postgresql.service.d/override.conf
       content: |
         [Service]
-        Environment=PGDATA=/mnt/db/db01
+        Environment=PGDATA=/mnt/db/{{ inventory_hostname }}
       mode: 0644
 
 
@@ -52,7 +52,7 @@
 
   - name: Recursively change ownership of a directory
     ansible.builtin.file:
-      path: /mnt/db/db01
+      path: /mnt/db/{{ inventory_hostname }}
       owner: postgres 
       group: postgres
       state: directory
@@ -62,21 +62,13 @@
     ansible.builtin.systemd:
       daemon_reload: yes
 
-#  - name: collect facts about system services
-#    service_facts:
-#    register: services_state
-#  
-#  - name: Debug
-#    debug:
-#      var: services_state
-#
   - name: register postgres
     shell: systemctl status postgresql
     register: postgres_service_output
 
-  - name: store the statistics of /mnt/db/db01 
+  - name: store the statistics of /mnt/db/db0*
     find:
-      paths: /mnt/db/db01
+      paths: /mnt/db/{{ inventory_hostname }}
       file_type: directory
     register: folder_stat
 
@@ -85,7 +77,7 @@
     args:
       executable: /bin/bash
     when: 
-      - '"-D /mnt/db/db01" not in postgres_service_output.stdout'
+      - '"-D /mnt/db/{{ inventory_hostname }}" not in postgres_service_output.stdout'
       - folder_stat.examined == 0
 
   - name: restart postgresql service
@@ -117,21 +109,21 @@
       
   - name: Comment 1st
     ansible.builtin.replace:
-      dest: /mnt/db/db01/pg_hba.conf
+      dest: /mnt/db/{{ inventory_hostname }}/pg_hba.conf
       regexp: '^host    replication     all             127.0.0.1/32            ident'
       replace: '#host    replication     all             127.0.0.1/32            ident'
     when: "inventory_hostname == 'db01'"
   
   - name: Comment 2nd
     ansible.builtin.replace:
-      dest: /mnt/db/db01/pg_hba.conf
+      dest: /mnt/db/{{ inventory_hostname }}/pg_hba.conf
       regexp: '^host    replication     all             ::1/128                 ident'
       replace: '#host    replication     all             ::1/128                 ident'
     when: "inventory_hostname == 'db01'"
 
   - name: Add a line to a file if the file does not exist with rep_user
     ansible.builtin.lineinfile:
-      path: /mnt/db/db01/pg_hba.conf
+      path: /mnt/db/{{ inventory_hostname }}/pg_hba.conf
       line: "{{ item }}"
     loop:
        - 'host    replication     rep_user        172.172.2.0/24            md5'
@@ -154,27 +146,27 @@
     when: "inventory_hostname == 'db02'"
 
   - name: Remove previous content from postgres DB
-    shell: /bin/rm -rf /mnt/db/db01/*
+    shell: /bin/rm -rf /mnt/db/{{ inventory_hostname }}/*
     when: "inventory_hostname == 'db02'"
 
   - name: Execute pg_basebackup to recover from master node
     become: yes
     become_user: postgres
-    command: /usr/bin/pg_basebackup -R -h {{ db01_int_ip }} -U rep_user -D /mnt/db/db01 --progress
+    command: /usr/bin/pg_basebackup -R -h {{ db01_int_ip }} -U rep_user -D /mnt/db/{{ inventory_hostname }} --progress
 #    args:
 #      executable: /bin/bash
     when: "inventory_hostname == 'db02'"
 
   - name: uncomment hot_standby
     ansible.builtin.replace:
-      dest: /mnt/db/db01/postgresql.conf
+      dest: /mnt/db/{{ inventory_hostname }}/postgresql.conf
       regexp: '^#hot_standby = on'
       replace: 'hot_standby = on'
     when: "inventory_hostname == 'db02'"
 
   - name: append application_name to the recovery.conf
     lineinfile:
-      path: "/mnt/db/db01/recovery.conf"
+      path: "/mnt/db/{{ inventory_hostname }}/recovery.conf"
       backrefs: yes
       regexp: "(.*target_session_attrs=any)'"
       line: "\\1 application_name=db01' "

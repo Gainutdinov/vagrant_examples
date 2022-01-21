@@ -4,8 +4,9 @@
   vars:
     http_port: 80
     max_clients: 200
-    rep_user_pass: pass1234
-    db01_int_ip:  "172.31.118.223"
+    rep_user_pass: 9qyRHQ6K
+    power_user_pass: wqefPg97
+    db01_int_ip:  "172.172.31.62"
 #    - role: geerlingguy.postgresql
 #  roles:
   tasks:
@@ -90,8 +91,16 @@
     become_user: postgres
     postgresql_user:
       name: rep_user
-      password: pass1234
+      password: "{{ rep_user_pass }}"
       role_attr_flags: REPLICATION,LOGIN
+
+  - name: Create user for power_admin
+    become: yes
+    become_user: postgres
+    postgresql_user:
+      name: power_admin
+      password: "{{ power_user_pass }}"
+      role_attr_flags: SUPERUSER,LOGIN
 
   - name: configure postgresql.conf
     ansible.builtin.lineinfile:
@@ -129,6 +138,8 @@
        - 'host    replication     rep_user        172.172.2.0/24            md5'
        - 'host    replication     rep_user        172.172.31.0/24           md5'
        - 'host    replication     rep_user        0.0.0.0/0                 md5'
+       - 'host    all             power_admin     172.172.2.0/24            md5'
+       - 'host    all             power_admin     172.172.31.0/24           md5'
     when: "inventory_hostname == 'db01'"
 
   - name: restart postgresql service
@@ -138,7 +149,7 @@
 
   - name: Create .pgpass file
     copy:
-      content: '*:*:*:rep_user:pass1234'
+      content: '*:*:*:rep_user:{{ rep_user_pass }}'
       dest: /var/lib/pgsql/.pgpass
       owner: postgres
       group: postgres
@@ -172,9 +183,9 @@
       line: "\\1 application_name=db01' "
     when: "inventory_hostname == 'db02'"
 
-  - name: start postgresql service
-    ansible.builtin.systemd:
-      name: postgresql
-      state: started
-    when: "inventory_hostname == 'db02'"
+#  - name: start postgresql service
+#    ansible.builtin.systemd:
+#      name: postgresql
+#      state: started
+#    when: "inventory_hostname == 'db02'"
 

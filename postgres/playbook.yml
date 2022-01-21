@@ -5,7 +5,7 @@
     http_port: 80
     max_clients: 200
     rep_user_pass: pass1234
-    db01_int_ip:  "172.31.124.50"
+    db01_int_ip:  "172.31.118.223"
 #    - role: geerlingguy.postgresql
 #  roles:
   tasks:

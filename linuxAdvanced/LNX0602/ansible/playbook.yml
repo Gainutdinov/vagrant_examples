@@ -1,0 +1,56 @@
+---
+- hosts: server1
+  become: yes
+  vars:
+    http_port: 80
+    max_clients: 200
+  tasks:
+  - name: ensure nginx is at the latest version
+    apt:
+      pkg:
+      - vim
+      - apt-transport-https
+      - wget
+      - curl
+      - software-properties-common
+      - nginx
+      update_cache: yes
+      state: latest
+
+  - name: Copy a new nginx file into place, after passing validate with nginx
+    template:
+      src: templates/nginx.conf.j2
+      dest: /etc/nginx/sites-enabled/default
+      force: yes
+
+  - name: restart nginx
+    shell: /usr/sbin/nginx -t && /usr/sbin/nginx -s reload
+    args:
+      executable: /bin/bash
+
+  - name: Copy a new logrotate file into place
+    template:
+      src: templates/logrotate_nginx_custom
+      dest: /etc/logrotate.d/logrotate_nginx_custom
+  
+  - name: 2000 queries
+    shell: for i in {1..2000}; do curl http://{{ ansible_host }}.nip.io:8880; done
+    args:
+      executable: /bin/bash
+
+#    Напишите правило logrotate, соответствующее следующим требованиям:
+#
+#    Напишите скрипт, который отправит 2000 запросов на ваш новый virtual host, для того чтобы сгенерировать необходимый объем логов.
+#    Вручную вызовите logrotate для ротации логов.
+#
+#    Выведите список всех созданных логов вашего virtual host с указанием объемов файлов в человекочитаемом формате.
+#    Повторите запросы для заполнения логов.
+#    Вручную вызовите logrotate для ротации логов
+#    Выведите список всех созданных логов вашего virtual host с указанием объемов файлов в человекочитаемом формате.
+#    На проверку отправьте конфигурационный файл nginx, правило logrotate и все сохраненные команды с их выводами.
+#
+#
+
+
+
+

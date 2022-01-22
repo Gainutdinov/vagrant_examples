@@ -51,8 +51,9 @@
       src: templates/docker-compose-open-distro.yml
       dest: /root/docker-compose.yml
       group: root
-      setype: root
+      owner: root
       mode: 0640
+      force: yes
 
   - name: run opendistro 
     shell: 'docker-compose up -d'
@@ -68,43 +69,3 @@
 
   #  Настройте ваш удаленный виртуальный сервер на принятие логов на TCP порте 5514 и записи только логов из facility local2 в файл /var/log/remote.
 
-####  - name: rsyslog on 5514 port TCP
-####    lineinfile:
-####      path: /etc/rsyslog.conf
-####      regexp: '^#module\(load="imtcp"\)'
-####      line: 'module(load="imtcp")'
-####
-####  - name: rsyslog on 5514 port TCP 2
-####    lineinfile:
-####      path: /etc/rsyslog.conf
-####      regexp: '^#input\(type="imtcp" port="514"\)'
-####      line: 'input(type="imtcp" port="5514")'
-####
-####  - name: Make sure a service is running
-####    systemd:
-####      state: restarted
-####      name: rsyslog
-####
-####  - name: output localy executed task
-####    debug:
-####      msg: 'Настройте вашу локальную виртуальную машину на отправку всех логов facility local2 на ваш удаленный виртуальный сервер и в файл /var/log/local2.'
-####  
-####  - name: output localy executed task 1
-####    debug:
-####      msg: 'local2.*                        @@165.22.18.178:5514'
-####
-####  - name: output localy executed task 2
-####    debug:
-####      msg: 'local2.*                        /var/log/local2'
-####  
-####  - name: send logs to  /var/log/remote
-####    lineinfile:
-####      path: /etc/rsyslog.conf
-####      line: 'local2.*                        /var/log/remote'
-####
-####  - name: use logger locally
-####    debug:
-####      msg: "echo 'Rsyslog test' | logger --priority local2.emerg"
-####
-####
-####

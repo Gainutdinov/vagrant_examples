@@ -1,0 +1,20 @@
+$TTL 3H
+@   IN SOA  ns1.rebrainme.com. admin.rebrainme.com. (
+                  0   ; serial
+                  1D  ; refresh
+                  1H  ; retry
+                  1W  ; expire
+                  3H  ; minimum
+);
+
+  NS  ns1.rebrainme.com.
+  MX  10  mail1.rebrainme.com.
+
+          IN    A     139.59.151.64
+ns1       IN    A     172.31.110.149
+fakename  IN    A     172.31.39.243
+mail1     IN    A     172.31.39.243
+
+www       IN    CNAME ns1
+db1       IN    CNAME fakename
+robmarti2 IN    CNAME ns1

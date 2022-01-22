@@ -1,0 +1,63 @@
+---
+- hosts: server1
+  become: yes
+  vars:
+    http_port: 80
+    max_clients: 200
+  tasks:
+  - name: ensure nginx is at the latest version
+    apt:
+      pkg:
+      - vim
+      - apt-transport-https
+      - wget
+      - curl
+      - software-properties-common
+      update_cache: yes
+      state: latest
+
+  #  Настройте ваш удаленный виртуальный сервер на принятие логов на TCP порте 5514 и записи только логов из facility local2 в файл /var/log/remote.
+
+  - name: rsyslog on 5514 port TCP
+    lineinfile:
+      path: /etc/rsyslog.conf
+      regexp: '^#module\(load="imtcp"\)'
+      line: 'module(load="imtcp")'
+
+  - name: rsyslog on 5514 port TCP 2
+    lineinfile:
+      path: /etc/rsyslog.conf
+      regexp: '^#input\(type="imtcp" port="514"\)'
+      line: 'input(type="imtcp" port="5514")'
+
+  - name: Make sure a service is running
+    systemd:
+      state: restarted
+      name: rsyslog
+
+  - name: output localy executed task
+    debug:
+      msg: Настройте вашу локальную виртуальную машину на отправку всех логов facility local2 на ваш удаленный виртуальный сервер и в файл /var/log/local2.
+  
+
+  
+
+
+#  - name: restart nginx
+#    shell: /usr/sbin/nginx -t && /usr/sbin/nginx -s reload
+#    args:
+#      executable: /bin/bash
+#
+#  - name: Copy a new logrotate file into place
+#    template:
+#      src: templates/logrotate_nginx_custom
+#      dest: /etc/logrotate.d/logrotate_nginx_custom
+#  
+#  - name: 2000 queries
+#    shell: for i in {1..2000}; do curl http://{{ ansible_host }}.nip.io:8880; done
+#    args:
+#      executable: /bin/bash
+#
+
+
+

@@ -37,7 +37,7 @@ resource "digitalocean_droplet" "web" {
   image    = "ubuntu-20-04-x64"
   name     = "first-task-1"
   region   = "FRA1"
-  size     = "s-4vcpu-${var.ram_memory}gb"
+  size     = "s-2vcpu-${var.ram_memory}gb"
   ssh_keys = [ 
     data.digitalocean_ssh_key.mentorsKey.id,
     digitalocean_ssh_key.mysshKey.id

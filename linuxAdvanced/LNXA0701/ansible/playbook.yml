@@ -13,50 +13,59 @@
       - wget
       - apache2-utils
       - curl
-#      - nginx
+      - haproxy
+      - snapd
       - software-properties-common
       update_cache: yes
       state: latest
 
-  - name: install docker
-    shell: curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh && apt install -y docker-compose
+  - name: install prerequisites
+    shell: snap install core && snap refresh core
     args:
       executable: /bin/bash
 
-#  - name: install prerequisites
-#    shell: apt-get install apt-transport-https openjdk-<version_number>-jre-headless uuid-runtime pwgen
-#    args:
-#      executable: /bin/bash
-
-#    Установите Graylog на вашем удаленном виртуальном сервере с доступом к нему из внешнего мира.
-# docker run --name mongo -d mongo:4.2
-# docker run --name graylog --link mongo --link elasticsearch \
-#     -p 9000:9000 -p 12201:12201 -p 1514:1514 \
-#     -e GRAYLOG_HTTP_EXTERNAL_URI="http:/68.183.65.82.nip.io:9000/" \
-#     -d graylog/graylog:4.2
-
-#    Создайте в нем пользователя rebrainme с ролью Admin, который сможет аутентифицироваться с паролем graylog.
-#    Настройте Input типа Syslog UDP, который будет принимать сообщения на порту 55514.
-#    Создайте Index set External, который пишет логи в индексы с префиксом rebrainme. Индекс должен создаваться раз в день и максимальное число индексов для хранения — 10.
-#    Настройте принятие этого Input в Stream External Syslog, если в нем поле facility начинается на local. Хранение логов производится в Index set External.
-#    С локальной машины отправьте лог, который попадет в Stream External при помощи утилиты logger (команду сохраните).
-#    На проверку отправьте адрес для доступа к Graylog, время отправки лога и сохраненную команду отправки лога.
+  - name: install certbot snap
+    shell: snap install --classic certbot && ln -s /snap/bin/certbot /usr/bin/certbot
+    args:
+      executable: /bin/bash
+    ignore_errors: yes
 
 
-####  - name: pull docker images
-####    shell: 'docker pull amazon/opendistro-for-elasticsearch:1.13.3 && docker pull amazon/opendistro-for-elasticsearch-kibana:latest && docker pull fluent/fluent-bit:1.8 && sysctl -w vm.max_map_count=262144 '
-####    args:
-####      executable: /bin/bash
-####
-####  - name: docker-compose copy to host
-####    template:
-####      src: templates/docker-compose-open-distro.yml
-####      dest: /root/docker-compose.yml
-####      group: root
-####      owner: root
-####      mode: 0640
-####      force: yes
-####
+  - name: Make sure a service is stopped
+    systemd:
+      state: stopped
+      name: haproxy
+
+  - name: issue certificates for domain
+    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
+    args:
+      executable: /bin/bash
+
+  - name: Create a directory if it does not exist
+    file:
+      path: /etc/ssl/{{ ansible_host }}
+      state: directory
+      mode: '0755'
+
+  - name: create certificate for haproxy with combined key and cert
+    shell: cat "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem" "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem" | tee "/etc/ssl/{{ ansible_host }}.nip.io/{{ ansible_host }}.nip.io.pem" && openssl dhparam -out /etc/haproxy/dhparams.pem 2048
+    args:
+      executable: /bin/bash
+
+  - name: Template a file to /etc/haproxy/haproxy.cfg
+    template:
+      src: templates/haproxy.cfg.j2
+      dest: /etc/haproxy/haproxy.cfg
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: start service 
+    systemd:
+      name: haproxy
+      state: started
+
+
 ####  - name: run opendistro 
 ####    shell: 'docker-compose up -d'
 ####    args:
@@ -66,7 +75,4 @@
 ####  - name: output localy executed task
 ####    debug:
 ####      msg: 'https://docs.fluentbit.io/manual/installation/docker'
-####  
-####
-####
 ####

@@ -5,21 +5,6 @@
     http_port: 80
     max_clients: 200
   tasks:
-####  - name: ip_forward set
-####    sysctl:
-####      name: net.ipv4.ip_forward
-####      value: '1'
-####      state: present
-####      reload: yes
-
-  - name: bootstrap prepare
-    ansible.builtin.include_role:
-      name: robertdebock.bootstrap
-
-  - name: bootstrap epel
-    ansible.builtin.include_role:
-      name: robertdebock.epel
-
   - name: ensure packages is installed 
     apt:
       pkg:

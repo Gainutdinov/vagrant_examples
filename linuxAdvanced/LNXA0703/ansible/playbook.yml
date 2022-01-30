@@ -5,65 +5,69 @@
     http_port: 80
     max_clients: 200
   tasks:
+####  - name: ip_forward set
+####    sysctl:
+####      name: net.ipv4.ip_forward
+####      value: '1'
+####      state: present
+####      reload: yes
+
+  - name: bootstrap prepare
+    ansible.builtin.include_role:
+      name: robertdebock.bootstrap
+
+  - name: bootstrap epel
+    ansible.builtin.include_role:
+      name: robertdebock.epel
+
   - name: ensure packages is installed 
     apt:
       pkg:
       - vim
       - apt-transport-https
       - wget
-      - apache2-utils
+      - easy-rsa
       - curl
-      - haproxy
-      - snapd
+      - openvpn
       - software-properties-common
       update_cache: yes
       state: latest
 
-  - name: install prerequisites
-    shell: snap install core && snap refresh core
-    args:
-      executable: /bin/bash
-
-  - name: install certbot snap
-    shell: snap install --classic certbot && ln -s /snap/bin/certbot /usr/bin/certbot
-    args:
-      executable: /bin/bash
-    ignore_errors: yes
+  - name: create openvpn server
+    ansible.builtin.include_role:
+      name: robertdebock.openvpn
+    vars:
+      openvpn_role: "server"
 
 
-  - name: Make sure a service is stopped
-    systemd:
-      state: stopped
-      name: haproxy
-
-  - name: issue certificates for domain
-    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
-    args:
-      executable: /bin/bash
-
-  - name: Create a directory if it does not exist
-    file:
-      path: /etc/ssl/{{ ansible_host }}
-      state: directory
-      mode: '0755'
-
-  - name: create certificate for haproxy with combined key and cert
-    shell: cat "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem" "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem" | tee "/etc/ssl/{{ ansible_host }}.nip.io/{{ ansible_host }}.nip.io.pem" && openssl dhparam -out /etc/haproxy/dhparams.pem 2048
-    args:
-      executable: /bin/bash
-
-  - name: Template a file to /etc/haproxy/haproxy.cfg
-    template:
-      src: templates/haproxy.cfg.j2
-      dest: /etc/haproxy/haproxy.cfg
-      owner: root
-      group: root
-      mode: '0644'
-
-  - name: start service 
-    systemd:
-      name: haproxy
-      state: started
+####  - name: Make sure a service is stopped
+####    systemd:
+####      state: stopped
+####      name: haproxy
+####
+####  - name: issue certificates for domain
+####    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
+####    args:
+####      executable: /bin/bash
+####
+####  - name: Create a directory if it does not exist
+####    file:
+####      path: /etc/ssl/{{ ansible_host }}
+####      state: directory
+####      mode: '0755'
+####
+####  - name: create certificate for haproxy with combined key and cert
+####    shell: cat "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem" "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem" | tee "/etc/ssl/{{ ansible_host }}.nip.io/{{ ansible_host }}.nip.io.pem" && openssl dhparam -out /etc/haproxy/dhparams.pem 2048
+####    args:
+####      executable: /bin/bash
+####
+####  - name: Template a file to /etc/haproxy/haproxy.cfg
+####    template:
+####      src: templates/haproxy.cfg.j2
+####      dest: /etc/haproxy/haproxy.cfg
+####      owner: root
+####      group: root
+####      mode: '0644'
 
 
 ####  - name: run opendistro 

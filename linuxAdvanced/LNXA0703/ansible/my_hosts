@@ -1,1 +1,1 @@
-server1 ansible_user=root ansible_host=65.21.182.224
+server1 ansible_python_interpreter=/usr/bin/python3 ansible_user=root ansible_host=68.183.221.51

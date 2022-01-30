@@ -1,0 +1,47 @@
+global_defs {
+    notification_email {
+        root@localhost
+    }
+    notification_email_from LB1@localhost
+    smtp_server 127.0.0.1
+    smtp_connect_timeout 30
+    router_id 33
+    enable_script_security
+    script_user root
+    vrrp_skip_check_adv_addr
+}
+
+vrrp_script chk_nginx {
+    script "/usr/bin/pgrep nginx"
+    interval 2
+}
+
+vrrp_instance VI_1 {
+    smtp_alert
+    state BACKUP
+    interface eth1
+    virtual_router_id 51
+    priority 1
+    advert_int 3
+    virtual_ipaddress {
+        192.168.10.100
+    }
+#    unicast_src_ip — адрес источник для VRRP пакетов;
+#    unicast_peer — блок IP адресов серверов, на которые будут рассылаться VRPP пакеты.
+    unicast_src_ip 192.168.10.10
+    unicast_peer {
+        192.168.10.11
+    }
+    authentication {
+        auth_type PASS
+        auth_pass password
+    }
+    track_script {
+        chk_nginx
+    }
+
+    notify_master "/etc/keepalived/notify.sh master"
+    notify_backup "/etc/keepalived/notify.sh backup"
+    notify_fault  "/etc/keepalived/notify.sh fault"
+}
+

@@ -1,0 +1,57 @@
+---
+- hosts: all
+  become: true
+  gather_facts: yes
+  vars:
+    doc_root: /vagrant/web
+    server_name: "{{ ansible_all_ipv4_addresses[1] }}"
+    sys_packages: [ 'curl', 'vim', 'git']
+    php_packages: [ 'php7.4-curl', 'php7.4-cli' ]
+  tasks:
+    - name: ensure nginx is at the latest version
+      apt:
+        pkg:
+        - vim
+        - nginx
+        - wget
+        - keepalived
+        - bsd-mailx
+        update_cache: yes
+        state: latest
+
+    - name: Template a file to /etc/keepalived/notify.sh
+      template:
+        src: templates/notify.sh
+        dest: /etc/keepalived/notify.sh
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: chmod notify.sh
+      shell: chmod +x /etc/keepalived/notify.sh
+      args:
+        executable: /bin/bash
+
+    - name: Template a file to /etc/keepalived/keepalived.conf LB1
+      template:
+        src: templates/keepalived.conf1.j2
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_facts['nodename'] == "LB1"
+
+    - name: Template a file to /etc/keepalived/keepalived.conf LB2
+      template:
+        src: templates/keepalived.conf2.j2
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: '0644'
+      when: ansible_facts['nodename'] == "LB2"
+        
+    - name: restart service keepalived
+      systemd:
+        state: restarted
+        daemon_reload: yes
+        name: keepalived

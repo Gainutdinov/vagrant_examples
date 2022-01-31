@@ -4,6 +4,11 @@
   vars:
     http_port: 80
     max_clients: 200
+    openvpn_role: "server"
+    openvpn_easyrsa_path: "/usr/share/easy-rsa"
+    openvpn_group: nogroup
+    openvpn_configuration_directory: "/etc/openvpn"
+    openvpn_client_server: "{{ ansible_host }}" 
   tasks:
   - name: ensure packages is installed 
     apt:
@@ -14,54 +19,199 @@
       - easy-rsa
       - curl
       - openvpn
+      - gnutls-bin
       - software-properties-common
       update_cache: yes
       state: latest
 
-  - name: create openvpn server
-    ansible.builtin.include_role:
-      name: robertdebock.openvpn
-    vars:
-      openvpn_role: "server"
+  - name: forward set to 1
+    ansible.posix.sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: yes
+
+  - name: ensure /etc/openvpn/easy-rsa exists
+    ansible.builtin.file:
+      path: /etc/openvpn/easy-rsa
+      state: directory
+      mode: "0755"
+  
+  - name: easyrsa init-pki
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa init-pki"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki
+  
+  - name: easyrsa build-ca
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa build-ca nopass"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki/ca.crt
+    environment:
+      EASYRSA_BATCH: "yes"
+  
+  - name: easyrsa gen-dh
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa gen-dh"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki/dh.pem
+  
+  - name: easyrsa build-server-full server nopass
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa build-server-full server nopass"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki/issued/server.crt
+  
+  - name: easyrsa build-client-full client nopass
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa build-client-full client nopass"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki/issued/client.crt
+  
+  - name: easyrsa gen-crl
+    ansible.builtin.command:
+      cmd: "{{ openvpn_easyrsa_path }}/easyrsa gen-crl"
+      chdir: /etc/openvpn/easy-rsa
+      creates: /etc/openvpn/easy-rsa/pki/crl.pem
+  
+  - name: openvpn --genkey --secret /etc/openvpn/easy-rsa/pki/ta.key
+    ansible.builtin.command:
+      cmd: openvpn --genkey --secret /etc/openvpn/easy-rsa/pki/ta.key
+      creates: /etc/openvpn/easy-rsa/pki/ta.key
+  
+  - name: copy files to /etc/openvpn/server
+    ansible.builtin.copy:
+      src: /etc/openvpn/easy-rsa/pki/{{ item }}
+      dest: /etc/openvpn/server/{{ item | basename }}
+      mode: "0640"
+      remote_src: yes
+    loop:
+      - ca.crt
+      - dh.pem
+      - ta.key
+      - issued/client.crt
+      - issued/server.crt
+      - private/ca.key
+      - private/client.key
+      - private/server.key
+  
+  - name: copy files to /etc/openvpn
+    ansible.builtin.copy:
+      src: /etc/openvpn/easy-rsa/pki/{{ item }}
+      dest: /etc/openvpn/{{ item | basename }}
+      mode: "0640"
+      remote_src: yes
+    loop:
+      - ca.crt
+      - ta.key
+  
+  - name: place server.conf
+    ansible.builtin.template:
+      src: templates/server.conf.j2
+      dest: "{{ openvpn_configuration_directory }}/server.conf"
+      owner: root
+      group: "{{ openvpn_group }}"
+      mode: "0640"
+    notify:
+      - restart openvpn
+
+  - name: Create a directory if it does not exist
+    ansible.builtin.file:
+      path: /etc/openvpn/ccd
+      state: directory
+      mode: '0755'
+
+  - name: 
+    ansible.builtin.shell: echo "ifconfig-push 10.8.0.50 255.255.255.0" > /etc/openvpn/ccd/client
+    args:
+      executable: /bin/bash
 
 
-####  - name: Make sure a service is stopped
-####    systemd:
-####      state: stopped
-####      name: haproxy
-####
-####  - name: issue certificates for domain
-####    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
-####    args:
-####      executable: /bin/bash
-####
-####  - name: Create a directory if it does not exist
-####    file:
-####      path: /etc/ssl/{{ ansible_host }}
-####      state: directory
-####      mode: '0755'
-####
-####  - name: create certificate for haproxy with combined key and cert
-####    shell: cat "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem" "/etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem" | tee "/etc/ssl/{{ ansible_host }}.nip.io/{{ ansible_host }}.nip.io.pem" && openssl dhparam -out /etc/haproxy/dhparams.pem 2048
-####    args:
-####      executable: /bin/bash
-####
-####  - name: Template a file to /etc/haproxy/haproxy.cfg
-####    template:
-####      src: templates/haproxy.cfg.j2
-####      dest: /etc/haproxy/haproxy.cfg
-####      owner: root
-####      group: root
-####      mode: '0644'
+  - name: place openvpn systemd service
+    ansible.builtin.template:
+      src: templates/openvpn.service.j2
+      dest: /etc/systemd/system/openvpn.service
+      owner: root
+      group: root
+      mode: "0640"
+
+  - name: place client.ovpn
+    ansible.builtin.template:
+      src: templates/client.ovpn.j2
+      dest: /etc/openvpn/client.ovpn
+      owner: root
+      group: root
+      mode: "0640"
+
+  - name: Fullfill client.ovpn file
+    ansible.builtin.shell: |
+      echo "<ca>" >> /etc/openvpn/client.ovpn
+      cat /etc/openvpn/ca.crt >> /etc/openvpn/client.ovpn
+      echo "</ca>" >> /etc/openvpn/client.ovpn
+
+      echo "<cert>" >> /etc/openvpn/client.ovpn
+      cat /etc/openvpn/easy-rsa/pki/issued/client.crt >> /etc/openvpn/client.ovpn
+      echo "</cert>" >> /etc/openvpn/client.ovpn
+
+      echo "<key>" >> /etc/openvpn/client.ovpn
+      cat /etc/openvpn/easy-rsa/pki/private/client.key >> /etc/openvpn/client.ovpn
+      echo "</key>" >> /etc/openvpn/client.ovpn
+
+      echo "<tls-auth>" >> /etc/openvpn/client.ovpn
+      cat /etc/openvpn/ta.key >> /etc/openvpn/client.ovpn
+      echo "</tls-auth>" >> /etc/openvpn/client.ovpn
+
+    args:
+      executable: /usr/bin/bash
 
 
-####  - name: run opendistro 
-####    shell: 'docker-compose up -d'
-####    args:
-####      executable: /bin/bash
-####      chdir: /root
-####
-####  - name: output localy executed task
-####    debug:
-####      msg: 'https://docs.fluentbit.io/manual/installation/docker'
-####
+  - name: Allow docker DEFAULT_FORWARD_POLICY=ACCEPT
+    community.general.ufw:
+      direction: routed
+      default: allow
+      route: yes
+
+  - name: All access to port 1194
+    community.general.ufw:
+      rule: allow
+      port: '1194'
+
+  - name: All access to port OpenSSH
+    community.general.ufw:
+      rule: allow
+      port: '22'
+
+  - name: Insert masquearade into ufw rules
+    blockinfile:
+      path: /etc/ufw/before.rules
+      insertbefore: "# Don't delete these required lines, otherwise there will be errors"
+      block: |
+        # START OPENVPN RULES
+        # NAT table rules
+        *nat
+        :POSTROUTING ACCEPT [0:0]
+        # Allow traffic from OpenVPN client to eth0 (change to the interface you discovered!)
+        -A POSTROUTING -s 10.8.0.0/24 -o eth0 -j MASQUERADE
+        COMMIT
+        # END OPENVPN RULES
+  
+
+  - name: reload ufw
+    command: ufw reload
+
+  - name: Enable UFW
+    community.general.ufw:
+      state: enabled
+  
+
+  handlers:
+  - name: restart openvpn
+    ansible.builtin.service:
+      name: openvpn@server.service
+      daemon_reload: yes
+      state: restarted
+    when:
+      - not ansible_check_mode | bool
+
+
+

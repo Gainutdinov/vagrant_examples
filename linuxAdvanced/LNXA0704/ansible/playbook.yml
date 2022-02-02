@@ -69,6 +69,7 @@
       - "pritunl setup-key"
       - "pritunl default-password"
       - "https://www.howtoforge.com/how-to-setup-pritunl-vpn-server-on-ubuntu-20-04/"
+      - "{{ ansible_host }}"
   
   handlers:
   - name: restart pritunl

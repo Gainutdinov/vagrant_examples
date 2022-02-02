@@ -1,0 +1,84 @@
+---
+- hosts: server1
+  become: yes
+  vars:
+    http_port: 80
+    max_clients: 200
+    openvpn_role: "server"
+    openvpn_easyrsa_path: "/usr/share/easy-rsa"
+    openvpn_group: nogroup
+    openvpn_configuration_directory: "/etc/openvpn"
+    openvpn_client_server: "{{ ansible_host }}" 
+  tasks:
+  - name: ensure packages is installed 
+    apt:
+      pkg:
+      - vim
+      - apt-transport-https
+      - wget
+      - gnupg2
+      - curl
+      - unzip
+      - gnutls-bin
+      - software-properties-common
+      update_cache: yes
+      state: latest
+
+
+  - name: PRITUNL | Install key1
+    apt_key: keyserver=keyserver.ubuntu.com id="E162F504A20CDF15827F718D4B7C549A058F8B6B"
+
+  - name: PRITUNL | Install key2
+    apt_key: keyserver=keyserver.ubuntu.com id="7568D9BB55FF9E5287D586017AE645C0CF8E292A"
+
+  - name: Add pritunl repository 
+    ansible.builtin.apt_repository:
+      repo: deb http://repo.pritunl.com/stable/apt focal main
+      state: present
+      filename: pritunl.list
+
+  - name: install pritunl
+    apt:
+      pkg:
+      - pritunl
+      update_cache: yes
+      state: latest
+
+  - name: Enable pritunl
+    ansible.builtin.systemd:
+      name: pritunl
+      state: started
+      enabled: yes
+
+  - name: Add apt key for MongoDB repository
+    ansible.builtin.apt_key:
+      url: https://www.mongodb.org/static/pgp/server-4.4.asc
+      state: present
+  
+  - name: install mongodb
+    apt:
+      pkg:
+      - mongodb-server
+      update_cache: yes
+      state: latest
+
+
+  - name: Prints commands to execute on target machine
+    ansible.builtin.debug:
+      msg:
+      - "pritunl setup-key"
+      - "pritunl default-password"
+      - "https://www.howtoforge.com/how-to-setup-pritunl-vpn-server-on-ubuntu-20-04/"
+      - "{{ ansible_host }}"
+  
+  handlers:
+  - name: restart pritunl
+    ansible.builtin.service:
+      name: pritunl
+      daemon_reload: yes
+      state: restarted
+#    when:
+#      - not ansible_check_mode | bool
+
+
+

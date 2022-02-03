@@ -30,6 +30,13 @@
       - software-properties-common
       update_cache: yes
       state: latest
+  
+  - ansible.posix.sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: yes
+      state: present
+      reload: yes
 
 #  - name: print all facts
 #    ansible.builtin.debug:

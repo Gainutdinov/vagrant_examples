@@ -1,15 +1,19 @@
 ---
-- hosts: server1, server2, server3
+- hosts: server1
   become: yes
   vars:
-    http_port: 80
-    max_clients: 200
-    openvpn_role: "server"
-    openvpn_easyrsa_path: "/usr/share/easy-rsa"
-    openvpn_group: nogroup
-    openvpn_configuration_directory: "/etc/openvpn"
-    openvpn_client_server: "{{ ansible_host }}" 
-    tinc_network_name: "vpn0"
+    wireguard_port: "5888"
+    wireguard_path: "/etc/wireguard"
+    wireguard_sources_path: "/var/cache"
+    wireguard_network_name: "private"
+    debian_enable_backports: true
+    debian_pin_packages: true
+    client_vpn_ip: "10.1.0.100/8"
+    client_wireguard_path: "~/wg.conf"
+    client_wireguard_dns: false
+    wireguard_additional_peers: false
+    wireguard_post_up: false
+    wireguard_post_down: false
   tasks:
   - name: ensure packages is installed 
     apt:
@@ -21,6 +25,7 @@
       - wireguard
       - curl
       - unzip
+      - qrencode
       - gnutls-bin
       - software-properties-common
       update_cache: yes
@@ -35,199 +40,104 @@
       pkg: tinc
       update_cache: yes
       state: latest
-#
-#wg genkey | sudo tee /etc/wireguard/private.key
-#sudo chmod go= /etc/wireguard/private.key
 
-
-#wg genkey | sudo tee /etc/wireguard/private.key
-#sudo chmod go= /etc/wireguard/private.key
-
-
-  
-  - name: Creating tinc network directories
+  - name: Ensure wireguard_path exists as directory
     file:
-      path: /etc/tinc/{{ tinc_network_name }}/hosts
+      path: "{{ wireguard_path }}"
       state: directory
-      owner: root
-      group: root
-      mode: 0755
-      recurse: true
   
-  - name: hosts entries
-    blockinfile:
-      path: /etc/hosts
-      block: |
-        ## eth1 ip address
-        {{ hostvars['server1']['ansible_default_ipv4']['address'] }}  server1
-        {{ hostvars['server2']['ansible_default_ipv4']['address'] }}  server2
-        {{ hostvars['server3']['ansible_default_ipv4']['address'] }}  server3
-        ## tinc ip address ##
-        {{ hostvars['server1']['vpn_addr'] }} vpn1
-        {{ hostvars['server2']['vpn_addr'] }} vpn2
-        {{ hostvars['server3']['vpn_addr'] }} vpn3
+  - name: Read private key
+    stat:
+      path: "{{ wireguard_path }}/privatekey"
+    register: privatekey
+    when: not ansible_check_mode
   
-  
-  - name: Template a file to /etc/tinc/{{ tinc_network_name }}/tinc.conf
-    ansible.builtin.template:
-      src: templates/tinc.conf.j2
-      dest: /etc/tinc/{{ tinc_network_name }}/tinc.conf
-      owner: root
-      group: root
-      mode: '0644'
-  
-  - name: Creating tinc private key
-    shell: tincd -n {{ tinc_network_name }} -K4096
-    args:
-      creates: /etc/tinc/{{ tinc_network_name }}/rsa_key.priv
-    notify:
-      - restart tinc
-  
-  - name: Fixing tinc private key permissions
-    file:
-      dest: /etc/tinc/{{ tinc_network_name }}/rsa_key.priv
-      owner: root
-      group: root
-      mode: 0600
-  
-  - name: Template a file to /etc/tinc/{{ tinc_network_name }}/tinc-down
-    ansible.builtin.template:
-      src: templates/tinc-down.j2
-      dest: /etc/tinc/{{ tinc_network_name }}/tinc-down
-      owner: root
-      group: root
-      mode: '0755'
-
-  - name: Template a file to /etc/tinc/{{ tinc_network_name }}/tinc-up
-    ansible.builtin.template:
-      src: templates/tinc-up.j2
-      dest: /etc/tinc/{{ tinc_network_name }}/tinc-up
-      owner: root
-      group: root
-      mode: '0755'
-
-  - name: Template a file to /etc/tinc/{{ tinc_network_name }}/hosts/serverx
-    ansible.builtin.template:
-      src: templates/serverx.j2
-      dest: /etc/tinc/{{ tinc_network_name }}/hosts/{{ hostvars[inventory_hostname].inventory_hostname }}
-      owner: root
-      group: root
-      mode: '0644'
-
-  - name: Addition to previous template
-    ansible.builtin.shell: cat  /etc/tinc/{{ tinc_network_name }}/rsa_key.pub >> /etc/tinc/{{ tinc_network_name }}/hosts/{{ hostvars[inventory_hostname].inventory_hostname }}
+  - name: Generate wireguard keys
+    shell: set -o pipefail && \
+           umask 077; wg genkey | tee {{ wireguard_path  }}/privatekey | wg pubkey > {{ wireguard_path }}/publickey
     args:
       executable: /bin/bash
+    when:
+      - not ansible_check_mode
+      - not privatekey.stat.exists
 
-  - name: Store file into /tmp/server1
-    ansible.builtin.fetch:
-      src: /etc/tinc/vpn0/hosts/server1
-      dest: /tmp/
-      flat: yes
-    when: inventory_hostname == 'server1'
-
-  - name: Store file into /tmp/server2
-    ansible.builtin.fetch:
-      src: /etc/tinc/vpn0/hosts/server2
-      dest: /tmp/
-      flat: yes
-    when: inventory_hostname == 'server2'
-
-  - name: Store file into /tmp/server3
-    ansible.builtin.fetch:
-      src: /etc/tinc/vpn0/hosts/server3
-      dest: /tmp/
-      flat: yes
-    when: inventory_hostname == 'server3'
-
-
-  - name: Copy files to servers
-    copy:
-      src: /tmp/{{ item }}
-      dest: "/etc/tinc/{{ tinc_network_name }}/hosts/{{ item }}"
+  - name: Read public key
+    slurp:
+      src: "{{ wireguard_path }}/publickey"
+    register: public
+    when: not ansible_check_mode
+  
+  - name: Read private client's key
+    stat:
+      path: "{{ wireguard_path }}/client_privatekey"
+    register: client_privatekey
+    run_once: true
+    when: client_vpn_ip | length > 0
+  
+  - name: Generate wireguard client's keys
+    shell: set -o pipefail && \
+           umask 077; wg genkey | tee {{ wireguard_path  }}/client_privatekey | wg pubkey > {{ wireguard_path }}/client_publickey
+    run_once: true
+    args:
+      executable: /bin/bash
+    when:
+      - client_vpn_ip | length > 0
+      - not client_privatekey.stat.exists
+  
+  - name: Read private client's key
+    slurp:
+      src: "{{ wireguard_path }}/client_privatekey"
+    register: client_privatekey
+    run_once: true
+    when:
+      - not ansible_check_mode
+      - client_vpn_ip | length > 0
+  
+  - name: Read public client's key
+    slurp:
+      src: "{{ wireguard_path }}/client_publickey"
+    register: client_publickey
+    run_once: true
+    when:
+      - not ansible_check_mode
+      - client_vpn_ip | length > 0
+  
+  - name: Generate configs
+    template:
+      src: templates/interface.conf.j2
+      dest: "{{ wireguard_path }}/{{ wireguard_network_name }}.conf"
       owner: root
       group: root
-      mode: 0644
-      force: yes
-    loop:
-      - server1
-      - server2
-      - server3
+      mode: "u=rw,g=r,o="
+    register: config
+    notify:
+      - Enable wg-quick service
+      - Restart wg-quick service
+    when: not ansible_check_mode
+  
 
-  - name: Enable tinc@vpn0
-    ansible.builtin.systemd:
-      name: tinc@vpn0
-      state: started
-      enabled: yes
 
-  - name: create an archive from config files
-    community.general.archive:
-      path: /etc/tinc/vpn0/
-      dest: /etc/tinc/vpn0/archive.tgz
-
-  - name: fetch config files
-    ansible.builtin.fetch:
-      src: /etc/tinc/vpn0/archive.tgz
-      dest: "/tmp/conf_{{ inventory_hostname }}/archive_{{ inventory_hostname }}.tgz"
-      flat: yes
-
-####  - name: PRITUNL | Install key1
-####    apt_key: keyserver=keyserver.ubuntu.com id="E162F504A20CDF15827F718D4B7C549A058F8B6B"
-####
-####  - name: PRITUNL | Install key2
-####    apt_key: keyserver=keyserver.ubuntu.com id="7568D9BB55FF9E5287D586017AE645C0CF8E292A"
-####
-####  - name: Add pritunl repository 
-####    ansible.builtin.apt_repository:
-####      repo: deb http://repo.pritunl.com/stable/apt focal main
-####      state: present
-####      filename: pritunl.list
-####
-####  - name: install pritunl
-####    apt:
-####      pkg:
-####      - pritunl
-####      update_cache: yes
-####      state: latest
-####
-####  - name: Enable pritunl
-####    ansible.builtin.systemd:
-####      name: pritunl
-####      state: started
-####      enabled: yes
-####
-####  - name: Add apt key for MongoDB repository
-####    ansible.builtin.apt_key:
-####      url: https://www.mongodb.org/static/pgp/server-4.4.asc
-####      state: present
-####  
-####  - name: install mongodb
-####    apt:
-####      pkg:
-####      - mongodb-server
-####      update_cache: yes
-####      state: latest
-####
-####
-####  - name: Prints commands to execute on target machine
-####    ansible.builtin.debug:
-####      msg:
-####      - "pritunl setup-key"
-####      - "pritunl default-password"
-####      - "https://www.howtoforge.com/how-to-setup-pritunl-vpn-server-on-ubuntu-20-04/"
-####      - "{{ ansible_host }}"
-####  
   handlers:
   - name: restart pritunl
     ansible.builtin.service:
       name: pritunl
       daemon_reload: yes
       state: restarted
-#    when:
-#      - not ansible_check_mode | bool
 
   - name: restart tinc
     ansible.builtin.service:
       name: tinc
       daemon_reload: yes
       state: restarted
+
+  - name: Enable wg-quick service
+    service:
+      name: "wg-quick@{{ wireguard_network_name }}"
+      enabled: yes
+  
+  - name: Restart wg-quick service
+    service:
+      name: "wg-quick@{{ wireguard_network_name }}"
+      state: restarted
+    when: config.changed
+  

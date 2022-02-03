@@ -109,49 +109,57 @@
     args:
       executable: /bin/bash
 
-
-  - name: /etc/tinc/vpn0/hosts/server2 server2 to server1
-    synchronize:
-      src: /etc/tinc/vpn0/hosts/server2
-      dest: /etc/tinc/vpn0/hosts/server2
-    delegate_to: server2
+  - name: Store file into /tmp/server1
+    ansible.builtin.fetch:
+      src: /etc/tinc/vpn0/hosts/server1
+      dest: /tmp/
+      flat: yes
     when: inventory_hostname == 'server1'
 
-  - name: /etc/tinc/vpn0/hosts/server3 server3 to server1
-    synchronize:
-      src: /etc/tinc/vpn0/hosts/server3
-      dest: /etc/tinc/vpn0/hosts/server3
-    delegate_to: server3
-    when: inventory_hostname == 'server1'
-
-  - name: /etc/tinc/vpn0/hosts/server1 server2 to server1
-    synchronize:
-      src: /etc/tinc/vpn0/hosts/server1
-      dest: /etc/tinc/vpn0/hosts/server1
-    delegate_to: server1
-    when: inventory_hostname == 'server2'
-
-  - name: /etc/tinc/vpn0/hosts/server1 server2 to server1
-    synchronize:
-      src: /etc/tinc/vpn0/hosts/server3
-      dest: /etc/tinc/vpn0/hosts/server3
-    delegate_to: server3
-    when: inventory_hostname == 'server2'
-
-  - name: /etc/tinc/vpn0/hosts/server1 server1 to server3
-    synchronize:
-      src: /etc/tinc/vpn0/hosts/server1
-      dest: /etc/tinc/vpn0/hosts/server1
-    delegate_to: server1
-    when: inventory_hostname == 'server3'
-
-  - name: /etc/tinc/vpn0/hosts/server2 server1 to server3
-    synchronize:
+  - name: Store file into /tmp/server2
+    ansible.builtin.fetch:
       src: /etc/tinc/vpn0/hosts/server2
-      dest: /etc/tinc/vpn0/hosts/server2
-    delegate_to: server2
+      dest: /tmp/
+      flat: yes
+    when: inventory_hostname == 'server2'
+
+  - name: Store file into /tmp/server3
+    ansible.builtin.fetch:
+      src: /etc/tinc/vpn0/hosts/server3
+      dest: /tmp/
+      flat: yes
     when: inventory_hostname == 'server3'
 
+
+  - name: Copy files to servers
+    copy:
+      src: /tmp/{{ item }}
+      dest: "/etc/tinc/{{ tinc_network_name }}/hosts/{{ item }}"
+      owner: root
+      group: root
+      mode: 0644
+      force: yes
+    loop:
+      - server1
+      - server2
+      - server3
+
+  - name: Enable tinc@vpn0
+    ansible.builtin.systemd:
+      name: tinc@vpn0
+      state: started
+      enabled: yes
+
+  - name: create an archive from config files
+    community.general.archive:
+      path: /etc/tinc/vpn0/
+      dest: /etc/tinc/vpn0/archive.tgz
+
+  - name: fetch config files
+    ansible.builtin.fetch:
+      src: /etc/tinc/vpn0/archive.tgz
+      dest: "/tmp/conf_{{ inventory_hostname }}/archive_{{ inventory_hostname }}.tgz"
+      flat: yes
 
 ####  - name: PRITUNL | Install key1
 ####    apt_key: keyserver=keyserver.ubuntu.com id="E162F504A20CDF15827F718D4B7C549A058F8B6B"

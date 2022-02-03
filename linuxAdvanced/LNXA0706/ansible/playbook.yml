@@ -18,6 +18,7 @@
       - apt-transport-https
       - wget
       - gnupg2
+      - wireguard
       - curl
       - unzip
       - gnutls-bin
@@ -34,6 +35,15 @@
       pkg: tinc
       update_cache: yes
       state: latest
+#
+#wg genkey | sudo tee /etc/wireguard/private.key
+#sudo chmod go= /etc/wireguard/private.key
+
+
+#wg genkey | sudo tee /etc/wireguard/private.key
+#sudo chmod go= /etc/wireguard/private.key
+
+
   
   - name: Creating tinc network directories
     file:

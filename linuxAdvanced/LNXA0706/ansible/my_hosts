@@ -1,4 +1,4 @@
-server1 ansible_user=root ansible_host=65.21.182.224  vpn_addr=172.16.1.1  vpn_network=172.16.1.0
+server1 ansible_user=root ansible_host=65.21.182.224  vpn_addr=172.16.1.1  vpn_network=172.16.1.0 vpn_ip=10.1.0.100/8
 
 
 

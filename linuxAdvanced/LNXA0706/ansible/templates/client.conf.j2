@@ -1,25 +1,12 @@
 [Interface]
-Address = {{ client_vpn_ip }}
-PrivateKey = {{ client_privatekey.content | b64decode | trim }}
-{% if client_wireguard_dns %}
-DNS = {{ client_wireguard_dns }}
-{% endif %}
+Address = 10.0.0.2/24
+ListenPort = 51820
+PrivateKey = {{ private_key_client['content'] | b64decode }}
+DNS = 10.0.0.2
 
-{% for node in play_hosts %}
+
 [Peer]
-PublicKey = {{ hostvars[node].public.content | b64decode | trim }}
-AllowedIPs = {{ hostvars[node].vpn_ip }}
-Endpoint = {{ hostvars[node]['public_addr'] | default(hostvars[node]['ansible_host']) | default(hostvars[node]['inventory_hostname']) }}:{{ wireguard_port }}
-PersistentKeepalive = 25
-
-{% endfor %}
-
-{% if wireguard_additional_peers %}
-{% for node in wireguard_additional_peers %}
-# {{ node.comment  }}
-[Peer]
-PublicKey = {{ node.key }}
-AllowedIPs = {{ node.ip }}
-
-{% endfor %}
-{% endif %}
+PublicKey = {{ public_key_server['content'] | b64decode }}
+AllowedIPs = 0.0.0.0/0, ::/0
+Endpoint = {{ ansible_host }}:51820
+PersistentKeepalive = 15

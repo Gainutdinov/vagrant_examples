@@ -71,7 +71,7 @@
       - { regexp: '^auth = "pam\[gid-min=1000\]"', line: '#auth = "pam[gid-min=1000]"' }
       - { regexp: '^#auth = "plain\[\/etc\/ocserv\/ocpasswd\]"', line: 'auth = "plain[/etc/ocserv/ocpasswd]"' }
       - { regexp: '^server-cert = \/etc\/ssl\/certs\/ssl-cert-snakeoil.pem', line: 'server-cert = /etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem' }
-      - { regexp: '^server-key = \/etc\/ssl\/private\/ssl-cert-snakeoil.key', line: 'server-key = /etc/letsencrypt/live/{{ ansible_host }}.n    ip.io/privkey.pem' }
+      - { regexp: '^server-key = \/etc\/ssl\/private\/ssl-cert-snakeoil.key', line: 'server-key = /etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem' }
       - { regexp: '^try-mtu-discovery = false', line: 'try-mtu-discovery = true' }
       - { regexp: '^#tunnel-all-dns = true', line: 'tunnel-all-dns = true' }
       - { regexp: '^ipv4-network = 192.168.1.0', line: 'ipv4-network = 10.1.0.0' }
@@ -97,10 +97,10 @@
 
   - name: Copy ocpasswd
     ansible.builtin.template:
-      src: template/ocpasswd.j2
+      src: templates/ocpasswd.j2
       dest: /etc/ocserv/ocpasswd
       group: root
-      user: root
+      owner: root
       mode: 0600
     notify:
     - Restart ocserv.service

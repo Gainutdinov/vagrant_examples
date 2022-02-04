@@ -102,6 +102,8 @@
       group: root
       user: root
       mode: 0600
+    notify:
+    - Restart ocserv.service
   
 
 
@@ -124,9 +126,8 @@
       name: "wg-quick@{{ wireguard_network_name }}"
       enabled: yes
   
-  - name: Restart wg-quick service
+  - name: Restart ocserv.service
     service:
-      name: "wg-quick@{{ wireguard_network_name }}"
+      name: "ocserv.service"
       state: restarted
-    when: config.changed
   

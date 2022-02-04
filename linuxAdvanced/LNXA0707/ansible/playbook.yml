@@ -28,93 +28,103 @@
       - qrencode
       - gnutls-bin
       - software-properties-common
+      - ocserv
+      - certbot
+      - python3-certbot-nginx
       update_cache: yes
       state: latest
+
+  - name: issue certificates for domain
+    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
+    args:
+      executable: /bin/bash
+
+  - name: Create a directory if it does not exist
+    file:
+      path: /etc/ssl/{{ ansible_host }}
+      state: directory
+      mode: '0755'
+
 
 #  - name: print all facts
 #    ansible.builtin.debug:
 #      var: ansible_facts
    
-  - name: Installing tinc package
-    apt:
-      pkg: tinc
-      update_cache: yes
-      state: latest
 
-  - name: Ensure wireguard_path exists as directory
-    file:
-      path: "{{ wireguard_path }}"
-      state: directory
-  
-  - name: Read private key
-    stat:
-      path: "{{ wireguard_path }}/privatekey"
-    register: privatekey
-    when: not ansible_check_mode
-  
-  - name: Generate wireguard keys
-    shell: set -o pipefail && \
-           umask 077; wg genkey | tee {{ wireguard_path  }}/privatekey | wg pubkey > {{ wireguard_path }}/publickey
-    args:
-      executable: /bin/bash
-    when:
-      - not ansible_check_mode
-      - not privatekey.stat.exists
-
-  - name: Read public key
-    slurp:
-      src: "{{ wireguard_path }}/publickey"
-    register: public
-    when: not ansible_check_mode
-  
-  - name: Read private client's key
-    stat:
-      path: "{{ wireguard_path }}/client_privatekey"
-    register: client_privatekey
-    run_once: true
-    when: client_vpn_ip | length > 0
-  
-  - name: Generate wireguard client's keys
-    shell: set -o pipefail && \
-           umask 077; wg genkey | tee {{ wireguard_path  }}/client_privatekey | wg pubkey > {{ wireguard_path }}/client_publickey
-    run_once: true
-    args:
-      executable: /bin/bash
-    when:
-      - client_vpn_ip | length > 0
-      - not client_privatekey.stat.exists
-  
-  - name: Read private client's key
-    slurp:
-      src: "{{ wireguard_path }}/client_privatekey"
-    register: client_privatekey
-    run_once: true
-    when:
-      - not ansible_check_mode
-      - client_vpn_ip | length > 0
-  
-  - name: Read public client's key
-    slurp:
-      src: "{{ wireguard_path }}/client_publickey"
-    register: client_publickey
-    run_once: true
-    when:
-      - not ansible_check_mode
-      - client_vpn_ip | length > 0
-  
-  - name: Generate configs
-    template:
-      src: templates/interface.conf.j2
-      dest: "{{ wireguard_path }}/{{ wireguard_network_name }}.conf"
-      owner: root
-      group: root
-      mode: "u=rw,g=r,o="
-    register: config
-    notify:
-      - Enable wg-quick service
-      - Restart wg-quick service
-    when: not ansible_check_mode
-  
+####  - name: Ensure wireguard_path exists as directory
+####    file:
+####      path: "{{ wireguard_path }}"
+####      state: directory
+####  
+####  - name: Read private key
+####    stat:
+####      path: "{{ wireguard_path }}/privatekey"
+####    register: privatekey
+####    when: not ansible_check_mode
+####  
+####  - name: Generate wireguard keys
+####    shell: set -o pipefail && \
+####           umask 077; wg genkey | tee {{ wireguard_path  }}/privatekey | wg pubkey > {{ wireguard_path }}/publickey
+####    args:
+####      executable: /bin/bash
+####    when:
+####      - not ansible_check_mode
+####      - not privatekey.stat.exists
+####
+####  - name: Read public key
+####    slurp:
+####      src: "{{ wireguard_path }}/publickey"
+####    register: public
+####    when: not ansible_check_mode
+####  
+####  - name: Read private client's key
+####    stat:
+####      path: "{{ wireguard_path }}/client_privatekey"
+####    register: client_privatekey
+####    run_once: true
+####    when: client_vpn_ip | length > 0
+####  
+####  - name: Generate wireguard client's keys
+####    shell: set -o pipefail && \
+####           umask 077; wg genkey | tee {{ wireguard_path  }}/client_privatekey | wg pubkey > {{ wireguard_path }}/client_publickey
+####    run_once: true
+####    args:
+####      executable: /bin/bash
+####    when:
+####      - client_vpn_ip | length > 0
+####      - not client_privatekey.stat.exists
+####  
+####  - name: Read private client's key
+####    slurp:
+####      src: "{{ wireguard_path }}/client_privatekey"
+####    register: client_privatekey
+####    run_once: true
+####    when:
+####      - not ansible_check_mode
+####      - client_vpn_ip | length > 0
+####  
+####  - name: Read public client's key
+####    slurp:
+####      src: "{{ wireguard_path }}/client_publickey"
+####    register: client_publickey
+####    run_once: true
+####    when:
+####      - not ansible_check_mode
+####      - client_vpn_ip | length > 0
+####  
+####  - name: Generate configs
+####    template:
+####      src: templates/interface.conf.j2
+####      dest: "{{ wireguard_path }}/{{ wireguard_network_name }}.conf"
+####      owner: root
+####      group: root
+####      mode: "u=rw,g=r,o="
+####    register: config
+####    notify:
+####      - Enable wg-quick service
+####      - Restart wg-quick service
+####    when: not ansible_check_mode
+####  
 
 
   handlers:

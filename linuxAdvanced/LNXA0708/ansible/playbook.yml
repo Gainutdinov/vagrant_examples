@@ -1,0 +1,133 @@
+---
+- hosts: server1
+  become: yes
+  vars:
+    wireguard_port: "5888"
+    wireguard_path: "/etc/wireguard"
+    wireguard_sources_path: "/var/cache"
+    wireguard_network_name: "private"
+    debian_enable_backports: true
+    debian_pin_packages: true
+    client_vpn_ip: "10.1.0.100/8"
+    client_wireguard_path: "~/wg.conf"
+    client_wireguard_dns: false
+    wireguard_additional_peers: false
+    wireguard_post_up: false
+    wireguard_post_down: false
+  tasks:
+  - name: ensure packages is installed 
+    apt:
+      pkg:
+      - vim
+      - apt-transport-https
+      - wget
+      - iptables-persistent
+      - gnupg2
+      - wireguard
+      - curl
+      - unzip
+      - qrencode
+      - gnutls-bin
+      - software-properties-common
+      - ocserv
+      - certbot
+      - python3-certbot-nginx
+      update_cache: yes
+      state: latest
+
+  - name: Make sure a service is stopped
+    ansible.builtin.systemd:
+      state: stopped
+      name: nginx
+
+  - ansible.posix.sysctl:
+      name: net.ipv4.ip_forward
+      value: '1'
+      sysctl_set: yes
+
+
+  - name: issue certificates for domain
+    shell: certbot certonly --register-unsafely-without-email --non-interactive --agree-tos --standalone --domain {{ ansible_host }}.nip.io
+    args:
+      executable: /bin/bash
+
+  - name: Create a directory if it does not exist
+    file:
+      path: /etc/ssl/{{ ansible_host }}
+      state: directory
+      mode: '0755'
+
+#  - name: print all path to certs
+#    ansible.builtin.debug:
+#      var: /etc/letsencrypt/live/{{ ansible_host }}.nip.io/
+
+
+  - name: ensure config is correct
+    lineinfile:
+      path: /etc/ocserv/ocserv.conf
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: '^auth = "pam\[gid-min=1000\]"', line: '#auth = "pam[gid-min=1000]"' }
+      - { regexp: '^#auth = "plain\[\/etc\/ocserv\/ocpasswd\]"', line: 'auth = "plain[/etc/ocserv/ocpasswd]"' }
+      - { regexp: '^server-cert = \/etc\/ssl\/certs\/ssl-cert-snakeoil.pem', line: 'server-cert = /etc/letsencrypt/live/{{ ansible_host }}.nip.io/fullchain.pem' }
+      - { regexp: '^server-key = \/etc\/ssl\/private\/ssl-cert-snakeoil.key', line: 'server-key = /etc/letsencrypt/live/{{ ansible_host }}.nip.io/privkey.pem' }
+      - { regexp: '^try-mtu-discovery = false', line: 'try-mtu-discovery = true' }
+      - { regexp: '^#tunnel-all-dns = true', line: 'tunnel-all-dns = true' }
+      - { regexp: '^ipv4-network = 192.168.1.0', line: 'ipv4-network = 10.1.0.0' }
+      - { regexp: '^route = 10.0.0.0\/8', line: '#route = 10.0.0.0/8' }
+      - { regexp: '^route = 172.16.0.0\/12', line: '#route = 172.16.0.0/12' }
+      - { regexp: '^route = 192.168.0.0\/16', line: '#route = 192.168.0.0/16' }
+
+  - name: iptables for eth0
+    shell: iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+    args:
+      executable: /bin/bash
+
+  - name: iptables save
+    shell: iptables-save
+    args:
+      executable: /bin/bash
+
+
+#  - name: print last commands
+#    ansible.builtin.debug:
+#      msg: "/etc/ocserv/ocpasswd "
+   
+
+  - name: Copy ocpasswd
+    ansible.builtin.template:
+      src: templates/ocpasswd.j2
+      dest: /etc/ocserv/ocpasswd
+      group: root
+      owner: root
+      mode: 0600
+    notify:
+    - Restart ocserv.service
+  
+
+
+
+  handlers:
+  - name: restart pritunl
+    ansible.builtin.service:
+      name: pritunl
+      daemon_reload: yes
+      state: restarted
+
+  - name: restart tinc
+    ansible.builtin.service:
+      name: tinc
+      daemon_reload: yes
+      state: restarted
+
+  - name: Enable wg-quick service
+    service:
+      name: "wg-quick@{{ wireguard_network_name }}"
+      enabled: yes
+  
+  - name: Restart ocserv.service
+    service:
+      name: "ocserv.service"
+      state: restarted
+  

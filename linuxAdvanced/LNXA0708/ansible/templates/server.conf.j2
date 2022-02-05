@@ -1,0 +1,40 @@
+{{ ansible_managed | comment }}
+
+port 1194
+proto udp
+dev tun
+comp-lzo
+# сервер должен работать на базе сертификатов с DH и TLS-ключом;
+ca /etc/openvpn/server/ca.crt
+cert /etc/openvpn/server/server.crt
+key /etc/openvpn/server/server.key
+dh /etc/openvpn/server/dh.pem
+topology subnet
+server 10.8.0.0 255.255.255.0
+# сервер должен выводить лог работы и статус подключений в текстовые файлы.
+ifconfig-pool-persist ipp.txt
+keepalive 10 120
+# для шифрования должен использоваться AES-256;
+cipher AES-256-CBC
+# TLS должен быть не ниже версии 1.2;
+tls-version-min 1.2
+tls-auth ta.key 0
+# для аутентификации должен использоваться SHA512;
+auth SHA512
+user nobody
+group nogroup
+persist-key
+persist-tun
+# сервер должен выводить лог работы и статус подключений в текстовые файлы.
+status openvpn-status.log
+verb 3
+explicit-exit-notify 1
+remote-cert-eku "TLS Web Client Authentication"
+# сервер должен запоминать выданные пользователям адреса;
+client-config-dir /etc/openvpn/ccd
+# сервер должен отправлять клиенту настройку маршрутизации для адресов 
+# 1.1.1.1 и 8.8.8.8 через него, другие адреса не должны маршрутизироваться через VPN;
+push "route 1.1.1.1 255.255.255.255"
+push "route 8.8.8.8 255.255.255.255"
+# сервер не должен принимать подключения больше, чем от пяти клиентов;
+max-clients 5

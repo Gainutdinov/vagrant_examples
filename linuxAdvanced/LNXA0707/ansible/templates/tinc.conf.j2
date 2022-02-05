@@ -1,0 +1,16 @@
+Name = {{ hostvars[inventory_hostname]['inventory_hostname'] }}
+Device = /dev/net/tun
+## private ip of eth0 ##
+BindToAddress = {{ hostvars[inventory_hostname]['ansible_default_ipv4']['address'] }}
+AddressFamily = ipv4
+
+{% if   hostvars[inventory_hostname]['inventory_hostname'] == "server1" %}
+ConnectTo = server2
+ConnectTo = server3
+{% elif hostvars[inventory_hostname]['inventory_hostname'] == 'server2' %}
+ConnectTo = server1
+ConnectTo = server3
+{% else %}
+ConnectTo = server1
+ConnectTo = server2
+{% endif %}

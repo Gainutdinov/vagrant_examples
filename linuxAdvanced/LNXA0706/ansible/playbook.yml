@@ -116,7 +116,7 @@
       - Restart wg-quick service
 
   - name: generate qr code
-    shell: qrencode -t png -o wireguard_vpn.png -r client.conf
+    shell: qrencode -t ansiutf8 < client.conf  -t png -o wireguard_vpn.png
     args:
       executable: /bin/bash
       chdir: /etc/wireguard

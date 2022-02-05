@@ -71,7 +71,7 @@
 
   - name: Template a file to /srv/tftp/pxelinux.cfg/default
     ansible.builtin.template:
-      src: templates/dnsmasq_pxe.j2
+      src: templates/default_pxe.j2
       dest: /srv/tftp/pxelinux.cfg/default
       owner: root
       group: root

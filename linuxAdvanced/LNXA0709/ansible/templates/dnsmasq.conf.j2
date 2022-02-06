@@ -1,8 +1,17 @@
 interface=eth2
 server=127.0.0.1#53
 listen-address=10.10.10.1
+domain=my.local
 #bind-interfaces
 dhcp-range=10.10.10.100,10.10.10.200
 dhcp-boot=pxelinux.0
 enable-tftp
 tftp-root=/srv/tftp
+#-- dns Forwarder info
+server=8.8.8.8
+#-- Set default gateway
+dhcp-option=3,10.10.10.1
+#-- Set DNS server option
+dhcp-option=6,10.10.10.1
+
+

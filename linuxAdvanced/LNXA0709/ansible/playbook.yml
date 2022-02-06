@@ -68,15 +68,17 @@
       systemctl stop systemd-resolved.service
       mkdir -p /srv/tftp /srv/tftp/pxelinux.cfg
       mkdir -p /ubuntu
+      mkdir -p /ubuntu/iso
+      mkdir -p /ubuntu/image
       wget http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/ubuntu-installer/amd64/pxelinux.0
-      cp /root/focal-live-server-amd64.iso /ubuntu/
+      cp /root/focal-live-server-amd64.iso /ubuntu/iso
       chmod 777 /ubuntu/focal-live-server-amd64.iso
       cp pxelinux.0 /srv/tftp
       sudo mount /root/focal-live-server-amd64.iso /mnt
       cp /mnt/casper/initrd /srv/tftp
       cp /mnt/casper/vmlinuz /srv/tftp
       cp -r /mnt/isolinux /srv/tftp
-      cp -R /mnt/* /ubuntu/
+      cp -R /mnt/* /ubuntu/image
       sudo umount /mnt
       systemctl restart dnsmasq.service
       sysctl -w net.ipv4.ip_forward=1

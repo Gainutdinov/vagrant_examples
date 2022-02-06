@@ -1,7 +1,5 @@
 DEFAULT install
 LABEL install
-    KERNEL vmlinuz
-    INITRD initrd
-    APPEND ip=dhcp ds=nocloud-net;url=http://10.10.10.1:8080/focal-live-server-amd64.iso 
-
-
+  KERNEL vmlinuz
+  INITRD initrd
+  APPEND root=/dev/ram0 ramdisk_size=1500000 ip=dhcp url=http://10.10.10.1/iso/focal-live-server-amd64.iso autoinstall ds=nocloud-net;s=http://10.10.10.1/image/

@@ -48,24 +48,7 @@
 
   - name: Run shell
     ansible.builtin.shell: |
-      ip addr add 10.10.10.1/24 dev eth2
-      ip link set eth2 up
-      nginx -t
-      nginx -s reload
-      unlink /etc/resolv.conf
-      echo 'nameserver 8.8.8.8' > /etc/resovl.conf
-      systemctl stop systemd-resolved.service
-      mkdir -p /srv/tftp /srv/tftp/pxelinux.cfg
-      mkdir -p /ubuntu
-      wget http://archive.ubuntu.com/ubuntu/dists/focal/main/installer-amd64/current/legacy-images/netboot/ubuntu-installer/amd64/pxelinux.0
-      cp pxelinux.0 /srv/tftp
-      wget http://cdimage.ubuntu.com/ubuntu-server/focal/daily-live/current/focal-live-server-amd64.iso
-      mount focal-live-server-amd64.iso /mnt
-      cp /mnt/casper/initrd /srv/tftp
-      cp /mnt/casper/vmlinuz /srv/tftp
-      cp -r /mnt/isolinux /srv/tftp
-      umount focal-live-server-amd64.iso
-      systemctl restart dnsmasq.service
+      echo 'sss'
     args:
       executable: /bin/bash
 
@@ -76,4 +59,21 @@
       owner: root
       group: root
       mode: '0644'
+
+Задание:
+
+1. Сгенерируйте ключ при помощи флага --gen-key (команды и вывод сохраните)
+2. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+3. У созданного ключа удалите дату истечения (команды и вывод сохраните)
+4. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+5. Экспортируйте публичный ключ в файл в ASCII формате и выведете его (команды и вывод сохраните)
+6. Экспортируйте приватный в бинарном виде в файл (команду и вывод сохраните)
+7. Зашифруйте строку RebrainMe Linux ASYM при помощи сгенерированного ключа в ASCII формате и выведете этот файл (команды и вывод сохраните)
+8. Зашифруйте файл с приватным ключем при помощи passphrase secret в ASCII формате и выведете этот файл (команды и вывод сохраните)
+9. Удалите из вашего хранилища публичный и приватный ключ (команды и вывод сохраните)
+10. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+11. Расшифруйте приватный ключ и импортируйте одной командой (команды и вывод сохраните)
+12. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+13. Расшифруйте файл с зашифрованной строкой (команды и вывод сохраните)
+14. Отправьте на проверку все сохраненные выводы
 

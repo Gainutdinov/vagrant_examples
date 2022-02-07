@@ -1,325 +1,85 @@
+Здравствуйте.
 
-1. Сгенерируйте ключ при помощи флага --gen-key (команды и вывод сохраните)
+Задание:
 
-```
-root@task0707-0:~# gpg --gen-key
-gpg (GnuPG) 2.2.19; Copyright (C) 2019 Free Software Foundation, Inc.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-
-Note: Use "gpg --full-generate-key" for a full featured key generation dialog.
-
-GnuPG needs to construct a user ID to identify your key.
-
-Real name: marat
-Email address: m.gaynutdinov@mail.ru
-You selected this USER-ID:
-    "marat <m.gaynutdinov@mail.ru>"
-
-Change (N)ame, (E)mail, or (O)kay/(Q)uit? O
-We need to generate a lot of random bytes. It is a good idea to perform
-some other action (type on the keyboard, move the mouse, utilize the
-disks) during the prime generation; this gives the random number
-generator a better chance to gain enough entropy.
-We need to generate a lot of random bytes. It is a good idea to perform
-some other action (type on the keyboard, move the mouse, utilize the
-disks) during the prime generation; this gives the random number
-generator a better chance to gain enough entropy.
-gpg: /root/.gnupg/trustdb.gpg: trustdb created
-gpg: key 3EFD71DA03EA2588 marked as ultimately trusted
-gpg: directory '/root/.gnupg/openpgp-revocs.d' created
-gpg: revocation certificate stored as '/root/.gnupg/openpgp-revocs.d/34AC240F600B948A25ED36133EFD71DA03EA2588.rev'
-public and secret key created and signed.
-
-pub   rsa3072 2022-02-07 [SC] [expires: 2024-02-07]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid                      marat <m.gaynutdinov@mail.ru>
-sub   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
-
+1. Установите aptly на вашем виртуальном сервере (команды и вывод сохраните).
 
 ```
+echo 'deb http://repo.aptly.info/ squeeze main' > /etc/apt/sources.list.d/aptly.list
+apt-key adv --keyserver keyserver.ubuntu.com --recv-keys ED75B5A4483DA07C
+apt-get update && apt-get install aptly
+```
 
-2. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+2. Создайте сервисного пользователя aptly, от имени которого будет запускаться сервер и кто будет владеть репозиторием пакетов.
 
 ```
-root@task0707-0:~# gpg -k
-gpg: checking the trustdb
-gpg: marginals needed: 3  completes needed: 1  trust model: pgp
-gpg: depth: 0  valid:   1  signed:   0  trust: 0-, 0q, 0n, 0m, 0f, 1u
-gpg: next trustdb check due at 2024-02-07
-/root/.gnupg/pubring.kbx
-------------------------
-pub   rsa3072 2022-02-07 [SC] [expires: 2024-02-07]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ultimate] marat <m.gaynutdinov@mail.ru>
-sub   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
+useradd --no-create-home --system aptly
+```
 
-root@task0707-0:~# gpg  --list-secret-keys
-/root/.gnupg/pubring.kbx
-------------------------
-sec   rsa3072 2022-02-07 [SC] [expires: 2024-02-07]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ultimate] marat <m.gaynutdinov@mail.ru>
-ssb   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
+3. Создайте публичный репозиторий rebrainme (команды и вывод сохраните)
 
-root@task0707-0:~# 
+```
+aptly repo create rebrainme
+```
+
+4. Соберите пакет с nginx 1.18 и модулем nginx-module-vts и упакуйте в deb пакет.
+
+```
+sed -i  's|# deb-src http://mirrors.digitalocean.com/ubuntu/ focal main restricted|deb-src http://mirrors.digitalocean.com/ubuntu/ focal main restricted|g' /etc/apt/sources.list
+mkdir src
+cd src
+apt update 
+apt-get build-dep nginx-full -y
+git clone https://github.com/vozlt/nginx-module-vts.git
+wget https://nginx.org/download/nginx-1.18.0.tar.gz
+tar xfvz nginx-1.18.0.tar.gz
+cd nginx-1.18.0/
+#Here we look for our prefix..
+nginx -V |& grep configure\ arguments |sed 's/.*prefix/--prefix/'
+#now use it...
+#add the end we add  --add-dynamic-module= ../nginx-module-vts/
+./configure --prefix=/usr/share/nginx --conf-path=/etc/nginx/nginx.conf --http-log-path=/var/log/nginx/access.log --error-log-path=/var/log/nginx/error.log --lock-path=/var/lock/nginx.lock --pid-path=/run/nginx.pid --modules-path=/usr/lib/nginx/modules --http-client-body-temp-path=/var/lib/nginx/body --http-fastcgi-temp-path=/var/lib/nginx/fastcgi --http-proxy-temp-path=/var/lib/nginx/proxy --http-scgi-temp-path=/var/lib/nginx/scgi --http-uwsgi-temp-path=/var/lib/nginx/uwsgi --with-compat --with-debug --with-pcre-jit --with-http_ssl_module --with-http_stub_status_module --with-http_realip_module --with-http_auth_request_module --with-http_v2_module --with-http_dav_module --with-http_slice_module --with-threads --with-http_addition_module --with-http_gunzip_module --with-http_gzip_static_module --with-http_sub_module --add-dynamic-module=../nginx-module-vts/
+make modules
+cp objs/ngx_http_vhost_traffic_status_module.so /usr/lib/nginx/modules/
+echo  "load_module /usr/lib/nginx/modules/ngx_http_vhost_traffic_status_module.so;" > modules-available/90-mod-vhost-traffic-status.conf
+ln -s /etc/nginx/modules-available/90-mod-vhost-traffic-status.conf /etc/nginx/modules/enabled/
+
+
+
+
+dpkg-buildpackage -us -uc
+https://gist.github.com/blikenoother/7785364
+```
+
+5. Добавьте пакет с собранным nginx в ваш репозиторий (команды и вывод сохраните).
 
 ```
 
-3. У созданного ключа удалите дату истечения (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --edit-key 34AC240F600B948A25ED36133EFD71DA03EA2588 
-gpg (GnuPG) 2.2.19; Copyright (C) 2019 Free Software Foundation, Inc.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-
-Secret key is available.
-
-sec  rsa3072/3EFD71DA03EA2588
-     created: 2022-02-07  expires: 2024-02-07  usage: SC  
-     trust: ultimate      validity: ultimate
-ssb  rsa3072/AF1D788299E3863F
-     created: 2022-02-07  expires: 2024-02-07  usage: E   
-[ultimate] (1). marat <m.gaynutdinov@mail.ru>
-
-gpg> expire
-Changing expiration time for the primary key.
-Please specify how long the key should be valid.
-         0 = key does not expire
-      <n>  = key expires in n days
-      <n>w = key expires in n weeks
-      <n>m = key expires in n months
-      <n>y = key expires in n years
-Key is valid for? (0) 0
-Key does not expire at all
-Is this correct? (y/N) y
-
-sec  rsa3072/3EFD71DA03EA2588
-     created: 2022-02-07  expires: never       usage: SC  
-     trust: ultimate      validity: ultimate
-ssb  rsa3072/AF1D788299E3863F
-     created: 2022-02-07  expires: 2024-02-07  usage: E   
-[ultimate] (1). marat <m.gaynutdinov@mail.ru>
-
-gpg> quit
-Save changes? (y/N) y
 ```
 
-4. Выведете список публичных и приватных ключей (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg  --list-keys
-/root/.gnupg/pubring.kbx
-------------------------
-pub   rsa3072 2022-02-07 [SC]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ultimate] marat <m.gaynutdinov@mail.ru>
-sub   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
-
-root@task0707-0:~# gpg  --list-secret-keys
-/root/.gnupg/pubring.kbx
-------------------------
-sec   rsa3072 2022-02-07 [SC]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ultimate] marat <m.gaynutdinov@mail.ru>
-ssb   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
-
-root@task0707-0:~# 
+6. Выведите все пакеты в репозитории (команды и вывод сохраните).
 
 ```
 
-5. Экспортируйте публичный ключ в файл в ASCII формате и выведете его (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --export --armor 34AC240F600B948A25ED36133EFD71DA03EA2588
------BEGIN PGP PUBLIC KEY BLOCK-----
-
-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
-5MIjW1kOkDopH8h8EABU
-=KS+m
------END PGP PUBLIC KEY BLOCK-----
-root@task0707-0:~# 
 ```
 
-6. Экспортируйте приватный в бинарном виде в файл (команду и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --export-secret-keys --output privkey.asc  34AC240F600B948A25ED36133EFD71DA03EA2588 
-root@task0707-0:~# 
-```
-
-7. Зашифруйте строку RebrainMe Linux ASYM при помощи сгенерированного ключа в ASCII формате и выведете этот файл (команды и вывод сохраните)
-
-```
-root@task0707-0:~# echo "RebrainMe Linux ASYM" | gpg --encrypt --armor --recipient 34AC240F600B948A25ED36133EFD71DA03EA2588 --output rebrainmelinuxasym.txt
-root@task0707-0:~# cat ./rebrainmelinuxasym.txt 
------BEGIN PGP MESSAGE-----
-
-hQGMA68deIKZ44Y/AQwAjVVKWWQAp+sIwpaw1SEJVLt0vctkbmLAwkNpDdSa1QwK
-z+Hb6Fi3T7Ox5wo/UiShFN7v3SajvQDY8ROOElVCEbhTD96Zl2vD4dHFO/lS0nBh
-jr7K+0bCIkSvEEH0rT/k6Z9aZVQGgKrn8LU0ZQ8m+n1Rxjbp4jWaG1lJBUEbhg7E
-XnaieOxayUlJldSgJfTEMFeyGnTZB5bWbchqYaZTNb6kT9RWPQVmXEUq4DFffCOW
-/J4uG7po2ZaRc2fluY8uWVqlC3jTL/6LXoiTYfrZE+wqGWIydnWZ9HKd8LaaKqzk
-OpP+5QfA+Gx/eSO4yyrewsEkEqJyCxQut2tExd/mhCcnZsqlB27mK1FzbkIXrhhl
-T0jR4a36hbUE4whoQgRF5jEmmmBu3nqDcVa4EswiiY8b1Xr+0XNwuFkaFnH5VzHi
-/L3antnWwJ/0XNBSYfdYitIpysrdp6CgKb0076tyPt/g3pKHnuey0nmY97hoE13O
-ri8Uhuyfb0oRGAnJ0tk00lAB/iFmdnt9hOMMtuBQvj7XFpEJoysUILV3YmCgWPXn
-1kghN2hzsPGtLAceIJ9sJPIHd50STkJ+3vSJhrU+VKc8qa1CXe70eHGFQEL9EKLs
-BQ==
-=x5Kl
------END PGP MESSAGE-----
-root@task0707-0:~# 
+7. Выведите информацию о пакете (команды и вывод сохраните).
 
 ```
 
-8. Зашифруйте файл с приватным ключем при помощи passphrase secret в ASCII формате и выведете этот файл (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --armor --symmetric --output rebrainmelinuxasym.txt.symmetric ./rebrai
-nmelinuxasym.txt 
-root@task0707-0:~# ls
-privkey.asc  rebrainmelinuxasym.txt  rebrainmelinuxasym.txt.symmetric  snap
-root@task0707-0:~# cat ./rebrainmelinuxasym.txt.symmetric 
------BEGIN PGP MESSAGE-----
-
-jA0ECQMCx0FIU2MVm9j/0ukBYSgaruoMKy4Ge7NfEkbNlkV+Gnnohaw/Ra1+CElt
-ZRFSX7G6RV3cZ+bpieWpNw2B1zXXbPoidKzXq3sR3kWrHzhFj4qUWTQRR6t0WMyr
-qS7EJuCbq8sQzgXWxIqjz8DZfiQehzB8U0Uj1Pvpz7FgFa7c7uQIiwTX2B0QVUhD
-RlcD1ncqyuNVkKliGJgc6MTU5SOnbm09dodxYVRjQkN+zSCewleOlBQt4C3kMHG3
-nBJ3YZ0u7jtjdouwPP+RepxuRPsBOHdGRJChxiRg3uR3F+BhgeAGH+oIJh+2R035
-T+okqipY5dPrir5S/1bObYZZAxi+xKzKdmclMTblopF2jlKHSWJMqwwKJAEQow06
-Wkh+CJ/HPSSxsfYv3wxdDuy5IKfGKtk2Hlm0myyI+RST/UTd0K/RJQ5kCaW0msHM
-MONp48U69r+DmS5z/3kfJOcbEa0LfAzs10EIw7ZorZUeNcXABvXepER4vs0u2V/P
-Tt/nQSagUh7klI9g7ZLo2bZ7Wbp7+QrNGOZb/GHGjjqkykfp6+mNrKij2bWmg1Bo
-sf34+UYsPQPc8U97hfLPuiQ+RmWFJZIhzgpiRUPoyRYUp1SAU2sX4wXGV46mHSIY
-LpeiN+zoajxZiYZP3ybSFMTPgK1vtgduytw5RS+PQSLT31rzxs5I5P45rX5icqRL
-DYalDNnj+Tku+GcZ9aBnIp1muqfAWKb8gaaAjRRpvi/8BKq5IwX8i66UL+HHfYnY
-aQMCNLV/MNr7qoMVzCN69vBoP/0hwVUp24Dv/7xpA5UY2CR49c2avK0B+dDw+9Tu
-mvNpbFq7lVpryNLaX7AkwDW1S7rCY9T8cQKSib260pwqxfmR9c4QfA==
-=GxJH
------END PGP MESSAGE-----
-root@task0707-0:~# 
 ```
 
-9. Удалите из вашего хранилища публичный и приватный ключ (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --delete-secret-and-public-key 34AC240F600B948A25ED36133EFD71DA03EA2588
-gpg (GnuPG) 2.2.19; Copyright (C) 2019 Free Software Foundation, Inc.
-This is free software: you are free to change and redistribute it.
-There is NO WARRANTY, to the extent permitted by law.
-
-
-sec  rsa3072/3EFD71DA03EA2588 2022-02-07 marat <m.gaynutdinov@mail.ru>
-
-Delete this key from the keyring? (y/N) y
-This is a secret key! - really delete? (y/N) y
-
-pub  rsa3072/3EFD71DA03EA2588 2022-02-07 marat <m.gaynutdinov@mail.ru>
-
-Delete this key from the keyring? (y/N) y
-root@task0707-0:~# gpg -k
-gpg: checking the trustdb
-gpg: no ultimately trusted keys found
-root@task0707-0:~# gpg  --list-secret-keys
-root@task0707-0:~# 
-```
-
-10. Выведете список публичных и приватных ключей (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg -k
-root@task0707-0:~# gpg  --list-secret-keys
-root@task0707-0:~# 
-```
-
-11. Расшифруйте приватный ключ и импортируйте одной командой (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --import ./privkey.asc 
-gpg: key 3EFD71DA03EA2588: public key "marat <m.gaynutdinov@mail.ru>" imported
-gpg: key 3EFD71DA03EA2588: secret key imported
-gpg: Total number processed: 1
-gpg:               imported: 1
-gpg:       secret keys read: 1
-gpg:   secret keys imported: 1
-root@task0707-0:~# gpg --import ./pubkey.asc 
-gpg: key 3EFD71DA03EA2588: "marat <m.gaynutdinov@mail.ru>" not changed
-gpg: Total number processed: 1
-gpg:              unchanged: 1
-root@task0707-0:~# 
+8. Напишите systemd unit для раздачи вашего репозитория, который будет перезапускаться при возникновении проблемы и запустите его (сохраните команды вывода unit файла, его запуска и вывод данных команд).
 
 ```
 
-12. Выведете список публичных и приватных ключей (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg  --list-secret-keys
-/root/.gnupg/pubring.kbx
-------------------------
-sec   rsa3072 2022-02-07 [SC]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ unknown] marat <m.gaynutdinov@mail.ru>
-ssb   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
-
-root@task0707-0:~# gpg  -k
-/root/.gnupg/pubring.kbx
-------------------------
-pub   rsa3072 2022-02-07 [SC]
-      34AC240F600B948A25ED36133EFD71DA03EA2588
-uid           [ unknown] marat <m.gaynutdinov@mail.ru>
-sub   rsa3072 2022-02-07 [E] [expires: 2024-02-07]
-
-root@task0707-0:~# 
-
 ```
 
-13. Расшифруйте файл с зашифрованной строкой (команды и вывод сохраните)
-
-```
-root@task0707-0:~# gpg --decrypt ./rebrainmelinuxasym.txt 
-gpg: encrypted with 3072-bit RSA key, ID AF1D788299E3863F, created 2022-02-07
-      "marat <m.gaynutdinov@mail.ru>"
-RebrainMe Linux ASYM
-root@task0707-0:~# 
+9. Добавьте ваш репозиторий в локальной виртуальной машине и выведите информацию о пакете при помощи команды apt-cache show (команды и вывод сохраните).
 
 
 ```
 
-14. Отправьте на проверку все сохраненные выводы
+```
+
+

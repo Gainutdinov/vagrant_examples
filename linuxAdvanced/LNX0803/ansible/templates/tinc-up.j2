@@ -1,7 +1,0 @@
-#!/bin/bash
-#
-# Must use IP hostvars[inventory_hostname]['vpn_addr'], which is setup in /etc/tinc/vpn0/hosts/{{ hostvars[inventory_hostname]['inventory_hostname'] }}
-#
-/sbin/ip link set $INTERFACE up
-/sbin/ip addr add  {{ hostvars[inventory_hostname]['vpn_addr'] }}/32 dev $INTERFACE
-/sbin/ip route add {{ hostvars[inventory_hostname]['vpn_network'] }}/24 dev $INTERFACE

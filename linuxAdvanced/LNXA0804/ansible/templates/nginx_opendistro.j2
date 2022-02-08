@@ -1,0 +1,11 @@
+server {
+  listen 80;
+  server_name  {{ ansible_host }}.nip.io;
+  location / {
+      proxy_pass   /var/www/mywebsite.com;
+      index  index.html index.htm;
+      auth_basic "Restricted";                                #For Basic Auth
+      auth_basic_user_file /etc/nginx/htpasswd;  #For Basic Auth
+  }
+}
+

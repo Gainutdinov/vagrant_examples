@@ -1,0 +1,81 @@
+Здравствуйте.
+
+Задание:
+
+
+1. Сделайте добавление по умолчанию в любом контейнере параметра sysctl net.ipv4.conf.all.forwarding=1 (команды и вывод сохраните).
+
+```
+sysctl -w net.ipv4.ip_forward=1
+```
+
+2. Запустите контейнер со следующими требованиями (команды и вывод сохраните):
+
+* дистрибутив - последний доступный Ubuntu LTS;
+* 1 GiB RAM;
+* 1 CPU;
+* отдельный диск на 5 GiB;
+* имя - rebrainme-lxc.
+
+
+```
+lxc storage volume create default myvol size=5GiB
+lxc launch images:ubuntu/focal/amd64 rebrainme_lxc -c limits.cpu=1 -c limits.memory=1GiB
+lxc config device add rebrainme-lxc myvol1 disk pool=default source=myvol path=/mnt
+```
+
+3. Установите в нем nginx, который будет отдавать строку Hello from LXC (команды и вывод сохраните).
+
+```
+lxc exec rebrainme-lxc -- bash -c 'apt update && apt install nginx -y'
+lxc exec rebrainme-lxc -- bash -c 'echo "Hello from LXC" > /var/www/html/index.nginx-debian.html'
+
+```
+
+4. Выведите список контейнеров с флагом -f и при помощи curl сделайте запрос с хоста к nginx, находящемуся в контейнере (команды и вывод сохраните).
+
+```
+lxc ls -f table
+curl http://10.114.31.221
+root@task0707-0:/etc/nginx# lxc ls -f table
++---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+|     NAME      |  STATE  |         IPV4         |                     IPV6                      |   TYPE    | SNAPSHOTS |
++---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+| rebrainme-lxc | RUNNING | 10.114.31.221 (eth0) | fd42:7556:bf85:2e6f:216:3eff:feab:4b66 (eth0) | CONTAINER | 0         |
++---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
+root@task0707-0:/etc/nginx# curl http://10.114.31.221
+Hello from LXC
+root@task0707-0:/etc/nginx#
+```
+
+5. При помощи nginx на хосте настройте проксирование запросов на порт 8090 в nginx, который находится в контейнере.
+
+```
+
+apt install nginx -y
+cat << EOF > /etc/nginx/sites-available/default
+server {
+        listen 8090 default_server;
+
+        root /var/www/html;
+        # Add index.php to the list if you are using PHP
+        index index.html index.htm index.nginx-debian.html;
+
+        server_name _;
+        location / {
+                proxy_pass http://10.114.31.221:80;
+        }
+}
+EOF
+nginx -t && nginx -s reload
+```
+
+6. На проверку отправьте все сохраненные команды и выводы, адрес вашего сервера и конфигурационный файл с server для проксирования в контейнер.
+
+```
+root@task0707-0:/etc/nginx# curl http://167.172.167.160.nip.io:8090
+Hello from LXC
+root@task0707-0:/etc/nginx# Hello from LXC
+```
+
+

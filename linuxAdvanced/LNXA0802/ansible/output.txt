@@ -222,3 +222,19 @@ root@task0707-0:/tmp/sss#
 ```
 
 
+
+
+
+sysctl -w net.ipv4.ip_forward=1
+lxc storage volume create default myvol size=5GiB
+lxc launch images:ubuntu/focal/amd64 rebrainme_lxc -c limits.cpu=1 -c limits.memory=1GiB
+lxc config device add rebrainme-lxc myvol1 disk pool=default source=myvol path=/mnt
+
+lxc exec rebrainme-lxc -- bash -c 'apt update && apt install nginx -y'
+
+lxc exec rebrainme-lxc -- bash -c 'echo "Hello from LXC" > /var/www/html/index.nginx-debian.html'
+lxc ls -f table
+
+curl http://10.114.31.221
+
+

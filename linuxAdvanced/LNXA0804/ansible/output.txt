@@ -79,3 +79,139 @@ root@task0707-0:/etc/nginx# Hello from LXC
 ```
 
 
+
+
+
+
+
+
+root@task0804-0:/var/snap/lxd/common# vim ./lxc/local.conf
+root@task0804-0:/var/snap/lxd/common# lxc launch images:ubuntu/focal/amd64 rebrainme_lxc -c limits.cpu=1 -c limits.memory=1GiB
+Creating rebrainme_lxc
+Error: Failed instance creation: Invalid instance name: Name can only contain alphanumeric and hyphen characters
+root@task0804-0:/var/snap/lxd/common# lxc launch images:ubuntu/focal/amd64 rebrainme-lxc -c limits.cpu=1 -c limits.memory=1GiB
+Creating rebrainme-lxc
+Starting rebrainme-lxc
+(failed reverse-i-search)`exe': lxc launch images:ubuntu/focal/amd64 rebrainme-lxc -c limits.cpu=1 -c limits.m^Cory=1GiB
+root@task0804-0:/var/snap/lxd/common# lxc exec rebrainme-lxc -- bash
+root@rebrainme-lxc:~# sysctl -a | grep forwarding
+sysctl: unable to open directory "/proc/sys/fs/binfmt_misc/"
+sysctl: permission denied on key 'fs.protected_fifos'
+sysctl: permission denied on key 'fs.protected_hardlinks'
+sysctl: permission denied on key 'fs.protected_regular'
+sysctl: permission denied on key 'fs.protected_symlinks'
+sysctl: permission denied on key 'kernel.cad_pid'
+sysctl: permission denied on key 'kernel.unprivileged_userns_apparmor_policy'
+sysctl: permission denied on key 'kernel.usermodehelper.bset'
+sysctl: permission denied on key 'kernel.usermodehelper.inheritable'
+net.ipv4.conf.all.bc_forwarding = 0
+net.ipv4.conf.all.forwarding = 0
+net.ipv4.conf.all.mc_forwarding = 0
+net.ipv4.conf.default.bc_forwarding = 0
+net.ipv4.conf.default.forwarding = 0
+net.ipv4.conf.default.mc_forwarding = 0
+net.ipv4.conf.eth0.bc_forwarding = 0
+net.ipv4.conf.eth0.forwarding = 0
+net.ipv4.conf.eth0.mc_forwarding = 0
+net.ipv4.conf.lo.bc_forwarding = 0
+net.ipv4.conf.lo.forwarding = 0
+net.ipv4.conf.lo.mc_forwarding = 0
+net.ipv6.conf.all.forwarding = 0
+net.ipv6.conf.all.mc_forwarding = 0
+net.ipv6.conf.default.forwarding = 0
+net.ipv6.conf.default.mc_forwarding = 0
+net.ipv6.conf.eth0.forwarding = 0
+net.ipv6.conf.eth0.mc_forwarding = 0
+net.ipv6.conf.lo.forwarding = 0
+net.ipv6.conf.lo.mc_forwarding = 0
+sysctl: permission denied on key 'vm.mmap_rnd_bits'
+sysctl: permission denied on key 'vm.mmap_rnd_compat_bits'
+sysctl: permission denied on key 'vm.stat_refresh'
+root@rebrainme-lxc:~# exit
+root@task0804-0:/var/snap/lxd/common# lxc delete rebrainme-lxc --force
+root@task0804-0:/var/snap/lxd/common# lxc delete rebrainme-lxc --force
+root@task0804-0:/var/snap/lxd/common#
+root@task0804-0:/var/snap/lxd/common# sysctl -a | grep forwarding
+net.ipv4.conf.all.bc_forwarding = 0
+net.ipv4.conf.all.forwarding = 1
+net.ipv4.conf.all.mc_forwarding = 0
+net.ipv4.conf.default.bc_forwarding = 0
+net.ipv4.conf.default.forwarding = 1
+net.ipv4.conf.default.mc_forwarding = 0
+net.ipv4.conf.eth0.bc_forwarding = 0
+net.ipv4.conf.eth0.forwarding = 1
+net.ipv4.conf.eth0.mc_forwarding = 0
+net.ipv4.conf.eth1.bc_forwarding = 0
+net.ipv4.conf.eth1.forwarding = 1
+net.ipv4.conf.eth1.mc_forwarding = 0
+net.ipv4.conf.lo.bc_forwarding = 0
+net.ipv4.conf.lo.forwarding = 1
+net.ipv4.conf.lo.mc_forwarding = 0
+net.ipv4.conf.lxdbr0.bc_forwarding = 0
+net.ipv4.conf.lxdbr0.forwarding = 1
+net.ipv4.conf.lxdbr0.mc_forwarding = 0
+net.ipv6.conf.all.forwarding = 1
+net.ipv6.conf.all.mc_forwarding = 0
+net.ipv6.conf.default.forwarding = 1
+net.ipv6.conf.default.mc_forwarding = 0
+net.ipv6.conf.eth0.forwarding = 1
+net.ipv6.conf.eth0.mc_forwarding = 0
+net.ipv6.conf.eth1.forwarding = 1
+net.ipv6.conf.eth1.mc_forwarding = 0
+net.ipv6.conf.lo.forwarding = 1
+net.ipv6.conf.lo.mc_forwarding = 0
+net.ipv6.conf.lxdbr0.forwarding = 1
+net.ipv6.conf.lxdbr0.mc_forwarding = 0
+root@task0804-0:/var/snap/lxd/common# ^C
+root@task0804-0:/var/snap/lxd/common#
+root@task0804-0:/var/snap/lxd/common# sysctl -a | grep 'net.ipv4.conf.all.forwarding'
+net.ipv4.conf.all.forwarding = 1
+root@task0804-0:/var/snap/lxd/common# lxc launch images:ubuntu/focal/amd64 rebrainme-lxc -c limits.cpu=1 -c limits.memory=1GiB
+Creating rebrainme-lxc
+Starting rebrainme-lxc
+root@task0804-0:/var/snap/lxd/common# lxc exec rebrainme-lxc -- bash
+root@rebrainme-lxc:~# sysctl -a | grep 'net.ipv4.conf.all.forwarding'
+sysctl: unable to open directory "/proc/sys/fs/binfmt_misc/"
+sysctl: permission denied on key 'fs.protected_fifos'
+sysctl: permission denied on key 'fs.protected_hardlinks'
+sysctl: permission denied on key 'fs.protected_regular'
+sysctl: permission denied on key 'fs.protected_symlinks'
+sysctl: permission denied on key 'kernel.cad_pid'
+sysctl: permission denied on key 'kernel.unprivileged_userns_apparmor_policy'
+sysctl: permission denied on key 'kernel.usermodehelper.bset'
+sysctl: permission denied on key 'kernel.usermodehelper.inheritable'
+net.ipv4.conf.all.forwarding = 0
+sysctl: permission denied on key 'vm.mmap_rnd_bits'
+sysctl: permission denied on key 'vm.mmap_rnd_compat_bits'
+sysctl: permission denied on key 'vm.stat_refresh'
+root@rebrainme-lxc:~# exit
+root@task0804-0:/var/snap/lxd/common# lxc delete rebrainme-lxc --force
+root@task0804-0:/var/snap/lxd/common# vim ./lxc/local.conf
+root@task0804-0:/var/snap/lxd/common# cat ./lxc/local.conf
+lxc.sysctl.net.ipv4.conf.all.forwarding=1
+root@task0804-0:/var/snap/lxd/common# lxc launch images:ubuntu/focal/amd64 rebrainme-lxc -c limits.cpu=1 -c limits.memory=1GiB
+Creating rebrainme-lxc
+Starting rebrainme-lxc
+root@task0804-0:/var/snap/lxd/common# lxc exec rebrainme-lxc -- bash
+root@rebrainme-lxc:~# sysctl -a | grep 'net.ipv4.conf.all.forwarding'
+sysctl: unable to open directory "/proc/sys/fs/binfmt_misc/"
+sysctl: permission denied on key 'fs.protected_fifos'
+sysctl: permission denied on key 'fs.protected_hardlinks'
+sysctl: permission denied on key 'fs.protected_regular'
+sysctl: permission denied on key 'fs.protected_symlinks'
+sysctl: permission denied on key 'kernel.cad_pid'
+sysctl: permission denied on key 'kernel.unprivileged_userns_apparmor_policy'
+sysctl: permission denied on key 'kernel.usermodehelper.bset'
+sysctl: permission denied on key 'kernel.usermodehelper.inheritable'
+net.ipv4.conf.all.forwarding = 1
+sysctl: permission denied on key 'vm.mmap_rnd_bits'
+sysctl: permission denied on key 'vm.mmap_rnd_compat_bits'
+sysctl: permission denied on key 'vm.stat_refresh'
+(failed reverse-i-search)`vim': sysctl -a | grep 'net.ip^C.conf.all.forwarding'
+(failed reverse-i-search)`vim': sysctl -a | grep 'net.ip^C.conf.all.forwarding'
+root@rebrainme-lxc:~# sysctl -a | grep 'net.ipv4.conf.all.forwarding'^C
+root@rebrainme-lxc:~# exit
+root@task0804-0:/var/snap/lxd/common# lxc delete rebrainme-lxc --force
+root@task0804-0:/var/snap/lxd/common# realpath ./lxc/local.conf
+/var/snap/lxd/common/lxc/local.conf
+

@@ -1,136 +1,124 @@
 Здравствуйте.
 
+
+
 Задание:
 
-1. Для своего пользователя на сервере сделайте возможность для работы с libvirt от имени непривилегированного пользователя (команду и вывод сохраните).
+1. Установите последнюю версию Docker runtime из официального репозитория.
 
 ```
-apt update && apt install qemu-kvm libvirt-daemon-system -y
-adduser mgaynutdinov libvirt
-adduser mgaynutdinov kvm
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
 ```
 
-2. Подключитесь к гипервизору на вашем сервере по SSH из утилиты virt-manager.
-3. При помощи virt-manager запустите на вашем сервере виртуальную машину с Ubuntu Server под именем rebrainme-ubuntu (сделайте скриншот запущенной виртуальной машины).
-
-https://dropmefiles.com/Qt27g
-
-4. С самого сервера при помощи утилиты virsh выведите список всех виртуальных машин (команду и вывод сохраните).
+2. Добавьте вашего пользователя в группу для работы с docker от имени непривилегированного пользователя.
 
 ```
-mgaynutdinov@task0804-0:~$ virsh list
- Id   Name   State
---------------------
-
-mgaynutdinov@task0804-0:~$ virsh list
- Id   Name               State
-----------------------------------
- 2    rebrainme-ubuntu   running
+useradd --shell /bin/bash --create-home mgaynutdinov
+usermod -aG docker mgaynutdinov
 ```
 
-5. Остановите и удалите виртуальную машину при помощи virsh (команды и вывод сохраните).
+3. Запустите контейнер с образом с nginx из стабильной ветки с именем rebrainme_linux и опубликованным в мир портом 8888, ведущим на порт приложения в контейнере, работающем в фоне и перезапускающемся автоматически всегда (команду и вывод сохраните).
 
 ```
-mgaynutdinov@task0804-0:~$ virsh list
- Id   Name   State
---------------------
+docker run -d --name rebrainme_linux -p 8888:80 --restart=always nginx:latest
 
-mgaynutdinov@task0804-0:~$ virsh list
- Id   Name               State
-----------------------------------
- 2    rebrainme-ubuntu   running
+```
 
+4. Выведите список работающих контейнеров (команду и вывод сохраните).
+
+```
+mgaynutdinov@task0804-0:~$ docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS          PORTS                                   NAMES
+3772f0439501   nginx:latest   "/docker-entrypoint.…"   49 seconds ago   Up 48 seconds   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
+```
+
+5. Проверьте через браузер доступность nginx по указанному порту.
+
+```
+mgaynutdinov@task0804-0:~$ curl localhost:8888
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
 mgaynutdinov@task0804-0:~$ 
-mgaynutdinov@task0804-0:~$ virsh destroy rebrainme-ubuntu
-Domain rebrainme-ubuntu destroyed
 
-mgaynutdinov@task0804-0:~$ virsh list
- Id   Name   State
---------------------
+```
 
+6. Перезапустите сервер и еще раз проверьте через браузер доступность nginx по указанному порту.
+
+```
+mgaynutdinov@task0804-0:~$ uptime
+ 15:35:51 up  2:43,  1 user,  load average: 0.08, 0.10, 0.08
+mgaynutdinov@task0804-0:~$ logout
+root@task0804-0:~# reboot now
+mgaynutdinov@task0804-0:~$ uptime 
+ 15:37:27 up 1 min,  1 user,  load average: 0.97, 0.45, 0.17
+
+```
+
+7. Выведите список работающих контейнеров (команду и вывод сохраните).
+
+```
+mgaynutdinov@task0804-0:~$ docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS          PORTS                                   NAMES
+3772f0439501   nginx:latest   "/docker-entrypoint.…"   3 minutes ago   Up 58 seconds   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
+mgaynutdinov@task0804-0:~$ 
+```
+
+8. Отправьте на проверку все сохраненные выводы и адрес, по которому можно проверить работу контейнера.
+
+http://167.172.110.108:8888/
+
+```
+mgaynutdinov@task0804-0:~$ curl localhost:8888
+<!DOCTYPE html>
+<html>
+<head>
+<title>Welcome to nginx!</title>
+<style>
+html { color-scheme: light dark; }
+body { width: 35em; margin: 0 auto;
+font-family: Tahoma, Verdana, Arial, sans-serif; }
+</style>
+</head>
+<body>
+<h1>Welcome to nginx!</h1>
+<p>If you see this page, the nginx web server is successfully installed and
+working. Further configuration is required.</p>
+
+<p>For online documentation and support please refer to
+<a href="http://nginx.org/">nginx.org</a>.<br/>
+Commercial support is available at
+<a href="http://nginx.com/">nginx.com</a>.</p>
+
+<p><em>Thank you for using nginx.</em></p>
+</body>
+</html>
+mgaynutdinov@task0804-0:~$ 
+mgaynutdinov@task0804-0:~$ docker ps
+CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS              PORTS                                   NAMES
+3772f0439501   nginx:latest   "/docker-entrypoint.…"   3 minutes ago   Up About a minute   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
 mgaynutdinov@task0804-0:~$ 
 
 ```
-
-6. На проверку отправьте ссылку на скриншот запущенной виртуальной машины, все команды и выводы команд.
-
-
-https://dropmefiles.com/Qt27g
-=======
-
-1. Сделайте добавление по умолчанию в любом контейнере параметра sysctl net.ipv4.conf.all.forwarding=1 (команды и вывод сохраните).
-
-```
-sysctl -w net.ipv4.ip_forward=1
-```
-
-2. Запустите контейнер со следующими требованиями (команды и вывод сохраните):
-
-* дистрибутив - последний доступный Ubuntu LTS;
-* 1 GiB RAM;
-* 1 CPU;
-* отдельный диск на 5 GiB;
-* имя - rebrainme-lxc.
-
-
-```
-lxc storage volume create default myvol size=5GiB
-lxc launch images:ubuntu/focal/amd64 rebrainme_lxc -c limits.cpu=1 -c limits.memory=1GiB
-lxc config device add rebrainme-lxc myvol1 disk pool=default source=myvol path=/mnt
-```
-
-3. Установите в нем nginx, который будет отдавать строку Hello from LXC (команды и вывод сохраните).
-
-```
-lxc exec rebrainme-lxc -- bash -c 'apt update && apt install nginx -y'
-lxc exec rebrainme-lxc -- bash -c 'echo "Hello from LXC" > /var/www/html/index.nginx-debian.html'
-
-```
-
-4. Выведите список контейнеров с флагом -f и при помощи curl сделайте запрос с хоста к nginx, находящемуся в контейнере (команды и вывод сохраните).
-
-```
-lxc ls -f table
-curl http://10.114.31.221
-root@task0707-0:/etc/nginx# lxc ls -f table
-+---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
-|     NAME      |  STATE  |         IPV4         |                     IPV6                      |   TYPE    | SNAPSHOTS |
-+---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
-| rebrainme-lxc | RUNNING | 10.114.31.221 (eth0) | fd42:7556:bf85:2e6f:216:3eff:feab:4b66 (eth0) | CONTAINER | 0         |
-+---------------+---------+----------------------+-----------------------------------------------+-----------+-----------+
-root@task0707-0:/etc/nginx# curl http://10.114.31.221
-Hello from LXC
-root@task0707-0:/etc/nginx#
-```
-
-5. При помощи nginx на хосте настройте проксирование запросов на порт 8090 в nginx, который находится в контейнере.
-
-```
-
-apt install nginx -y
-cat << EOF > /etc/nginx/sites-available/default
-server {
-        listen 8090 default_server;
-
-        root /var/www/html;
-        # Add index.php to the list if you are using PHP
-        index index.html index.htm index.nginx-debian.html;
-
-        server_name _;
-        location / {
-                proxy_pass http://10.114.31.221:80;
-        }
-}
-EOF
-nginx -t && nginx -s reload
-```
-
-6. На проверку отправьте все сохраненные команды и выводы, адрес вашего сервера и конфигурационный файл с server для проксирования в контейнер.
-
-```
-root@task0707-0:/etc/nginx# curl http://167.172.167.160.nip.io:8090
-Hello from LXC
-root@task0707-0:/etc/nginx# Hello from LXC
-```
-
 

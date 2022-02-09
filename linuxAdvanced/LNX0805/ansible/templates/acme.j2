@@ -1,0 +1,10 @@
+server {
+  listen 80;
+
+  server_name {{ ansible_host }}.nip.io;
+
+  location ^~ /.well-known/acme-challenge/ {
+      default_type "text/plain";
+      root /var/www/acme;
+  }
+}

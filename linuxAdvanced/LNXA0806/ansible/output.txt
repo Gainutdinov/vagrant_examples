@@ -2,6 +2,26 @@
 
 
 
+docker run -it --rm \
+	--name  ipa.simpledevops.xyz \
+	--hostname ipa.simpledevops.xyz \
+	--volume /opt/freeipa-data/:/data \
+	--publish "443:443" \
+	--publish "80:80" \
+	--publish "389:389" \
+	--publish "636:636" \
+	--publish "88:88" \
+	--publish "88:88/udp" \
+	--publish "464:464" \
+	--publish "464:464/udp" \
+	-v /sys/fs/cgroup:/sys/fs/cgroup:ro \
+	--tmpfs /run \
+	--tmpfs /tmp \
+	--security-opt seccomp=unconfined \
+	--sysctl net.ipv6.conf.all.disable_ipv6=0 \
+	freeipa/freeipa-server:rocky-8-4.9.6
+
+
 Задание:
 
 1. Установите последнюю версию Docker runtime из официального репозитория.

@@ -1,0 +1,80 @@
+##
+# You should look at the following URL's in order to grasp a solid understanding
+# of Nginx configuration files in order to fully unleash the power of Nginx.
+# https://www.nginx.com/resources/wiki/start/
+# https://www.nginx.com/resources/wiki/start/topics/tutorials/config_pitfalls/
+# https://wiki.debian.org/Nginx/DirectoryStructure
+#
+# In most cases, administrators will remove this file from sites-enabled/ and
+# leave it as reference inside of sites-available where it will continue to be
+# updated by the nginx packaging team.
+#
+# This file will automatically load configuration files provided by other
+# applications, such as Drupal or Wordpress. These applications will be made
+# available underneath a path with that package name, such as /drupal8.
+#
+# Please see /usr/share/doc/nginx-doc/examples/ for more detailed examples.
+##
+
+# Default server configuration
+#
+proxy_cache_path cache/ keys_zone=auth_cache:1m;
+server {
+	listen 8080 default_server;
+	root /var/www/html;
+
+	# Add index.php to the list if you are using PHP
+	index index.html index.htm index.nginx-debian.html;
+
+	server_name _;
+
+
+        location = /auth-proxy {
+            proxy_pass http://127.0.0.1:8888;
+#            proxy_cache auth_cache; # Must match the name in the proxy_cache_path directive above
+#            proxy_cache_valid 200 1m;
+            # URL and port for connecting to the LDAP server
+            proxy_set_header X-Ldap-URL "ldap://127.0.0.1:389";
+            # Negotiate a TLS-enabled (STARTTLS) connection before sending credentials
+            # Base DN
+            proxy_set_header Content-Length "";
+#            proxy_set_header X-Ldap-Template "(uid=%(username)s)";
+#            proxy_set_header X-Ldap-BindDN "uid=%(username)s,cn=groups,cn=groups,dc=simpledevops,dc=xyz";
+#cn=siteadmin,cn=groups,cn=accounts,dc=simpledevops,dc=xyz
+#            proxy_set_header X-Ldap-BindDN "(&(objectClass=person)(uid=%(username)s)(memberof=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz))";
+            # Bind DN
+            proxy_set_header X-Ldap-BindDN "cn=admin,cn=users,cn=accounts,dc=ipa,dc=simpledevops,dc=xyz";
+            proxy_set_header X-Ldap-BindPass "password";
+#            uid=admin,cn=users,cn=accounts,dc=simpledevops,dc=xyz
+#            proxy_set_header X-Ldap-BindPass "secret";
+#            proxy_set_header X-Ldap-BaseDN "dc=simpledevops,dc=xyz";
+#            proxy_set_header X-Ldap-Template "(memberof=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz)";
+#            proxy_set_header X-Ldap-Template "(&(objectCategory=person)(sAMAccountName=%(username)s)(|(memberOf=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz))";
+            proxy_set_header X-Ldap-Template "(&(objectCategory=person)(uid=%(username)s)(|(memberOf=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz))";
+            # Bind password
+        }
+
+	location = /admin/ {
+            auth_request /auth-proxy;
+            try_files notExistsfile @verified_1;
+        }
+            
+        location @verified_1 {
+            internal;
+            add_header Content-Type text/plain;
+            return 200 "Hello, admin";
+        }
+
+	location = /user/ {
+            auth_request /auth-proxy;
+            try_files notExistsfile @verified_2;
+	}
+
+        location @verified_2 {
+            internal;
+            add_header Content-Type text/plain;
+            return 200 "Hello, user";
+        }
+}
+
+

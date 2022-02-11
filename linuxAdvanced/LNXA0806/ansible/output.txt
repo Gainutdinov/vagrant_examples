@@ -2,6 +2,9 @@
 
 
 
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+
 docker run -it --rm \
 	--name  ipa.simpledevops.xyz \
 	--hostname ipa.simpledevops.xyz \
@@ -22,123 +25,5 @@ docker run -it --rm \
 	freeipa/freeipa-server:rocky-8-4.9.6
 
 
-Задание:
 
-1. Установите последнюю версию Docker runtime из официального репозитория.
-
-```
-curl -fsSL https://get.docker.com -o get-docker.sh
-sh get-docker.sh
-```
-
-2. Добавьте вашего пользователя в группу для работы с docker от имени непривилегированного пользователя.
-
-```
-useradd --shell /bin/bash --create-home mgaynutdinov
-usermod -aG docker mgaynutdinov
-```
-
-3. Запустите контейнер с образом с nginx из стабильной ветки с именем rebrainme_linux и опубликованным в мир портом 8888, ведущим на порт приложения в контейнере, работающем в фоне и перезапускающемся автоматически всегда (команду и вывод сохраните).
-
-```
-docker run -d --name rebrainme_linux -p 8888:80 --restart=always nginx:latest
-
-```
-
-4. Выведите список работающих контейнеров (команду и вывод сохраните).
-
-```
-mgaynutdinov@task0804-0:~$ docker ps
-CONTAINER ID   IMAGE          COMMAND                  CREATED          STATUS          PORTS                                   NAMES
-3772f0439501   nginx:latest   "/docker-entrypoint.…"   49 seconds ago   Up 48 seconds   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
-```
-
-5. Проверьте через браузер доступность nginx по указанному порту.
-
-```
-mgaynutdinov@task0804-0:~$ curl localhost:8888
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-html { color-scheme: light dark; }
-body { width: 35em; margin: 0 auto;
-font-family: Tahoma, Verdana, Arial, sans-serif; }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, the nginx web server is successfully installed and
-working. Further configuration is required.</p>
-
-<p>For online documentation and support please refer to
-<a href="http://nginx.org/">nginx.org</a>.<br/>
-Commercial support is available at
-<a href="http://nginx.com/">nginx.com</a>.</p>
-
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
-mgaynutdinov@task0804-0:~$ 
-
-```
-
-6. Перезапустите сервер и еще раз проверьте через браузер доступность nginx по указанному порту.
-
-```
-mgaynutdinov@task0804-0:~$ uptime
- 15:35:51 up  2:43,  1 user,  load average: 0.08, 0.10, 0.08
-mgaynutdinov@task0804-0:~$ logout
-root@task0804-0:~# reboot now
-mgaynutdinov@task0804-0:~$ uptime 
- 15:37:27 up 1 min,  1 user,  load average: 0.97, 0.45, 0.17
-
-```
-
-7. Выведите список работающих контейнеров (команду и вывод сохраните).
-
-```
-mgaynutdinov@task0804-0:~$ docker ps
-CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS          PORTS                                   NAMES
-3772f0439501   nginx:latest   "/docker-entrypoint.…"   3 minutes ago   Up 58 seconds   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
-mgaynutdinov@task0804-0:~$ 
-```
-
-8. Отправьте на проверку все сохраненные выводы и адрес, по которому можно проверить работу контейнера.
-
-http://167.172.110.108:8888/
-
-```
-mgaynutdinov@task0804-0:~$ curl localhost:8888
-<!DOCTYPE html>
-<html>
-<head>
-<title>Welcome to nginx!</title>
-<style>
-html { color-scheme: light dark; }
-body { width: 35em; margin: 0 auto;
-font-family: Tahoma, Verdana, Arial, sans-serif; }
-</style>
-</head>
-<body>
-<h1>Welcome to nginx!</h1>
-<p>If you see this page, the nginx web server is successfully installed and
-working. Further configuration is required.</p>
-
-<p>For online documentation and support please refer to
-<a href="http://nginx.org/">nginx.org</a>.<br/>
-Commercial support is available at
-<a href="http://nginx.com/">nginx.com</a>.</p>
-
-<p><em>Thank you for using nginx.</em></p>
-</body>
-</html>
-mgaynutdinov@task0804-0:~$ 
-mgaynutdinov@task0804-0:~$ docker ps
-CONTAINER ID   IMAGE          COMMAND                  CREATED         STATUS              PORTS                                   NAMES
-3772f0439501   nginx:latest   "/docker-entrypoint.…"   3 minutes ago   Up About a minute   0.0.0.0:8888->80/tcp, :::8888->80/tcp   rebrainme_linux
-mgaynutdinov@task0804-0:~$ 
-
-```
 

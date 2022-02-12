@@ -1,0 +1,8 @@
+#!/bin/bash
+#
+# Remove IP and routing. IP must be from /etc/tinc/vpn0/hosts/{{ hostvars[inventory_hostname]['inventory_hostname'] }}
+
+# 
+/sbin/ip route del {{ hostvars[inventory_hostname]['vpn_network'] }}/24 dev $INTERFACE
+/sbin/ip addr del {{ hostvars[inventory_hostname]['vpn_addr'] }}/32 dev $INTERFACE
+/sbin/ip link set $INTERFACE down

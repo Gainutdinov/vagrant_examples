@@ -1,0 +1,27 @@
+Здравствуйте.
+
+
+Задание:
+
+1. Настройте автоматическое монтирование nfs директории /rebrainme с сервера 192.168.1.4 в /mnt.
+2. Приведите пример конфигурации NFS сервера, который:
+  1. Позволяет примонтировать директорию /rebrainme для адресов 192.168.1.4, 192.168.1.5, 192.168.1.6 и 192.168.1.7 на запись.
+
+#On server side 
+apt install nfs-kernel-server -y
+systemctl enable nfs-kernel-server
+systemctl start nfs-kernel-server
+mkdir /rebrainme
+chmod -R 777 /rebrainme
+
+
+echo '/rebrainme 192.168.1.4(rw,no_subtree_check) 192.168.1.5(rw,no_subtree_check) 192.168.1.6(rw,no_subtree_check) 192.168.1.7(rw,no_subtree_check)' >> /etc/exports
+
+exportfs -a
+systemctl restart nfs-kernel-server
+
+
+#On client side 
+apt install nfs-common -y
+echo '192.168.1.4:/rebrainme /mnr nfs rw 0 0' >> /etc/fstab
+

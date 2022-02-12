@@ -1,0 +1,108 @@
+Здравствуйте.
+
+
+Задание:
+
+1. Добавьте строки из конфигурационного файла vsftpd, которые разрешают доступ только определенным пользователям.
+
+2. Приведите пример конфига, который включает SSL для vsftpd:
+
+* сертификат и ключ лежат по пути /etc/ssl/vsftpd/ssl.pem;
+* должны быть поддержаны только SSLv3 и TLSv1.
+
+
+
+sudo apt-get install vsftpd
+
+/etc/vsftpd.conf
+anonymous_enable=NO
+local_enable=YES
+
+
+sed -i 's|#write_enable=YES|write_enable=YES|g' /etc/vsftpd.conf
+sed -i 's|#chroot_local_user=YES|chroot_local_user=YES|g' /etc/vsftpd.conf
+
+
+adduser mgaynutdinov
+adduser mgaynutdinov sudo
+echo "mgaynutdinov" | sudo tee -a /etc/vsftpd.user_list
+
+mkdir -p /home/mgaynutdinov/ftp/upload
+chmod 550 /home/mgaynutdinov/ftp
+chmod 750 /home/mgaynutdinov/ftp/upload
+chown -R mgaynutdinov: /home/mgaynutdinov/ftp
+
+
+adduser ruslan
+adduser ruslan sudo
+echo "ruslan" | sudo tee -a /etc/vsftpd.user_list
+
+mkdir -p /home/ruslan/ftp/upload
+chmod 550 /home/ruslan/ftp
+chmod 750 /home/ruslan/ftp/upload
+chown -R ruslan: /home/ruslan/ftp
+
+
+
+service vsftpd restart
+
+grep -qxF 'userlist_enable=YES' /etc/vsftpd.conf || echo 'userlist_enable=YES' >> /etc/vsftpd.conf
+grep -qxF 'userlist_file=/etc/vsftpd.user_list' /etc/vsftpd.conf || echo 'userlist_file=/etc/vsftpd.user_list' >> /etc/vsftpd.conf
+grep -qxF 'userlist_deny=NO' /etc/vsftpd.conf || echo 'userlist_deny=NO' >> /etc/vsftpd.conf
+
+
+
+
+
+mkdir -p /etc/ssl/vsftpd/
+sudo openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout /etc/ssl/vsftpd/ssl.pem -out /etc/ssl/vsftpd/ssl.pem
+
+grep -qxF 'ssl_tlsv1=YES' /etc/vsftpd.conf || echo 'ssl_tlsv1=YES' >> /etc/vsftpd.conf
+grep -qxF 'ssl_sslv2=NO' /etc/vsftpd.conf || echo 'ssl_sslv2=NO' >> /etc/vsftpd.conf
+grep -qxF 'ssl_sslv3=YES' /etc/vsftpd.conf || echo 'ssl_sslv3=YES' >> /etc/vsftpd.conf
+
+sed -i 's|rsa_cert_file=/etc/ssl/certs/ssl-cert-snakeoil.pem|rsa_cert_file=/etc/ssl/private/vsftpd.pem|g' /etc/vsftpd.conf
+sed -i 's|rsa_private_key_file=/etc/ssl/private/ssl-cert-snakeoil.key|rsa_private_key_file=/etc/ssl/private/vsftpd.pem|g' /etc/vsftpd.conf
+sed -i 's|ssl_enable=NO|ssl_enable=YES|g' /etc/vsftpd.conf
+
+grep -qxF 'user_sub_token=$USER' /etc/vsftpd.conf || echo 'user_sub_token=$USER' >> /etc/vsftpd.conf
+grep -qxF 'local_root=/home/$USER/ftp' /etc/vsftpd.conf || echo 'local_root=/home/$USER/ftp' >> /etc/vsftpd.conf
+
+
+
+
+
+
+systemctl restart vsftpd
+
+
+```
+listen=NO
+listen_ipv6=YES
+anonymous_enable=NO
+local_enable=YES
+write_enable=YES
+dirmessage_enable=YES
+use_localtime=YES
+xferlog_enable=YES
+connect_from_port_20=YES
+chroot_local_user=YES
+chroot_local_user=YES
+secure_chroot_dir=/var/run/vsftpd/empty
+pam_service_name=vsftpd
+rsa_cert_file=/etc/ssl/vsftpd/ssl.pem
+rsa_private_key_file=/etc/ssl/vsftpd/ssl.pem
+ssl_enable=YES
+
+userlist_enable=YES
+userlist_file=/etc/vsftpd.user_list
+userlist_deny=NO
+user_sub_token=$USER
+local_root=/home/$USER/ftp
+ssl_tlsv1=YES
+ssl_sslv2=NO
+ssl_sslv3=YES
+```
+
+
+

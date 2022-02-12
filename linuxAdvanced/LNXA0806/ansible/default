@@ -1,5 +1,5 @@
-proxy_cache_path cache_user/  keys_zone=auth_cache_user:1m;
-proxy_cache_path cache_admin/ keys_zone=auth_cache_admin:1m;
+#proxy_cache_path cache_user/  keys_zone=auth_cache_user:1m;
+#proxy_cache_path cache_admin/ keys_zone=auth_cache_admin:1m;
 server {
 	listen 8080 default_server;
 	root /var/www/html;
@@ -10,38 +10,40 @@ server {
 	server_name _;
 
 
-        location = /auth-proxy-user {
+        location /auth-proxy-user {
+            internal;
             proxy_pass http://127.0.0.1:8888;
             proxy_pass_request_body off;
             proxy_set_header Content-Length "";
-            proxy_cache auth_cache_user; # Must match the name in the proxy_cache_path directive above
-            proxy_cache_valid 200 1m;
-            proxy_cache_key "$http_authorization$cookie_nginxauth";
+#            proxy_cache auth_cache_user; # Must match the name in the proxy_cache_path directive above
+#            proxy_cache_valid 200 1m;
+#            proxy_cache_key "$request_uri";
             # URL and port for connecting to the LDAP server
             proxy_set_header X-Ldap-URL "ldap://127.0.0.1:389";
             proxy_set_header X-Ldap-Starttls "false";
+            proxy_set_header X-Ldap-Template "(uid=%(username)s)";
             proxy_set_header X-Ldap-BaseDN   "cn=users,cn=accounts,dc=simpledevops,dc=xyz";
 #            proxy_set_header X-Ldap-BindDN   "uid=admin,cn=users,cn=accounts,dc=simpledevops,dc=xyz";
-            proxy_set_header X-Ldap-BindPass "password";
-            proxy_set_header X-CookieName    "nginxauth";
-            proxy_set_header X-Ldap-Template "(uid=%(username)s)";
+#            proxy_set_header X-Ldap-BindPass "password";
+            proxy_set_header X-CookieName    "nginxauth-user";
         }
 
 
-        location = /auth-proxy-admin {
+        location /auth-proxy-admin {
+            internal;
             proxy_pass http://127.0.0.1:8888;
             proxy_pass_request_body off;
             proxy_set_header Content-Length "";
-            proxy_cache auth_cache_admin; # Must match the name in the proxy_cache_path directive above
-            proxy_cache_valid 200 1m;
-            proxy_cache_key "$http_authorization$cookie_nginxauth";
+#            proxy_cache auth_cache_admin; # Must match the name in the proxy_cache_path directive above
+#            proxy_cache_valid 200 1m;
+#            proxy_cache_key "$request_uri";
             # URL and port for connecting to the LDAP server
             proxy_set_header X-Ldap-URL "ldap://127.0.0.1:389";
             proxy_set_header X-Ldap-Starttls "false";
             proxy_set_header X-Ldap-BaseDN   "cn=users,cn=accounts,dc=simpledevops,dc=xyz";
             proxy_set_header X-Ldap-BindDN   "uid=admin,cn=users,cn=accounts,dc=simpledevops,dc=xyz";
             proxy_set_header X-Ldap-BindPass "password";
-            proxy_set_header X-CookieName    "nginxauth";
+            proxy_set_header X-CookieName    "nginxauth-admin";
             proxy_set_header X-Ldap-Template "(&(objectclass=person)(uid=%(username)s)(memberOf=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz))";
         }
 
@@ -67,5 +69,6 @@ server {
             return 200 "Hello, user";
         }
 }
+
 
 

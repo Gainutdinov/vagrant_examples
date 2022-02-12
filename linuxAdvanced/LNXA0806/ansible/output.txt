@@ -2,8 +2,14 @@
 
 
 
+hostnamectl set-hostname ipa.simpledevops.xyz
 curl -fsSL https://get.docker.com -o get-docker.sh
 sh get-docker.sh
+apt install python-pip -y
+apt-get install libsasl2-dev python-dev libldap2-dev libssl-dev -y
+pip install python-ldap
+
+hostnamectl set-hostname ipa.simpledevops.xyz
 
 docker run -it --rm \
 	--name  ipa.simpledevops.xyz \
@@ -25,56 +31,81 @@ docker run -it --rm \
 	freeipa/freeipa-server:rocky-8-4.9.6
 
 
+git clone https://github.com/nginxinc/nginx-ldap-auth.git /opt/nginx-ldap-auth
+cd /opt/nginx-ldap-auth
+./nginx-ldap-auth-daemon-ctl.sh start
+apt install nginx -y
 
 
-
-proxy_cache_path cache/ keys_zone=kibana_auth_cache:10m;
-upstream backend_kibana_1 {
-    server 127.0.0.1:5601;
-}
+proxy_cache_path cache_user/  keys_zone=auth_cache_user:1m;
+proxy_cache_path cache_admin/ keys_zone=auth_cache_admin:1m;
 server {
-    listen 443 ssl;
-    server_name kibana.example.com;
-       ssl_certificate /etc/ssl/certs/example.crt ;
-       ssl_certificate_key /etc/ssl/certs/example.key;
-## PCI-DSS Compliance
-    include  /etc/nginx/include/pci-dss.conf;
-## PCI-DSS Compliance
-###### enable autorization
-    auth_basic "Restricted Access. Use LDAP";
-# log project
-    access_log  /var/log/nginx/kibana.example.com-access.log  advanced;
-    error_log   /var/log/nginx/kibana.example.com-error.log;
-       location / {
-                auth_request    /auth-ldap;
-                proxy_pass_header Server;
-                proxy_set_header Host $http_host;
-                proxy_redirect off;
-                proxy_set_header X-Real-IP $remote_addr;
-                proxy_set_header X-Scheme $scheme;
-                proxy_pass http://backend_kibana_1;
-    }
-        # enable autorization LDAP
-        location        =       /auth-ldap      {
-                internal;
-                proxy_pass      http://127.0.0.1:8888;
-                proxy_pass_request_body off;
-                proxy_set_header        Content-Length  "";
-                proxy_cache     kibana_auth_cache;
-                proxy_cache_valid       200     1m;
-                proxy_cache_key "$http_authorization$cookie_nginxauth";
-                proxy_set_header        X-Ldap-URL      "ldaps://ipaserver.domain.example.com:636";
-                proxy_set_header        X-Ldap-Starttls "false";
-                proxy_set_header        X-Ldap-BaseDN   "cn=users,cn=accounts,dc=domain,dc=example,dc=ru";
-                proxy_set_header        X-Ldap-BindDN   "uid=s-asamon-01,cn=sysaccounts,cn=etc,dc=domain,dc=example,dc=ru";
-                proxy_set_header        X-Ldap-BindPass "our-password";
-                proxy_set_header        X-CookieName    "nginxauth";
-                proxy_set_header        Cookie  nginxauth=$cookie_nginxauth;
-                proxy_set_header        X-Ldap-Template "(&(objectclass=person)(uid=%(username)s)(memberOf=cn=kibana-admins,cn=groups,cn=accounts,dc=domain,dc=example,dc=ru))";
+	listen 8080 default_server;
+	root /var/www/html;
+
+	# Add index.php to the list if you are using PHP
+	index index.html index.htm index.nginx-debian.html;
+
+	server_name _;
+
+
+        location = /auth-proxy-user {
+            proxy_pass http://127.0.0.1:8888;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            proxy_cache auth_cache_user; # Must match the name in the proxy_cache_path directive above
+            proxy_cache_valid 200 1m;
+            proxy_cache_key "$http_authorization$cookie_nginxauth";
+            # URL and port for connecting to the LDAP server
+            proxy_set_header X-Ldap-URL "ldap://127.0.0.1:389";
+            proxy_set_header X-Ldap-Starttls "false";
+            proxy_set_header X-Ldap-BaseDN   "cn=users,cn=accounts,dc=simpledevops,dc=xyz";
+#            proxy_set_header X-Ldap-BindDN   "uid=admin,cn=users,cn=accounts,dc=simpledevops,dc=xyz";
+            proxy_set_header X-Ldap-BindPass "password";
+            proxy_set_header X-CookieName    "nginxauth";
+            proxy_set_header X-Ldap-Template "(uid=%(username)s)";
+        }
+
+
+        location = /auth-proxy-admin {
+            proxy_pass http://127.0.0.1:8888;
+            proxy_pass_request_body off;
+            proxy_set_header Content-Length "";
+            proxy_cache auth_cache_admin; # Must match the name in the proxy_cache_path directive above
+            proxy_cache_valid 200 1m;
+            proxy_cache_key "$http_authorization$cookie_nginxauth";
+            # URL and port for connecting to the LDAP server
+            proxy_set_header X-Ldap-URL "ldap://127.0.0.1:389";
+            proxy_set_header X-Ldap-Starttls "false";
+            proxy_set_header X-Ldap-BaseDN   "cn=users,cn=accounts,dc=simpledevops,dc=xyz";
+            proxy_set_header X-Ldap-BindDN   "uid=admin,cn=users,cn=accounts,dc=simpledevops,dc=xyz";
+            proxy_set_header X-Ldap-BindPass "password";
+            proxy_set_header X-CookieName    "nginxauth";
+            proxy_set_header X-Ldap-Template "(&(objectclass=person)(uid=%(username)s)(memberOf=cn=webadmins,cn=groups,cn=accounts,dc=simpledevops,dc=xyz))";
+        }
+
+	location = /admin/ {
+            auth_request /auth-proxy-admin;
+            try_files notExistsfile @verified_1;
+        }
+            
+        location @verified_1 {
+            internal;
+            add_header Content-Type text/plain;
+            return 200 "Hello, admin";
+        }
+
+	location = /user/ {
+            auth_request /auth-proxy-user;
+            try_files notExistsfile @verified_2;
+	}
+
+        location @verified_2 {
+            internal;
+            add_header Content-Type text/plain;
+            return 200 "Hello, user";
         }
 }
 
 
-
-----------------------------------------------------------------------------------------------------------------------------------------------------------------
 

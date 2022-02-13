@@ -1,0 +1,171 @@
+```
+#on server side
+sudo apt install samba -y
+
+sudo mkdir /rebrainme
+sudo chmod 777 /rebrainme
+useradd rebrainmeuser
+smbpasswd -a rebrainmeuser #password is password
+
+
+[global]
+   server string = File Server
+   security = user
+   map to guest = Bad User
+   name resolve order = bcast wins
+   include = /etc/samba/smbshared.conf
+#   passdb backend = smbpasswd:/etc/samba/sambapasswd.txt    #This option is not obligatory
+
+[rebrainme]
+        comment = Development documentation
+        read only = no
+        available = yes
+        path = /rebrainme
+        public = yes
+        valid users = rebrainmeuser
+        write list = rebrainmeuser
+        writable = yes
+        browseable = yes
+
+sudo testparm
+
+sudo systemctl start smbd
+sudo systemctl enable smbd
+
+
+
+#On client side:
+sudo apt install smbclient cifs-utils -y
+#smbclient -L //<IP address>/<share name> -U rebrainmeuser #for tests
+mkdir /mnt
+chmod 777 /mnt
+vim /etc/fstab
+//207.154.193.41/rebrainme /mnt cifs username=rebrainmeuser,password=password,auto 0 0
+#mount -t cifs -o user=devdocsuser,password=devdocs //10.0.1.100/devdocs /mnt/devdocs/
+df -h
+```
+
+
+
+Здравствуйте.
+
+
+Задание:
+
+1. Установите утилиты для работы с Samba-сервером на вашем удаленном сервере.
+2. Приведите адрес вашего удаленного сервера (можно получить, сделав запрос curl ifconfig.io) (команды и вывод сохраните).
+
+```
+root@LNXA0903-0:~# curl ifconfig.io
+207.154.193.41
+root@LNXA0903-0:~# 
+```
+
+3. Настройте Samba-сервер, который позволяет примонтировать директорию /rebrainme, и вызовите testparm для вывода конфига.
+
+```
+root@LNXA0903-0:/etc/samba# sudo testparm
+Load smb config files from /etc/samba/smb.conf
+rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
+WARNING: The "syslog" option is deprecated
+Processing section "[printers]"
+Processing section "[print$]"
+Processing section "[rebrainme]"
+Loaded services file OK.
+Server role: ROLE_STANDALONE
+
+Press enter to see a dump of your service definitions
+
+# Global parameters
+[global]
+        dns proxy = No
+        log file = /var/log/samba/log.%m
+        map to guest = Bad User
+        max log size = 1000
+        obey pam restrictions = Yes
+        pam password change = Yes
+        panic action = /usr/share/samba/panic-action %d
+        passwd chat = *Enter\snew\s*\spassword:* %n\n *Retype\snew\s*\spassword:* %n\n *password\supdated\ssuccessfully* .
+        passwd program = /usr/bin/passwd %u
+        server role = standalone server
+        server string = %h server (Samba, Ubuntu)
+        syslog = 0
+        unix password sync = Yes
+        usershare allow guests = Yes
+        idmap config * : backend = tdb
+
+
+[printers]
+        browseable = No
+        comment = All Printers
+        create mask = 0700
+        path = /var/spool/samba
+        printable = Yes
+
+
+[print$]
+        comment = Printer Drivers
+        path = /var/lib/samba/printers
+
+
+[rebrainme]
+        comment = Development documentation
+        guest ok = Yes
+        path = /rebrainme
+        read only = No
+        valid users = rebrainmeuser
+        write list = rebrainmeuser
+
+```
+
+4. Настройте вашу локальную виртуальную машину для автоматического монтирования директории /rebrainme на удаленном сервере в локальную директорию /mnt/ и примонтируйте ее (команды и вывод сохраните).
+
+```
+Last login: Sun Feb 13 08:09:23 2022 from 178.207.209.44
+root@ipa:~# df -hT
+Filesystem                 Type      Size  Used Avail Use% Mounted on
+udev                       devtmpfs  2.0G     0  2.0G   0% /dev
+tmpfs                      tmpfs     395M  6.3M  389M   2% /run
+/dev/vda1                  ext4       78G  3.2G   75G   5% /
+tmpfs                      tmpfs     2.0G     0  2.0G   0% /dev/shm
+tmpfs                      tmpfs     5.0M     0  5.0M   0% /run/lock
+tmpfs                      tmpfs     2.0G     0  2.0G   0% /sys/fs/cgroup
+/dev/vda15                 vfat      105M  4.4M  100M   5% /boot/efi
+//207.154.193.41/rebrainme cifs       78G  1.4G   77G   2% /mnt
+tmpfs                      tmpfs     395M     0  395M   0% /run/user/0
+root@ipa:~# cat /etc/fstab 
+LABEL=cloudimg-rootfs   /        ext4   defaults        0 1
+LABEL=UEFI      /boot/efi       vfat    umask=0077      0 1
+//207.154.193.41/rebrainme /mnt cifs username=rebrainmeuser,password=password,auto 0 0
+root@ipa:~# 
+
+```
+
+5. На вашей локальной машине в примонтированной директории создайте файл linux и выведите список всех файлов с их владельцами (команды и вывод сохраните).
+
+```
+root@ipa:~# cd /mnt/
+root@ipa:/mnt# touch linux
+root@ipa:/mnt# ll
+total 4
+drwxr-xr-x  2 root root    0 Feb 13 08:16 ./
+drwxr-xr-x 23 root root 4096 Feb 13 08:13 ../
+-rwxr-xr-x  1 root root    0 Feb 13 08:16 linux*
+root@ipa:/mnt# 
+```
+
+6. На вашем сервере в экспортируемой директории выведите список всех файлов и их владельцев (команды и вывод сохраните).
+
+```
+root@LNXA0903-0:/rebrainme# ll
+total 8
+drwxrwxrwx  2 root          root          4096 Feb 13 08:16 ./
+drwxr-xr-x 24 root          root          4096 Feb 13 08:05 ../
+-rwxr--r--  1 rebrainmeuser rebrainmeuser    0 Feb 13 08:16 linux*
+root@LNXA0903-0:/rebrainme# 
+```
+
+7. Отправьте на проверку все полученные выводы и конфигурационные файлы Samba-сервера и файла монтирования на вашей локальной виртуальной машине.
+
+
+

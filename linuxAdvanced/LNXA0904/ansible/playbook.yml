@@ -1,0 +1,79 @@
+---
+- hosts: all
+  become: yes
+  vars:
+    wireguard_port: "5888"
+    wireguard_path: "/etc/wireguard"
+    wireguard_sources_path: "/var/cache"
+    wireguard_network_name: "private"
+    debian_enable_backports: true
+    debian_pin_packages: true
+    client_vpn_ip: "10.1.0.100/8"
+    client_wireguard_path: "~/wg.conf"
+    client_wireguard_dns: false
+    wireguard_additional_peers: false
+    wireguard_post_up: false
+    wireguard_post_down: false
+  tasks:
+  - name: ensure packages is installed 
+    apt:
+      pkg:
+      - vim
+      - wget
+      - syslinux-utils
+      - syslinux
+      - curl
+      - unzip
+      - nginx
+      - software-properties-common
+      - dnsmasq
+      update_cache: yes
+      state: latest
+
+  - name: Template a file to /etc/dnsmasq.conf
+    ansible.builtin.template:
+      src: templates/dnsmasq.conf.j2
+      dest: /etc/dnsmasq.conf
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Template a file to /etc/nginx/sites-enabled/default
+    ansible.builtin.template:
+      src: templates/default.j2
+      dest: /etc/nginx/sites-enabled/default
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: Run shell
+    ansible.builtin.shell: |
+      echo 'sss'
+    args:
+      executable: /bin/bash
+
+  - name: Template a file to /srv/tftp/pxelinux.cfg/default
+    ansible.builtin.template:
+      src: templates/default_pxe.j2
+      dest: /srv/tftp/pxelinux.cfg/default
+      owner: root
+      group: root
+      mode: '0644'
+
+Задание:
+
+1. Сгенерируйте ключ при помощи флага --gen-key (команды и вывод сохраните)
+2. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+3. У созданного ключа удалите дату истечения (команды и вывод сохраните)
+4. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+5. Экспортируйте публичный ключ в файл в ASCII формате и выведете его (команды и вывод сохраните)
+6. Экспортируйте приватный в бинарном виде в файл (команду и вывод сохраните)
+7. Зашифруйте строку RebrainMe Linux ASYM при помощи сгенерированного ключа в ASCII формате и выведете этот файл (команды и вывод сохраните)
+8. Зашифруйте файл с приватным ключем при помощи passphrase secret в ASCII формате и выведете этот файл (команды и вывод сохраните)
+9. Удалите из вашего хранилища публичный и приватный ключ (команды и вывод сохраните)
+10. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+11. Расшифруйте приватный ключ и импортируйте одной командой (команды и вывод сохраните)
+12. Выведете список публичных и приватных ключей (команды и вывод сохраните)
+13. Расшифруйте файл с зашифрованной строкой (команды и вывод сохраните)
+14. Отправьте на проверку все сохраненные выводы
+

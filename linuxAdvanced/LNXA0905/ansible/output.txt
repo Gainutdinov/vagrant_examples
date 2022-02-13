@@ -1,4 +1,39 @@
 
+https://www.server-world.info/en/note?os=Ubuntu_20.04&p=glusterfs&f=1
+
+
+#On servers
+apt -y install glusterfs-server 
+cat << EOF >> /etc/hosts
+10.135.0.24 node01
+10.135.0.22 node02
+10.135.0.19 client01
+EOF
+
+apt install software-properties-common -y
+
+gluster peer probe node02
+gluster peer status
+
+
+
+gluster volume create vol_distributed transport tcp \
+node01:/glusterfs/distributed \
+node02:/glusterfs/distributed \
+force
+
+gluster volume start vol_distributed
+
+
+#On client 
+apt -y install glusterfs-client
+# OK to specify any target nodes in cluster
+
+mount -t glusterfs node01:/vol_distributed /mnt1
+df -hT 
+for x in {0..4};do dd if=/dev/urandom of=/mnt1/rebrainme${x} bs=1M count=$x;done
+
+------------------------------------------------------------------------------------------------------------------------
 Здравствуйте.
 
 Задание:
@@ -6,44 +41,106 @@
 1. Установите утилиты для работы с GlusterFS сервером на вашем удаленном сервере.
 
 ```
-
+apt -y install glusterfs-server 
+cat << EOF >> /etc/hosts
+10.135.0.24 node01
+10.135.0.22 node02
+10.135.0.19 client01
+EOF
 ```
 
 2. Приведите адрес вашего удаленного сервера и локального сервера (можно получить, сделав запрос curl ifconfig.io).
 
 ```
-
+134.209.255.87 node01
+68.183.221.104 node02
+138.68.98.193 client01
 ```
 
 3. Настройте GlusterFS на удаленном и локальном сервере в режиме распределенного тома (Distributed).
 
 ```
+root@LNXA0905-0:~# mkdir -p /glusterfs/distributed
+root@LNXA0905-0:~# gluster volume create vol_distributed transport tcp node01:/glusterfs/distributed node02:/glusterfs/distributed force
+volume create: vol_distributed: success: please start the volume to access data
+root@LNXA0905-0:~# gluster volume start vol_distributed
+volume start: vol_distributed: success
+root@LNXA0905-0:~# gluster volume info
+
+Volume Name: vol_distributed
+Type: Distribute
+Volume ID: 811b632b-b513-400a-8079-03b70e62cbd4
+Status: Started
+Snapshot Count: 0
+Number of Bricks: 2
+Transport-type: tcp Bricks:
+Brick1: node01:/glusterfs/distributed
+Brick2: node02:/glusterfs/distributed
+Options Reconfigured:
+transport.address-family: inet
+nfs.disable: on
+
 
 ```
 
 4. Примонтируйте настроенный GlusterFS том в директорию /mnt/ на вашем локальном сервере.
 
 ```
+root@client:/mnt# apt -y install glusterfs-client
+root@client:/mnt# mount -t glusterfs node01:/vol_distributed /mnt
+root@client:/mnt# df -hT
+Filesystem                 Type            Size  Used Avail Use% Mounted on
+udev                       devtmpfs        2.0G     0  2.0G   0% /dev
+tmpfs                      tmpfs           395M  6.7M  388M   2% /run
+/dev/vda1                  ext4             78G  3.2G   75G   5% /
+tmpfs                      tmpfs           2.0G     0  2.0G   0% /dev/shm
+tmpfs                      tmpfs           5.0M     0  5.0M   0% /run/lock
+tmpfs                      tmpfs           2.0G     0  2.0G   0% /sys/fs/cgroup
+/dev/vda15                 vfat            105M  4.4M  100M   5% /boot/efi
+tmpfs                      tmpfs           395M     0  395M   0% /run/user/0
+node01:/vol_distributed    fuse.glusterfs  155G  4.2G  153G   3% /mnt
 
 ```
 
 5. В директории /mnt создайте файлы rebraime{0,1,2,3,4}. Выведите список файлов в директории.
 
 ```
-
+root@client:/mnt# for x in {0..4};do dd if=/dev/urandom of=/mnt/rebrainme${x} bs=1M count=$x;done
+0+0 records in
+0+0 records out
+0 bytes copied, 0.000793735 s, 0.0 kB/s
+1+0 records in
+1+0 records out
+1048576 bytes (1.0 MB, 1.0 MiB) copied, 0.0160582 s, 65.3 MB/s
+2+0 records in
+2+0 records out
+2097152 bytes (2.1 MB, 2.0 MiB) copied, 0.0231048 s, 90.8 MB/s
+3+0 records in
+3+0 records out
+3145728 bytes (3.1 MB, 3.0 MiB) copied, 0.0304639 s, 103 MB/s
+4+0 records in
+4+0 records out
+4194304 bytes (4.2 MB, 4.0 MiB) copied, 0.0414698 s, 101 MB/s
 ```
 
 6. На локальном и удаленном серверах выведите список всех файлов в директории GlusterFS тома.
 
 ```
+root@client:/mnt# ls
+rebrainme0  rebrainme1  rebrainme2  rebrainme3  rebrainme4
+root@LNXA0905-0:/glusterfs/distributed# ls
+rebrainme1
+root@LNXA0905-0:/glusterfs/distributed#
+root@LNXA0905-1:/glusterfs/distributed# ls
+rebrainme0  rebrainme2  rebrainme3  rebrainme4
+root@LNXA0905-1:/glusterfs/distributed#
 
 ```
 
-7. Отправьте на проверку вывод консоли с локального (префикс client) и удаленного серверов (префикс server).
+7. Отправьте на проверку вывод консоли с локального (префикс client) и удаленного серверов (префикс server ).
+вместо префикса server назвал LNXA0905-01(node01) LNX0905-02(node02), client(client01)
 
 
-```
 
-```
 
 

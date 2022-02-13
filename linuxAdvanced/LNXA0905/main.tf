@@ -35,20 +35,6 @@ data "digitalocean_ssh_key" "mysshKey" {
 #  name = "mgainutdinov"
 #}
 
-variable "instances_per_subnet" {
-  description = "Number of EC2 instances in each private subnet"
-  type        = number
-  default     = 1
-}
-
-# Add volume for persistent data
-resource "digitalocean_volume" "dokku_persistent_data" {
-  region      = "fra1"
-  name        = "persistentlnxa0904"
-  size        = "50"
-  description = "Persistent data for ${var.task_number} "
-}
-
 resource "digitalocean_droplet" "web" {
   count = var.instances_per_subnet 
   image    = "ubuntu-18-04-x64"
@@ -63,9 +49,6 @@ resource "digitalocean_droplet" "web" {
     "m_gaynutdinov_at_mail_ru",
     "linux",
   ]
-  # Attach persistent volume
-  volume_ids = ["${digitalocean_volume.dokku_persistent_data.id}"]
-
 }
 
 output "instance_ip_addr" {

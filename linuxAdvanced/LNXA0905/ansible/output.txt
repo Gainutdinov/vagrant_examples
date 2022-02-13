@@ -1,0 +1,166 @@
+
+#On server side
+apt-get install tgt lsscsi -y && \
+cat << EOF >> /etc/tgt/conf.d/iscsi.conf
+<target iqn.2020-07.example.com:lun1>   
+     backing-store /dev/sdb             
+     initiator-address 192.168.55.102  
+     incominguser rebrainme Passw0rd
+</target>                              
+EOF
+
+systemctl restart tgt
+systemctl status tgt
+
+
+
+#On client side
+apt-get install open-iscsi -y
+
+#Add / Modify the following lines:
+node.session.auth.authmethod = CHAP  
+node.session.auth.username = iscsi-user
+node.session.auth.password = password                
+node.startup = automatic
+
+systemctl restart iscsid open-iscsi
+
+
+lsblk
+
+
+
+
+
+Здравствуйте.
+
+Задание:
+
+1. На локальном сервере выполните команду lsscsi.
+
+```
+root@iscsi1:~# lsscsi
+[0:0:0:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sda
+[0:0:1:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sdb
+root@iscsi1:~#
+
+```
+
+2. На локальном сервере настройте target для подключения диска со следующими параметрами:
+	1.1. Разрешить подключение только с одного IP-адреса.
+	1.2. Настроить доступ по логину и паролю rebrainme/Passw0rd.
+
+```
+root@iscsi1:~# cat /etc/tgt/conf.d/iscsi.conf
+<target iqn.2020-07.example.com:lun1>
+     backing-store /dev/sdb
+     initiator-address 192.168.55.102
+     incominguser rebrainme Passw0rd
+</target>
+root@iscsi1:~#
+
+```
+
+3. Выполните команды tgtadm --mode target --op show, iscsiadm -m session -P2 и lsscsi.
+
+```
+root@iscsi1:~# lsscsi
+[0:0:0:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sda
+[0:0:1:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sdb
+root@iscsi1:~# tgtadm --mode target --op show
+Target 1: iqn.2020-07.example.com:lun1
+    System information:
+        Driver: iscsi
+        State: ready
+    I_T nexus information:
+        I_T nexus: 2
+            Initiator: iqn.1993-08.org.debian:01:92de3ea46f8e alias: iscsi2
+            Connection: 0
+                IP Address: 192.168.55.102
+    LUN information:
+        LUN: 0
+            Type: controller
+            SCSI ID: IET     00010000
+            SCSI SN: beaf10
+            Size: 0 MB, Block size: 1
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: null
+            Backing store path: None
+            Backing store flags:
+        LUN: 1
+            Type: disk
+            SCSI ID: IET     00010001
+            SCSI SN: beaf11
+            Size: 2147 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: rdwr
+            Backing store path: /dev/sdb
+            Backing store flags:
+    Account information:
+        rebrainme
+    ACL information:
+        192.168.55.102
+root@iscsi1:~# iscsiadm -m session -P2
+iscsiadm: No active sessions.
+root@iscsi1:~#
+```
+
+4. Отправьте на проверку все полученные выводы и конфигурационные файлы.
+
+### from iscsi2 host
+
+```
+root@iscsi2:~# systemctl status open-iscsi
+● open-iscsi.service - Login to default iSCSI targets
+     Loaded: loaded (/lib/systemd/system/open-iscsi.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Sun 2022-02-13 09:52:50 UTC; 7min ago
+       Docs: man:iscsiadm(8)
+             man:iscsid(8)
+    Process: 3154 ExecStart=/sbin/iscsiadm -m node --loginall=automatic (code=exited, status=0/SUCCESS)
+    Process: 3160 ExecStart=/lib/open-iscsi/activate-storage.sh (code=exited, status=0/SUCCESS)
+   Main PID: 3160 (code=exited, status=0/SUCCESS)
+
+Feb 13 09:52:50 iscsi2 systemd[1]: Starting Login to default iSCSI targets...
+Feb 13 09:52:50 iscsi2 iscsiadm[3154]: Logging in to [iface: default, target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] (multiple)
+Feb 13 09:52:50 iscsi2 iscsiadm[3154]: Login to [iface: default, target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] successful.
+Feb 13 09:52:50 iscsi2 systemd[1]: Finished Login to default iSCSI targets.
+root@iscsi2:~# systemctl status iscsid
+● iscsid.service - iSCSI initiator daemon (iscsid)
+     Loaded: loaded (/lib/systemd/system/iscsid.service; disabled; vendor preset: enabled)
+     Active: active (running) since Sun 2022-02-13 09:52:50 UTC; 7min ago
+TriggeredBy: ● iscsid.socket
+       Docs: man:iscsid(8)
+    Process: 3147 ExecStartPre=/lib/open-iscsi/startup-checks.sh (code=exited, status=0/SUCCESS)
+    Process: 3150 ExecStart=/sbin/iscsid (code=exited, status=0/SUCCESS)
+   Main PID: 3152 (iscsid)
+      Tasks: 2 (limit: 1071)
+     Memory: 2.5M
+     CGroup: /system.slice/iscsid.service
+             ├─3151 /sbin/iscsid
+             └─3152 /sbin/iscsid
+
+Feb 13 09:52:50 iscsi2 systemd[1]: Starting iSCSI initiator daemon (iscsid)...
+Feb 13 09:52:50 iscsi2 iscsid[3150]: iSCSI logger with pid=3151 started!
+Feb 13 09:52:50 iscsi2 systemd[1]: Started iSCSI initiator daemon (iscsid).
+Feb 13 09:52:51 iscsi2 iscsid[3151]: iSCSI daemon with pid=3152 started!
+Feb 13 09:52:51 iscsi2 iscsid[3151]: Connection14:0 to [target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] through [iface: default] is operational now
+root@iscsi2:~# lsblk
+NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   128G  0 disk
+├─sda1   8:1    0   487M  0 part /boot
+├─sda2   8:2    0   1.9G  0 part [SWAP]
+└─sda3   8:3    0 125.6G  0 part /
+sdb      8:16   0     2G  0 disk
+root@iscsi2:~#
+
+```

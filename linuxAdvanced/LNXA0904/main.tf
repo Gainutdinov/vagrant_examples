@@ -44,7 +44,7 @@ variable "instances_per_subnet" {
 # Add volume for persistent data
 resource "digitalocean_volume" "dokku_persistent_data" {
   region      = "fra1"
-  name        = "persistentlnxa0903"
+  name        = "persistentlnxa0904"
   size        = "50"
   description = "Persistent data for ${var.task_number} "
 }

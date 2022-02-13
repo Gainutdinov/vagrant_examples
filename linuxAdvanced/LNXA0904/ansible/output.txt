@@ -1,171 +1,166 @@
-```
-#on server side
-sudo apt install samba -y
 
-sudo mkdir /rebrainme
-sudo chmod 777 /rebrainme
-useradd rebrainmeuser
-smbpasswd -a rebrainmeuser #password is password
+#On server side
+apt-get install tgt lsscsi -y && \
+cat << EOF >> /etc/tgt/conf.d/iscsi.conf
+<target iqn.2020-07.example.com:lun1>   
+     backing-store /dev/sdb             
+     initiator-address 192.168.55.102  
+     incominguser rebrainme Passw0rd
+</target>                              
+EOF
 
-
-[global]
-   server string = File Server
-   security = user
-   map to guest = Bad User
-   name resolve order = bcast wins
-   include = /etc/samba/smbshared.conf
-#   passdb backend = smbpasswd:/etc/samba/sambapasswd.txt    #This option is not obligatory
-
-[rebrainme]
-        comment = Development documentation
-        read only = no
-        available = yes
-        path = /rebrainme
-        public = yes
-        valid users = rebrainmeuser
-        write list = rebrainmeuser
-        writable = yes
-        browseable = yes
-
-sudo testparm
-
-sudo systemctl start smbd
-sudo systemctl enable smbd
+systemctl restart tgt
+systemctl status tgt
 
 
 
-#On client side:
-sudo apt install smbclient cifs-utils -y
-#smbclient -L //<IP address>/<share name> -U rebrainmeuser #for tests
-mkdir /mnt
-chmod 777 /mnt
-vim /etc/fstab
-//207.154.193.41/rebrainme /mnt cifs username=rebrainmeuser,password=password,auto 0 0
-#mount -t cifs -o user=devdocsuser,password=devdocs //10.0.1.100/devdocs /mnt/devdocs/
-df -h
-```
+#On client side
+apt-get install open-iscsi -y
+
+#Add / Modify the following lines:
+node.session.auth.authmethod = CHAP  
+node.session.auth.username = iscsi-user
+node.session.auth.password = password                
+node.startup = automatic
+
+systemctl restart iscsid open-iscsi
+
+
+lsblk
+
+
 
 
 
 Здравствуйте.
 
-
 Задание:
 
-1. Установите утилиты для работы с Samba-сервером на вашем удаленном сервере.
-2. Приведите адрес вашего удаленного сервера (можно получить, сделав запрос curl ifconfig.io) (команды и вывод сохраните).
+1. На локальном сервере выполните команду lsscsi.
 
 ```
-root@LNXA0903-0:~# curl ifconfig.io
-207.154.193.41
-root@LNXA0903-0:~# 
-```
-
-3. Настройте Samba-сервер, который позволяет примонтировать директорию /rebrainme, и вызовите testparm для вывода конфига.
-
-```
-root@LNXA0903-0:/etc/samba# sudo testparm
-Load smb config files from /etc/samba/smb.conf
-rlimit_max: increasing rlimit_max (1024) to minimum Windows limit (16384)
-WARNING: The "syslog" option is deprecated
-Processing section "[printers]"
-Processing section "[print$]"
-Processing section "[rebrainme]"
-Loaded services file OK.
-Server role: ROLE_STANDALONE
-
-Press enter to see a dump of your service definitions
-
-# Global parameters
-[global]
-        dns proxy = No
-        log file = /var/log/samba/log.%m
-        map to guest = Bad User
-        max log size = 1000
-        obey pam restrictions = Yes
-        pam password change = Yes
-        panic action = /usr/share/samba/panic-action %d
-        passwd chat = *Enter\snew\s*\spassword:* %n\n *Retype\snew\s*\spassword:* %n\n *password\supdated\ssuccessfully* .
-        passwd program = /usr/bin/passwd %u
-        server role = standalone server
-        server string = %h server (Samba, Ubuntu)
-        syslog = 0
-        unix password sync = Yes
-        usershare allow guests = Yes
-        idmap config * : backend = tdb
-
-
-[printers]
-        browseable = No
-        comment = All Printers
-        create mask = 0700
-        path = /var/spool/samba
-        printable = Yes
-
-
-[print$]
-        comment = Printer Drivers
-        path = /var/lib/samba/printers
-
-
-[rebrainme]
-        comment = Development documentation
-        guest ok = Yes
-        path = /rebrainme
-        read only = No
-        valid users = rebrainmeuser
-        write list = rebrainmeuser
+root@iscsi1:~# lsscsi
+[0:0:0:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sda
+[0:0:1:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sdb
+root@iscsi1:~#
 
 ```
 
-4. Настройте вашу локальную виртуальную машину для автоматического монтирования директории /rebrainme на удаленном сервере в локальную директорию /mnt/ и примонтируйте ее (команды и вывод сохраните).
+2. На локальном сервере настройте target для подключения диска со следующими параметрами:
+	1.1. Разрешить подключение только с одного IP-адреса.
+	1.2. Настроить доступ по логину и паролю rebrainme/Passw0rd.
 
 ```
-Last login: Sun Feb 13 08:09:23 2022 from 178.207.209.44
-root@ipa:~# df -hT
-Filesystem                 Type      Size  Used Avail Use% Mounted on
-udev                       devtmpfs  2.0G     0  2.0G   0% /dev
-tmpfs                      tmpfs     395M  6.3M  389M   2% /run
-/dev/vda1                  ext4       78G  3.2G   75G   5% /
-tmpfs                      tmpfs     2.0G     0  2.0G   0% /dev/shm
-tmpfs                      tmpfs     5.0M     0  5.0M   0% /run/lock
-tmpfs                      tmpfs     2.0G     0  2.0G   0% /sys/fs/cgroup
-/dev/vda15                 vfat      105M  4.4M  100M   5% /boot/efi
-//207.154.193.41/rebrainme cifs       78G  1.4G   77G   2% /mnt
-tmpfs                      tmpfs     395M     0  395M   0% /run/user/0
-root@ipa:~# cat /etc/fstab 
-LABEL=cloudimg-rootfs   /        ext4   defaults        0 1
-LABEL=UEFI      /boot/efi       vfat    umask=0077      0 1
-//207.154.193.41/rebrainme /mnt cifs username=rebrainmeuser,password=password,auto 0 0
-root@ipa:~# 
+root@iscsi1:~# cat /etc/tgt/conf.d/iscsi.conf
+<target iqn.2020-07.example.com:lun1>
+     backing-store /dev/sdb
+     initiator-address 192.168.55.102
+     incominguser rebrainme Passw0rd
+</target>
+root@iscsi1:~#
 
 ```
 
-5. На вашей локальной машине в примонтированной директории создайте файл linux и выведите список всех файлов с их владельцами (команды и вывод сохраните).
+3. Выполните команды tgtadm --mode target --op show, iscsiadm -m session -P2 и lsscsi.
 
 ```
-root@ipa:~# cd /mnt/
-root@ipa:/mnt# touch linux
-root@ipa:/mnt# ll
-total 4
-drwxr-xr-x  2 root root    0 Feb 13 08:16 ./
-drwxr-xr-x 23 root root 4096 Feb 13 08:13 ../
--rwxr-xr-x  1 root root    0 Feb 13 08:16 linux*
-root@ipa:/mnt# 
+root@iscsi1:~# lsscsi
+[0:0:0:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sda
+[0:0:1:0]    disk    ATA      VBOX HARDDISK    1.0   /dev/sdb
+root@iscsi1:~# tgtadm --mode target --op show
+Target 1: iqn.2020-07.example.com:lun1
+    System information:
+        Driver: iscsi
+        State: ready
+    I_T nexus information:
+        I_T nexus: 2
+            Initiator: iqn.1993-08.org.debian:01:92de3ea46f8e alias: iscsi2
+            Connection: 0
+                IP Address: 192.168.55.102
+    LUN information:
+        LUN: 0
+            Type: controller
+            SCSI ID: IET     00010000
+            SCSI SN: beaf10
+            Size: 0 MB, Block size: 1
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: null
+            Backing store path: None
+            Backing store flags:
+        LUN: 1
+            Type: disk
+            SCSI ID: IET     00010001
+            SCSI SN: beaf11
+            Size: 2147 MB, Block size: 512
+            Online: Yes
+            Removable media: No
+            Prevent removal: No
+            Readonly: No
+            SWP: No
+            Thin-provisioning: No
+            Backing store type: rdwr
+            Backing store path: /dev/sdb
+            Backing store flags:
+    Account information:
+        rebrainme
+    ACL information:
+        192.168.55.102
+root@iscsi1:~# iscsiadm -m session -P2
+iscsiadm: No active sessions.
+root@iscsi1:~#
 ```
 
-6. На вашем сервере в экспортируемой директории выведите список всех файлов и их владельцев (команды и вывод сохраните).
+4. Отправьте на проверку все полученные выводы и конфигурационные файлы.
+
+### from iscsi2 host
 
 ```
-root@LNXA0903-0:/rebrainme# ll
-total 8
-drwxrwxrwx  2 root          root          4096 Feb 13 08:16 ./
-drwxr-xr-x 24 root          root          4096 Feb 13 08:05 ../
--rwxr--r--  1 rebrainmeuser rebrainmeuser    0 Feb 13 08:16 linux*
-root@LNXA0903-0:/rebrainme# 
+root@iscsi2:~# systemctl status open-iscsi
+● open-iscsi.service - Login to default iSCSI targets
+     Loaded: loaded (/lib/systemd/system/open-iscsi.service; enabled; vendor preset: enabled)
+     Active: active (exited) since Sun 2022-02-13 09:52:50 UTC; 7min ago
+       Docs: man:iscsiadm(8)
+             man:iscsid(8)
+    Process: 3154 ExecStart=/sbin/iscsiadm -m node --loginall=automatic (code=exited, status=0/SUCCESS)
+    Process: 3160 ExecStart=/lib/open-iscsi/activate-storage.sh (code=exited, status=0/SUCCESS)
+   Main PID: 3160 (code=exited, status=0/SUCCESS)
+
+Feb 13 09:52:50 iscsi2 systemd[1]: Starting Login to default iSCSI targets...
+Feb 13 09:52:50 iscsi2 iscsiadm[3154]: Logging in to [iface: default, target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] (multiple)
+Feb 13 09:52:50 iscsi2 iscsiadm[3154]: Login to [iface: default, target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] successful.
+Feb 13 09:52:50 iscsi2 systemd[1]: Finished Login to default iSCSI targets.
+root@iscsi2:~# systemctl status iscsid
+● iscsid.service - iSCSI initiator daemon (iscsid)
+     Loaded: loaded (/lib/systemd/system/iscsid.service; disabled; vendor preset: enabled)
+     Active: active (running) since Sun 2022-02-13 09:52:50 UTC; 7min ago
+TriggeredBy: ● iscsid.socket
+       Docs: man:iscsid(8)
+    Process: 3147 ExecStartPre=/lib/open-iscsi/startup-checks.sh (code=exited, status=0/SUCCESS)
+    Process: 3150 ExecStart=/sbin/iscsid (code=exited, status=0/SUCCESS)
+   Main PID: 3152 (iscsid)
+      Tasks: 2 (limit: 1071)
+     Memory: 2.5M
+     CGroup: /system.slice/iscsid.service
+             ├─3151 /sbin/iscsid
+             └─3152 /sbin/iscsid
+
+Feb 13 09:52:50 iscsi2 systemd[1]: Starting iSCSI initiator daemon (iscsid)...
+Feb 13 09:52:50 iscsi2 iscsid[3150]: iSCSI logger with pid=3151 started!
+Feb 13 09:52:50 iscsi2 systemd[1]: Started iSCSI initiator daemon (iscsid).
+Feb 13 09:52:51 iscsi2 iscsid[3151]: iSCSI daemon with pid=3152 started!
+Feb 13 09:52:51 iscsi2 iscsid[3151]: Connection14:0 to [target: iqn.2020-07.example.com:lun1, portal: 192.168.55.101,3260] through [iface: default] is operational now
+root@iscsi2:~# lsblk
+NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   128G  0 disk
+├─sda1   8:1    0   487M  0 part /boot
+├─sda2   8:2    0   1.9G  0 part [SWAP]
+└─sda3   8:3    0 125.6G  0 part /
+sdb      8:16   0     2G  0 disk
+root@iscsi2:~#
+
 ```
-
-7. Отправьте на проверку все полученные выводы и конфигурационные файлы Samba-сервера и файла монтирования на вашей локальной виртуальной машине.
-
-
-

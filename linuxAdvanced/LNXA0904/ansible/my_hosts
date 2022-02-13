@@ -1,4 +1,4 @@
-server1 ansible_user=root ansible_host=207.154.193.41
+server1 ansible_user=root ansible_host=134.209.225.113
 
 
 

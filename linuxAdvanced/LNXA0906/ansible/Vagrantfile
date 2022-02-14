@@ -13,6 +13,7 @@ Vagrant.configure("2") do |config|
   
   script = <<-SCRIPT
     echo "hello world"
+    apt update
   SCRIPT
   
   config.vm.provider "virtualbox" do |v|
@@ -20,17 +21,22 @@ Vagrant.configure("2") do |config|
   end
   
   (1..number_of_machines).each do |i|
-    config.vm.define "iscsi#{i}" do |box|
+    config.vm.define "node0#{i}" do |box|
       box.vm.box = box_name
       
       box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
   
-      box.vm.hostname = "iscsi#{i}"
+      box.vm.hostname = "node0#{i}"
       box.vm.provision "shell", inline: "#{script}"
 
 
-      if "iscsi#{i}"  == "iscsi1" then
-			  box.vm.disk :disk, name: "lxc_1", size: "2GB"
+      if "node0#{i}"  == "node01" then
+          box.vm.disk :disk, name: "lxc_1", size: "2GB"
+	  box.vm.disk :disk, name: "lxc_2", size: "2GB"
+      end
+      if "node0#{i}"  == "node02" then
+          box.vm.disk :disk, name: "lxc_3", size: "2GB"
+	  box.vm.disk :disk, name: "lxc_4", size: "2GB"
       end
     end
   end

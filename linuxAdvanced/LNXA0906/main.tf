@@ -35,6 +35,58 @@ data "digitalocean_ssh_key" "mysshKey" {
 #  name = "mgainutdinov"
 #}
 
+resource "digitalocean_volume" "disk1" {
+  region                  = "fra1"
+  name                    = "disk1"
+  size                    = 20
+  initial_filesystem_type = "ext4"
+  description             = "an example volume1"
+}
+
+resource "digitalocean_volume" "disk2" {
+  region                  = "fra1"
+  name                    = "disk2"
+  size                    = 20
+  initial_filesystem_type = "ext4"
+  description             = "an example volume2"
+}
+
+resource "digitalocean_volume" "disk3" {
+  region                  = "fra1"
+  name                    = "disk3"
+  size                    = 20
+  initial_filesystem_type = "ext4"
+  description             = "an example volume3"
+}
+
+resource "digitalocean_volume" "disk4" {
+  region                  = "fra1"
+  name                    = "disk4"
+  size                    = 20
+  initial_filesystem_type = "ext4"
+  description             = "an example volume4"
+}
+
+resource "digitalocean_volume_attachment" "disksattach1" {
+  droplet_id = digitalocean_droplet.web[0].id
+  volume_id  = digitalocean_volume.disk1.id
+}
+
+resource "digitalocean_volume_attachment" "disksattach2" {
+  droplet_id = digitalocean_droplet.web[0].id
+  volume_id  = digitalocean_volume.disk2.id
+}
+
+resource "digitalocean_volume_attachment" "disksattach3" {
+  droplet_id = digitalocean_droplet.web[1].id
+  volume_id  = digitalocean_volume.disk3.id
+}
+
+resource "digitalocean_volume_attachment" "disksattach4" {
+  droplet_id = digitalocean_droplet.web[1].id
+  volume_id  = digitalocean_volume.disk4.id
+}
+
 resource "digitalocean_droplet" "web" {
   count = var.instances_per_subnet 
   image    = "ubuntu-18-04-x64"

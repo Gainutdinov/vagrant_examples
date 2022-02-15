@@ -1,0 +1,51 @@
+curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.deb.sh | sudo bash
+sudo apt install software-properties-common apt-transport-https -y
+wget -O- https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc | sudo apt-key add -
+echo "deb https://packages.erlang-solutions.com/ubuntu focal contrib" | sudo tee /etc/apt/sources.list.d/rabbitmq.list
+sudo apt install erlang -y
+
+apt install -y erlang-base \
+erlang-asn1 erlang-crypto erlang-eldap erlang-ftp erlang-inets \
+erlang-mnesia erlang-os-mon erlang-parsetools erlang-public-key \
+erlang-runtime-tools erlang-snmp erlang-ssl \
+erlang-syntax-tools erlang-tftp erlang-tools erlang-xmerl
+
+
+apt update
+apt-get install rabbitmq-server -y --fix-missing
+systemctl enable rabbitmq-server
+rabbitmq-plugins enable rabbitmq_management
+
+rabbitmqctl add_user admin StrongPassword
+rabbitmqctl set_user_tags admin administrator
+
+----------------------------------------------------
+
+Здравствуйте!
+
+
+Задание:
+
+1. Создайте через rabbitmqctl пользователя vasya и выдайте ему права администратора. На проверку пришлите команды, которые использовались, a также результат выполнения команды rabbitmqctl list_users.
+
+```
+root@node01:~# rabbitmqctl add_user vasya StrongPassword
+Adding user "vasya" ...
+Done. Don't forget to grant the user permissions to some virtual hosts! See 'rabbitmqctl help set_permissions' to learn more.
+root@node01:~# rabbitmqctl set_user_tags vasya administrator
+Setting tags for user "vasya" to [administrator] ...
+root@node01:~# rabbitmqctl list_users
+Listing users ...
+user    tags
+admin   [administrator]
+guest   [administrator]
+vasya   [administrator]
+root@node01:~# 
+
+```
+
+2. Составьте команду rabbitmqctl list_queues, которая выводит для каждой очереди количество persistent и ram сообщений.
+
+```
+rabbitmqctl list_queues messages_ram  messages_persistent
+```

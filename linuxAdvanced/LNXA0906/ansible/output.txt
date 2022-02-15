@@ -5,12 +5,100 @@
 
 1. Настройте Ceph кластер из двух OSD дисков, расположенных на локальном и удаленном серверах.
 2. Выполните команды ceph health и ceph -s на удаленном сервере.
+
+```
+ceph-deploy osd create --data /dev/sdb node01
+ceph-deploy osd create --data /dev/sdb node02
+
+
+
+
+```
+
 3. Добавьте в кластер еще по одному диску с локального и удаленного серверов.
+
+
+```
+ceph-deploy osd create --data /dev/sdc node01
+ceph-deploy osd create --data /dev/sdc node02
+
+```
+
 4. Выполните команды ceph health и ceph -s на удаленном сервере.
+
+
+```
+root@node01:~/my-cluster# ceph -s             
+  cluster:                                    
+    id:     c0de36f4-ceea-4f24-8323-a3315d34d790
+    health: HEALTH_WARN    
+            mon is allowing insecure global_id reclaim
+            Degraded data redundancy: 1 pg undersized
+                                              
+  services:                                   
+    mon: 1 daemons, quorum node01 (age 9m)
+    mgr: node01(active, since 8m)                                                                                                                                                          
+    osd: 4 osds: 4 up (since 10s), 4 in (since 10s)
+                                              
+  data:                                       
+    pools:   1 pools, 1 pgs
+    objects: 0 objects, 0 B
+    usage:   4.0 GiB used, 4.0 GiB / 8.0 GiB avail
+    pgs:     1 active+undersized
+
+root@node01:~/my-cluster# ceph health
+HEALTH_WARN mon is allowing insecure global_id reclaim; Degraded data redundancy: 2/6 objects degraded (33.333%), 1 pg degraded, 32 pgs undersized; 1 pool(s) do not have an application enabled
+
+
+```
+
 5. Выставите размер пулов из команды ceph osd pool stats, равный двум. Выведите результат ceph -s.
+
+```
+root@node01:~/my-cluster# ceph -s
+  cluster:
+    id:     c0de36f4-ceea-4f24-8323-a3315d34d790
+    health: HEALTH_WARN
+            mon is allowing insecure global_id reclaim
+            Degraded data redundancy: 2/6 objects degraded (33.333%), 1 pg degraded, 32 pgs undersized
+            1 pool(s) do not have an application enabled
+ 
+  services:
+    mon: 1 daemons, quorum node01 (age 54m)
+    mgr: node01(active, since 53m)
+    osd: 4 osds: 4 up (since 44m), 4 in (since 44m)
+ 
+  data:
+    pools:   2 pools, 33 pgs
+    objects: 2 objects, 48 MiB
+    usage:   4.1 GiB used, 3.9 GiB / 8.0 GiB avail
+    pgs:     2/6 objects degraded (33.333%)
+             31 active+undersized
+             1  active+clean
+             1  active+undersized+degraded
+
+
+```
+
 6. Создайте пул rebrainme.
 7. Запишите файл ceph-rebrainme-4M размером 4MiB и файл ceph-rebrainme-44M размером 44MiB в пул rebrainme.
 8. Выведите результат команды rados df.
+
+```
+root@node01:~/my-cluster# rados put ceph-rebrainme-44M ceph-rebrainme-44M --pool=rebrainme
+root@node01:~/my-cluster# rados put ceph-rebrainme-44M ceph-rebrainme-44M --pool=rebrainme
+root@node01:~/my-cluster# rados df
+POOL_NAME                USED  OBJECTS  CLONES  COPIES  MISSING_ON_PRIMARY  UNFOUND  DEGRADED  RD_OPS   RD  WR_OPS      WR  USED COMPR  UNDER COMPR
+device_health_metrics     0 B        0       0       0                   0        0         0       0  0 B       0     0 B         0 B          0 B
+rebrainme              96 MiB        2       0       6                   0        0         2       0  0 B      12  48 MiB         0 B          0 B
+
+total_objects    2
+total_used       4.1 GiB
+total_avail      3.9 GiB
+total_space      8.0 GiB
+
+
+```
 
 
 
@@ -20,22 +108,30 @@
 wget -q -O- 'https://download.ceph.com/keys/release.asc' | sudo apt-key add -
 echo deb https://download.ceph.com/debian-pacific/ $(lsb_release -sc) main | sudo tee /etc/apt/sources.list.d/ceph.list
 
+ssh-keygen #On both nodes
 
-sudo apt update
 sudo apt install ca-certificates -y
-sudo apt-get install python3-setuptools
+sudo apt-get install python3-setuptools python3-pip -y
 sudo pip3 install git+https://github.com/ceph/ceph-deploy.git
 sudo apt install ceph-deploy -y
 #The admin node must have password-less SSH access to Ceph nodes. When ceph-deploy logs in to a Ceph node as a user, that particular user must have passwordless sudo privileges.
 
+cat << EOF >> /etc/hosts
+192.168.55.101 node01
+192.168.55.102 node02
+EOF
 
 #ssh-keygen and passwordless access to node02
+cat << EOF >> /root/.ssh/config
 Host node01
    Hostname node01
    User root
 Host node02
    Hostname node02
    User root
+EOF
+
+cat ~/.ssh/id_rsa.pub >> ~/.ssh/authorized_keys
 
 
 mkdir my-cluster
@@ -47,15 +143,28 @@ ceph-deploy new {initial-monitor-node(s)}
 
 ceph-deploy new node01
 #install ceph packages
-ceph-deploy install node01 node02
+ceph-deploy install node01 
+ceph-deploy install node02 --osd
 ceph-deploy mon create-initial
 ceph-deploy admin node01
 ceph-deploy mgr create node01
-ceph-deploy osd create --data /dev/vdb node01
-ceph-deploy osd create --data /dev/vdb node02
+ceph-deploy osd create --data /dev/sdb node01
+ceph-deploy osd create --data /dev/sdb node02
 
 #Check your cluster’s health.
-ssh node1 sudo ceph -s
+#On node01 
+ceph -s
+
+ceph-deploy osd create --data /dev/sdc node01
+ceph-deploy osd create --data /dev/sdc node02
 
 
+ceph osd pool set device_health_metrics size 2
 
+ceph osd pool create rebrainme
+
+dd if=/dev/urandom of=ceph-rebrainme-4M bs=4M count=1
+dd if=/dev/urandom of=ceph-rebrainme-44M bs=4M count=11
+
+rados put ceph-rebrainme-4M ceph-rebrainme-4M --pool=rebrainme
+rados put ceph-rebrainme-44M ceph-rebrainme-44M --pool=rebrainme

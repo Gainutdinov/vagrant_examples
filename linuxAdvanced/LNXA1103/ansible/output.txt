@@ -1,56 +1,70 @@
+sudo wget https://github.com/borgbackup/borg/releases/download/1.1.13/borg-linux64 -O /usr/local/bin/borg
+sudo chmod +x /usr/local/bin/borg
+useradd --create-home borgme
+password borgme
+#As root
+#ssh-keygen
+#Make sure root user can login via ssh to localhost as borgme user
+borg init --storage-quota 10M -e none borgme@localhost:RebrainMeRepo
+echo $?
+
+
+
+
+
+
+----------------------------------------------------
 
 Здравствуйте!
 
 Задание:
 
-1. Напишите команду rsync с одним аргументом, которая:
- 
-* рекурсивно копирует данные;
-* сохраняет символические ссылки, права на файлы, время изменения файлов;
-* сохраняет группу и пользователя файлов.
+1. Создайте локальный репозиторий без шифрования с ограничением стораджа 10M.
 
 ```
-rsync -av /src/foo/ /dest/foo
+borg --storage-quota 10M -e none borgme@localhost:RebrainMeRepo
+```
+
+
+2. Создайте директорию archive_dir c одним файлом zero размера 7M, состоящим из нулей.
 
 ```
- 
-2. Сформируйте конфиг rsync сервера, который должен содержать секции logs и secrets со следующими параметрами:
- 
-* Секция logs:
-     Данные должны храниться в директории /storage/logs/.
-     Файлы вида *.gz не нужно сжимать при передаче.
-* Секция secrets:
-     Данные должны храниться в директории /storage/secrets/.
-     Должен быть запрещен листинг файлов.
-* Остальные настройки:
-     Максимальное количество одновременных подключений - 44.
-     Пользователь для подключения в обеих секциях - rebrain.
-     Пользователь, от которого запущен rsync демон, - rebrainme.
- 
+mkdir archive_dir
+cd archive_dir
+dd if=/dev/zero of=zero bs=1M count=7
 ```
-uid = rebrain
-gid = rebrain
-use chroot = yes
-max connections = 44
-syslog facility = local5
-pid file = /var/run/rsyncd.pid
 
-[logs]
-    path = /storage/logs
-    dont compress = *.gz
-
-[secrets]
-    path = /storage/secrets
-    refuse options = list-only
+3. Создайте бэкап директории из предыдущего пункта со следующими параметрами:
+  
+*  Компрессия lzma максимального уровня.
+*  Название бэкапа должно содержать имя пользователя и текущие дату и время.
 
 ```
- 
-3. Напишите команду rsync, которая:
-* Копирует из директории A в B все файлы, кроме файлов, заканчивающихся на .jpg.
-* Скорость копирования должна быть ограничена 1234 KBPS.
+borg create --compression lzma,9 --list --stats borgme@localhost:RebrainMeRepo::"FirstBackup-{user}-{now:%Y-%m-%d_%H:%M:%S}" archive_dir
 
 ```
-rsync --exclude='*.c' --bwlimit=1234  /source/A/ /target/B 
+  
+4. Добавьте в archive_dir файл rand со следующими параметрами:
+  
+* Размер - 10M.
+* Должен состоять из рандомных данных.
 
 ```
+cd ./archive_dir
+dd if=/dev/urandom of=rand bs=1M count=10
+
+```
+  
+5. Еще раз запустите создание бэкапа из п.3.
+
+```
+root@LNXA1101-0:~# borg create --compression lzma,9 --list --stats borgme@localhost:RebrainMe
+Repo::"FirstBackup-{user}-{now:%Y-%m-%d_%H:%M:%S}" archive_dir
+A archive_dir/zero
+A archive_dir/rand
+d archive_dir
+The storage quota (10.00 MB) has been exceeded (10.22 MB). Try deleting some archives.
+```
+
+6. В качестве ответа пришлите команды и результат работы.
 

@@ -1,0 +1,144 @@
+
+sudo apt update
+sudo useradd -m -s /bin/bash infoit
+sudo passwd infoit
+
+sudo usermod -a -G sudo infoit
+
+
+su - infoit
+
+sudo apt install tightvncserver xfce4 xfce4-goodies -y
+
+vncserver
+
+vncserver -kill :1
+
+mv ~/.vnc/xstartup ~/.vnc/xstartup.bak
+
+vim ~/.vnc/xstartup
+
+cat << EOF >> ~/.vnc/xstartup
+#!/bin/bash
+xrdb $HOME/.Xresources
+startxfce4 &
+EOF
+
+sudo chmod +x ~/.vnc/xstartup
+
+
+vncserver -kill :1
+
+sudo -i
+
+cat << EOF >> /etc/systemd/system/vncserver@.service
+[Unit]
+Description=Start TightVNC server at startup
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=infoit
+Group=infoit
+WorkingDirectory=/home/infoit
+
+PIDFile=/home/infoit/.vnc/%H:%i.pid
+ExecStartPre=-/usr/bin/vncserver -kill :%i > /dev/null 2>&1
+ExecStart=/usr/bin/vncserver -depth 24 -geometry 1280x800 :%i
+ExecStop=/usr/bin/vncserver -kill :%i
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable vncserver@1.service
+sudo systemctl start vncserver@1
+
+
+ssh -L 5901:127.0.0.1:5901 -N -f -l infoit 46.101.163.166
+
+
+--------------------------------------------------------------------------------
+
+
+Здравствуйте!
+
+Задание:
+
+1. Создайте VM (в облаке или локально) с серверным дистрибутивом. Рекомендуем не менее 2 GB RAM.
+2. Установите VNC-server и Desktop environment на созданную VM. Команды установки и результат выполнения приложите к ответу. Полный лог установки прикладывать не надо.
+
+```
+sudo apt update
+sudo useradd -m -s /bin/bash infoit
+sudo passwd infoit
+
+sudo usermod -a -G sudo infoit
+
+
+su - infoit
+
+sudo apt install tightvncserver xfce4 xfce4-goodies -y
+
+cat << EOF >> ~/.vnc/xstartup
+#!/bin/bash
+xrdb $HOME/.Xresources
+startxfce4 &
+EOF
+
+sudo chmod +x ~/.vnc/xstartup
+
+
+vncserver -kill :1
+
+sudo -i
+
+cat << EOF >> /etc/systemd/system/vncserver@.service
+[Unit]
+Description=Start TightVNC server at startup
+After=syslog.target network.target
+
+[Service]
+Type=forking
+User=infoit
+Group=infoit
+WorkingDirectory=/home/infoit
+
+PIDFile=/home/infoit/.vnc/%H:%i.pid
+ExecStartPre=-/usr/bin/vncserver -kill :%i > /dev/null 2>&1
+ExecStart=/usr/bin/vncserver -depth 24 -geometry 1280x800 :%i
+ExecStop=/usr/bin/vncserver -kill :%i
+
+[Install]
+WantedBy=multi-user.target
+
+
+
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable vncserver@1.service
+sudo systemctl start vncserver@1
+
+```
+
+3. Установите VNC-client на ваш локальный ПК.
+
+4. Произведите подключение к Linux Server по SSH с помощью VNC. Выполненную команду приложите к ответу.
+
+```
+ssh -L 5901:127.0.0.1:5901 -N -f -l infoit 46.101.163.166
+
+```
+потом подключится используя tigervnc
+
+5. После выполнения соединения сделайте скриншот рабочего стола вашего ПК с организованным удаленным доступом. Скриншот приложите к ответу.
+
+https://dropmefiles.com/Ss008
+
+
+

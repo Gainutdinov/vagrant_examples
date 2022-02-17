@@ -28,6 +28,7 @@ rsync -av /src/foo/ /dest/foo
      Пользователь, от которого запущен rsync демон, - rebrainme.
  
 ```
+root@ubuntu2004:~# cat /etc/rsyncd.conf 
 uid = rebrain
 gid = rebrain
 use chroot = yes
@@ -41,7 +42,7 @@ pid file = /var/run/rsyncd.pid
 
 [secrets]
     path = /storage/secrets
-    refuse options = list-only
+    refuse options = list-only files-from
 
 ```
  

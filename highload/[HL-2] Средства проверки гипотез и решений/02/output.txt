@@ -431,5 +431,75 @@ Mar 28 09:53:43 cpu1 stress-ng[37142]: invoked with 'stress-n' by user 0
 
 13. Ограничьте возможность потребления RAM через cgroups до 75%. Запустите скрипт-пожиратель заново. Что с ним произойдет?
 
+Из логов ниже видим что OOM-killer "вступает в игру" раньше чем ранее т.к. черзе cgroups мы ограничили кол-во доступной памяти и "убивает" процессы раньше тем самым сам хост не остаётся совсем без ресурсов как это было без использования cgroups'ов ранее.
 
+
+```
+apt install cgroup-tools
+
+
+# Create a group for memory named “slack_group”
+cgcreate -g "memory:custom_oom"
+# Specify memory limit to 1G for this group
+cgset -r memory.limit_in_bytes=500M "custom_oom" #~75% от доступной памяти
+# Launch slack application in this group
+cgexec -g "memory:custom_oom" /root/incremental_memory_usage.sh
+...
+Mem:          976Mi       528Mi       287Mi        89Mi       161Mi       249Mi
+Swap:            0B          0B          0B
+              total        used        free      shared  buff/cache   available
+Mem:          976Mi       532Mi       279Mi        91Mi       164Mi       242Mi
+Swap:            0B          0B          0B
+              total        used        free      shared  buff/cache   available
+Mem:          976Mi       528Mi       279Mi        95Mi       169Mi       242Mi
+Swap:            0B          0B          0B
+              total        used        free      shared  buff/cache   available
+Mem:          976Mi       529Mi       274Mi        97Mi       172Mi       238Mi
+Swap:            0B          0B          0B
+
+...
+journalctl -xe -f
+...
+Mar 28 10:20:00 cpu1 stress-ng[38869]: memory (MB): total 976.87, free 278.12, shared 97.50, buffer 1.82, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39597 (stress-ng-vm) total-vm:68868kB, anon-rss:14980kB, file-rss:796kB, shmem-rss:28kB, UID:0 pgtables:108kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39597 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:28kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39576 (stress-ng-vm) total-vm:69316kB, anon-rss:15432kB, file-rss:716kB, shmem-rss:4kB, UID:0 pgtables:108kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39576 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:4kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39601 (stress-ng-vm) total-vm:72384kB, anon-rss:18432kB, file-rss:884kB, shmem-rss:16kB, UID:0 pgtables:116kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39601 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:16kB
+Mar 28 10:20:00 cpu1 stress-ng[39390]: memory (MB): total 976.87, free 272.39, shared 97.50, buffer 1.82, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38845]: memory (MB): total 976.87, free 270.17, shared 97.50, buffer 1.81, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39611 (stress-ng-vm) total-vm:86428kB, anon-rss:19224kB, file-rss:764kB, shmem-rss:20kB, UID:0 pgtables:124kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39611 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:20kB
+Mar 28 10:20:00 cpu1 stress-ng[38666]: memory (MB): total 976.87, free 285.43, shared 97.50, buffer 1.84, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39608 (stress-ng-vm) total-vm:81204kB, anon-rss:18944kB, file-rss:820kB, shmem-rss:24kB, UID:0 pgtables:112kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39608 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:24kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39606 (stress-ng-vm) total-vm:89300kB, anon-rss:17876kB, file-rss:728kB, shmem-rss:52kB, UID:0 pgtables:112kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39606 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:52kB
+Mar 28 10:20:00 cpu1 stress-ng[38892]: memory (MB): total 976.87, free 285.95, shared 97.50, buffer 1.82, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38701]: memory (MB): total 976.87, free 269.96, shared 97.50, buffer 1.95, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38661]: memory (MB): total 976.87, free 283.21, shared 97.50, buffer 1.95, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39618 (stress-ng-vm) total-vm:74900kB, anon-rss:20008kB, file-rss:804kB, shmem-rss:52kB, UID:0 pgtables:120kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39618 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:52kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39620 (stress-ng-vm) total-vm:72968kB, anon-rss:16836kB, file-rss:884kB, shmem-rss:24kB, UID:0 pgtables:116kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39620 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:24kB
+Mar 28 10:20:00 cpu1 stress-ng[38646]: memory (MB): total 976.87, free 269.71, shared 97.50, buffer 1.85, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39625 (stress-ng-vm) total-vm:75972kB, anon-rss:16588kB, file-rss:880kB, shmem-rss:32kB, UID:0 pgtables:112kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39625 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:32kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39609 (stress-ng-vm) total-vm:83840kB, anon-rss:16516kB, file-rss:876kB, shmem-rss:36kB, UID:0 pgtables:108kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39609 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:36kB
+Mar 28 10:20:00 cpu1 stress-ng[38656]: memory (MB): total 976.87, free 269.47, shared 97.50, buffer 1.93, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38681]: memory (MB): total 976.87, free 269.47, shared 97.50, buffer 1.93, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38641]: memory (MB): total 976.87, free 269.47, shared 97.50, buffer 1.91, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38696]: memory (MB): total 976.87, free 269.47, shared 97.50, buffer 1.83, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 stress-ng[38686]: memory (MB): total 976.87, free 267.47, shared 97.50, buffer 1.83, swap 0.00, free swap 0.00
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39610 (stress-ng-vm) total-vm:69788kB, anon-rss:15736kB, file-rss:660kB, shmem-rss:56kB, UID:0 pgtables:108kB oom_score_adj:1000
+Mar 28 10:20:00 cpu1 kernel: oom_reaper: reaped process 39610 (stress-ng-vm), now anon-rss:0kB, file-rss:0kB, shmem-rss:56kB
+Mar 28 10:20:00 cpu1 kernel: Memory cgroup out of memory: Killed process 39613 (stress-ng-vm) total-vm:69492kB, anon-rss:15484kB, file-rss:648kB, shmem-rss:64kB, UID:0 pgtables:104kB oom_score_adj:1000
+...
+
+# If needed, we can remove the group
+cgdelete "memory:custom_oom"
+
+```
 

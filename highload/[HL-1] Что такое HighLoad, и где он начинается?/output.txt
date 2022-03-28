@@ -1,0 +1,94 @@
+Задание:
+1. Создайте новую VM (из образа ubuntu-18.04). Скачайте 1_cpu_load_enable.sh и запустите. Скрипт создает процессы, нагружающие CPU.
+2. Найдите ТОП процессов, потребляющих CPU. Требования к выводу команды:
+● сортирован по потреблению CPU в % от большего к меньшему;
+● отображает только процессы, запущенные текущим пользователем;
+● выполняется только 1 раз (не интерактивный режим);
+● отображает только ТОП-5 процессов. Команду и вывод сохраните.
+
+```
+vagrant@cpu1:~$ LINES=12 top -b -n 1 -u vagrant -o +%CPU -w
+top - 07:34:04 up 20 min,  1 user,  load average: 3.00, 2.96, 2.17
+Tasks: 100 total,   4 running,  96 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us, 23.8 sy,  4.8 ni, 71.4 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :   2988.1 total,   2539.0 free,    117.6 used,    331.5 buff/cache
+MiB Swap:   1953.0 total,   1953.0 free,      0.0 used.   2699.6 avail Mem
+
+    PID USER      PR  NI    VIRT    RES    SHR S  %CPU  %MEM     TIME+ COMMAND
+   1838 vagrant   35  15    9640    584    516 R  37.5   0.0   3:48.86 md5sum
+   1839 vagrant   33  13    7012   4220   3752 R  37.5   0.1   5:55.96 openssl
+   1840 vagrant   31  11    9772   2196   2024 R  25.0   0.1   9:12.95 cat
+   1140 vagrant   20   0   18328   9416   7964 S   0.0   0.3   0:00.04 systemd
+   1141 vagrant   20   0  104104   4524     20 S   0.0   0.1   0:00.00 (sd-pam)
+vagrant@cpu1:~$
+
+```
+
+3. Для отключения нагрузки выполните 1_cpu_load_disable.sh.
+4. Исследуйте доступный в VM процессор. Одной командой проверьте:
+● количество доступных ядер,
+● количество потоков на ядро,
+● модель процессора,
+● размеры кэшей,
+● поддержку аппаратных инструкций aes. Команду и вывод сохраните.
+
+```
+vagrant@cpu1:~$ lscpu
+Architecture:                    x86_64
+CPU op-mode(s):                  32-bit, 64-bit
+Byte Order:                      Little Endian
+Address sizes:                   48 bits physical, 48 bits virtual
+CPU(s):                          2
+On-line CPU(s) list:             0,1
+Thread(s) per core:              1 #<------ количество потоков на ядро
+Core(s) per socket:              2 #<------ количество доступных ядер 
+Socket(s):                       1
+NUMA node(s):                    1
+...
+# размеры кэшей,
+L1d cache:                       64 KiB
+L1i cache:                       64 KiB
+L2 cache:                        1 MiB
+L3 cache:                        16 MiB
+...
+#поддержку аппаратных инструкций aes. Команду и вывод сохраните.
+Flags:                           fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36
+                                  clflush mmx fxsr sse sse2 ht syscall nx mmxext fxsr_opt rdtscp lm cons
+                                 tant_tsc rep_good nopl nonstop_tsc cpuid extd_apicid tsc_known_freq pni
+                                  pclmulqdq ssse3 cx16 sse4_1 sse4_2 x2apic movbe popcnt aes xsave avx r
+                                 drand hypervisor lahf_lm cmp_legacy cr8_legacy abm sse4a misalignsse 3d
+                                 nowprefetch vmmcall fsgsbase avx2 invpcid rdseed clflushopt arat
+
+
+```
+
+5. Запустите команду sleep 10000 со следующими параметрами:
+● выполнение в фоновом режиме (Background);
+● приоритет NI=15. Команду и вывод сохраните.
+
+```
+vagrant@cpu1:~$ sleep 10000
+^Z
+[1]+  Stopped                 sleep 10000
+vagrant@cpu1:~$ bg
+[1]+ sleep 10000 &
+vagrant@cpu1:~$ pidof sleep
+2106
+vagrant@cpu1:~$ sudo renice -n 15 -p 2106
+2106 (process ID) old priority 0, new priority 15
+vagrant@cpu1:~$
+
+```
+
+6. Укажите созданному процессу в явном виде использовать ядро 0 CPU. Команду и вывод сохраните.
+
+```
+vagrant@cpu1:~$ taskset --pid --cpu-list 0 2106
+pid 2106's current affinity list: 0,1
+pid 2106's new affinity list: 0
+vagrant@cpu1:~$
+
+```
+7. Отправьте на проверку все вышеперечисленные выводы из консоли.
+
+

@@ -1,0 +1,239 @@
+Задание:
+1. С помощью команды fdisk определите:
+○ диски, доступные в системе;
+○ размеры дисков;
+○ разделы, доступные на каждом из дисков.
+
+```
+root@cpu1:~# fdisk -l /dev/sd*
+Disk /dev/sda: 128 GiB, 137438953472 bytes, 268435456 sectors
+Disk model: VBOX HARDDISK
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+Disklabel type: dos
+Disk identifier: 0x8761c071
+
+Device     Boot   Start       End   Sectors   Size Id Type
+/dev/sda1  *       2048    999423    997376   487M 83 Linux
+/dev/sda2        999424   4999167   3999744   1.9G 82 Linux swap / Solaris
+/dev/sda3       4999168 268433407 263434240 125.6G 83 Linux
+
+
+Disk /dev/sda1: 487 MiB, 510656512 bytes, 997376 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/sda2: 1.93 GiB, 2047868928 bytes, 3999744 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/sda3: 125.63 GiB, 134878330880 bytes, 263434240 sectors
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+
+
+Disk /dev/sdb: 10 GiB, 10737418240 bytes, 20971520 sectors
+Disk model: VBOX HARDDISK
+Units: sectors of 1 * 512 = 512 bytes
+Sector size (logical/physical): 512 bytes / 512 bytes
+I/O size (minimum/optimal): 512 bytes / 512 bytes
+root@cpu1:~#
+
+```
+
+Добавьте полученные данные в отчет.
+2. C помощью команды lshw получите следующую информацию о дисках в системе:
+○ информацию о производителе диска;
+○ типе диска (SATA/SCSI/Virtual);
+○ физических параметрах, таких как RPM для HDD.
+Добавьте полученные данные в отчет.
+
+```
+root@cpu1:~# lshw -class disk -class storage -short
+H/W path      Device     Class      Description
+===============================================
+/0/100/1.1               storage    82371AB/EB/MB PIIX4 IDE
+/0/5          scsi0      storage
+/0/5/0.0.0    /dev/sda   disk       137GB VBOX HARDDISK
+/0/5/0.1.0    /dev/sdb   disk       10GB VBOX HARDDISK
+root@cpu1:~#
+root@cpu1:~# lshw -class disk -class storage
+  *-ide
+       description: IDE interface
+       product: 82371AB/EB/MB PIIX4 IDE
+       vendor: Intel Corporation
+       physical id: 1.1
+       bus info: pci@0000:00:01.1
+       version: 01
+       width: 32 bits
+       clock: 33MHz
+       capabilities: ide isa_compat_mode pci_native_mode bus_master
+       configuration: driver=ata_piix latency=64
+       resources: irq:0 ioport:1f0(size=8) ioport:3f6 ioport:170(size=8) ioport:376 ioport:d000(size=16)
+  *-scsi
+       physical id: 5
+       logical name: scsi0
+       capabilities: emulated
+     *-disk:0
+          description: ATA Disk
+          product: VBOX HARDDISK
+          vendor: VirtualBox
+          physical id: 0.0.0
+          bus info: scsi@0:0.0.0
+          logical name: /dev/sda
+          version: 1.0
+          serial: VB52156001-b9d45f63
+          size: 128GiB (137GB)
+          capabilities: partitioned partitioned:dos
+          configuration: ansiversion=5 logicalsectorsize=512 sectorsize=512 signature=8761c071
+     *-disk:1
+          description: ATA Disk
+          product: VBOX HARDDISK
+          vendor: VirtualBox
+          physical id: 0.1.0
+          bus info: scsi@0:0.1.0
+          logical name: /dev/sdb
+          version: 1.0
+          serial: VB26af49cf-9a5f51d0
+          size: 10GiB (10GB)
+          configuration: ansiversion=5 logicalsectorsize=512 sectorsize=512
+
+```
+
+3. С помощью команды lsblk получите следующую информацию о дисках в системе:
+○ имена дисковых устройств;
+○ разделы на каждом из дисков;
+○ точки монтирования.
+Добавьте полученные данные в отчет.
+
+```
+root@cpu1:~# lsblk
+NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
+sda      8:0    0   128G  0 disk
+├─sda1   8:1    0   487M  0 part /boot
+├─sda2   8:2    0   1.9G  0 part [SWAP]
+└─sda3   8:3    0 125.6G  0 part /
+sdb      8:16   0    10G  0 disk
+
+```
+
+4. С помощью команды iostat получите информацию о текущей нагрузке на диски (в секунду):
+○ количество операций чтения;
+○ количество операций записи;
+○ скорость чтения;
+○ скорость записи;
+○ величина задержки на чтение;
+○ величина задержки на запись;
+○ общая нагрузка на диск.
+Добавьте полученные данные в отчет.
+
+```
+root@cpu1:~#  iostat -x
+Linux 5.4.0-104-generic (cpu1)  03/28/22        _x86_64_        (1 CPU)
+
+avg-cpu:  %user   %nice %system %iowait  %steal   %idle
+           1.17    0.01    1.14    0.02    0.00   97.66
+
+Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz  aqu-sz  %util
+loop0            0.00      0.00     0.00   0.00    0.00     1.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00   0.00
+sda             19.86    529.28    13.45  40.38    0.12    26.65    2.42     61.73     5.14  67.94    0.26    25.47    0.00      0.00     0.00   0.00    0.00     0.00    0.00   1.03
+sdb              0.31      6.28     0.00   0.00    0.13    20.24    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00   0.01
+
+
+root@cpu1:~#
+
+
+```
+
+5. Подключите к ВМ дополнительный том размером 10G для исследования его производительности.
+6. Установите fio.
+7. Создайте файл задания для fio, добавив недостающие строки в шаблон:
+[global]
+rw=randread
+random_generator=lfsr
+direct=1
+ioengine=libaio
+# 99.9% of IOs must be below the target
+latency_percentile=99.9
+[device]
+filename=/dev/sdX
+8. что бы он соответствовал параметрам:
+○ размер блока 4k;
+○ глубина очереди 128;
+○ целевое время задержки 25мс;
+○ время тестирования 5с.
+
+
+```
+root@cpu1:~# cat ./fiofile.fio
+[global]
+rw=randread
+random_generator=lfsr
+direct=1
+ioengine=libaio
+# 99.9% of IOs must be below the target
+latency_percentile=99.9
+#размер блока 4k;
+bs=4K
+#глубина очереди 128;
+iodepth=128
+#целевое время задержки 25мс;
+latency_target=25000
+#время тестирования 5с.
+runtime=5s
+
+
+[device]
+filename=/dev/sdb
+root@cpu1:~#
+```
+
+9. Запустите задание. После его выполнения определите в выводе:
+○ максимальную скорость чтения;
+○ максимальное количество операций в секунду
+
+
+```
+root@cpu1:~# fio ./fiofile.fio
+device: (g=0): rw=randread, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=128
+fio-3.16
+Starting 1 process
+
+device: (groupid=0, jobs=1): err= 0: pid=2927: Mon Mar 28 14:14:48 2022
+  read: IOPS=1000, BW=4000KiB/s (4096kB/s)(4096B/1msec)
+    slat (nsec): min=202490, max=202490, avg=202490.00, stdev= 0.00
+    clat (nsec): min=117030, max=117030, avg=117030.00, stdev= 0.00
+     lat (nsec): min=320141, max=320141, avg=320141.00, stdev= 0.00
+    clat percentiles (usec):
+     |  1.00th=[  118],  5.00th=[  118], 10.00th=[  118], 20.00th=[  118],
+     | 30.00th=[  118], 40.00th=[  118], 50.00th=[  118], 60.00th=[  118],
+     | 70.00th=[  118], 80.00th=[  118], 90.00th=[  118], 95.00th=[  118],
+     | 99.00th=[  118], 99.50th=[  118], 99.90th=[  118], 99.95th=[  118],
+     | 99.99th=[  118]
+  lat (usec)   : 250=100.00%
+  cpu          : usr=0.00%, sys=0.00%, ctx=2, majf=0, minf=14
+  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
+     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
+     issued rwts: total=1,0,0,0 short=0,0,0,0 dropped=0,0,0,0
+     latency   : target=25000000, window=0, percentile=99.90%, depth=1
+
+Run status group 0 (all jobs):
+   READ: bw=4000KiB/s (4096kB/s), 4000KiB/s-4000KiB/s (4096kB/s-4096kB/s), io=4096B (4096B), run=1-1msec
+
+Disk stats (read/write):
+  sdb: ios=0/0, merge=0/0, ticks=0/0, in_queue=0, util=0.00%
+root@cpu1:~#
+
+# максимальную скорость чтения - bw=4096KB/s 
+# максимальное количество операций в секунду - io=1000
+
+```
+
+для заданного значения задержки. Добавьте полученные данные в ответ

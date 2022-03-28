@@ -1,239 +1,184 @@
+
+
+
 Задание:
-1. С помощью команды fdisk определите:
-○ диски, доступные в системе;
-○ размеры дисков;
-○ разделы, доступные на каждом из дисков.
+1. Запустите top. Каково значение wa (iowait) на тестовой системе без нагрузки?
 
 ```
-root@cpu1:~# fdisk -l /dev/sd*
-Disk /dev/sda: 128 GiB, 137438953472 bytes, 268435456 sectors
-Disk model: VBOX HARDDISK
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-Disklabel type: dos
-Disk identifier: 0x8761c071
-
-Device     Boot   Start       End   Sectors   Size Id Type
-/dev/sda1  *       2048    999423    997376   487M 83 Linux
-/dev/sda2        999424   4999167   3999744   1.9G 82 Linux swap / Solaris
-/dev/sda3       4999168 268433407 263434240 125.6G 83 Linux
-
-
-Disk /dev/sda1: 487 MiB, 510656512 bytes, 997376 sectors
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-
-
-Disk /dev/sda2: 1.93 GiB, 2047868928 bytes, 3999744 sectors
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-
-
-Disk /dev/sda3: 125.63 GiB, 134878330880 bytes, 263434240 sectors
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-
-
-Disk /dev/sdb: 10 GiB, 10737418240 bytes, 20971520 sectors
-Disk model: VBOX HARDDISK
-Units: sectors of 1 * 512 = 512 bytes
-Sector size (logical/physical): 512 bytes / 512 bytes
-I/O size (minimum/optimal): 512 bytes / 512 bytes
-root@cpu1:~#
-
+root@cpu1:~# top
+top - 16:39:03 up  1:02,  2 users,  load average: 0.00, 0.00, 0.00
+Tasks:  94 total,   1 running,  93 sleeping,   0 stopped,   0 zombie
+%Cpu(s):  0.0 us,  0.0 sy,  0.0 ni,100.0 id,  0.0 wa,  0.0 hi,  0.0 si,  0.0 st
+MiB Mem :    976.9 total,    478.7 free,    121.5 used,    376.7 buff/cache
+MiB Swap:   1953.0 total,   1951.5 free,      1.5 used.    694.7 avail Mem
+# 0.0 wa
 ```
 
-Добавьте полученные данные в отчет.
-2. C помощью команды lshw получите следующую информацию о дисках в системе:
-○ информацию о производителе диска;
-○ типе диска (SATA/SCSI/Virtual);
-○ физических параметрах, таких как RPM для HDD.
-Добавьте полученные данные в отчет.
+2. Запустите тест fio из задания «Анализ нагрузки и управление вводом-выводом. Диски. Часть 1», увеличив:
+○ размер блока - до 256К; #Увеличил до 1М
+○ Количество потоков - до 256. 
 
 ```
-root@cpu1:~# lshw -class disk -class storage -short
-H/W path      Device     Class      Description
-===============================================
-/0/100/1.1               storage    82371AB/EB/MB PIIX4 IDE
-/0/5          scsi0      storage
-/0/5/0.0.0    /dev/sda   disk       137GB VBOX HARDDISK
-/0/5/0.1.0    /dev/sdb   disk       10GB VBOX HARDDISK
-root@cpu1:~#
-root@cpu1:~# lshw -class disk -class storage
-  *-ide
-       description: IDE interface
-       product: 82371AB/EB/MB PIIX4 IDE
-       vendor: Intel Corporation
-       physical id: 1.1
-       bus info: pci@0000:00:01.1
-       version: 01
-       width: 32 bits
-       clock: 33MHz
-       capabilities: ide isa_compat_mode pci_native_mode bus_master
-       configuration: driver=ata_piix latency=64
-       resources: irq:0 ioport:1f0(size=8) ioport:3f6 ioport:170(size=8) ioport:376 ioport:d000(size=16)
-  *-scsi
-       physical id: 5
-       logical name: scsi0
-       capabilities: emulated
-     *-disk:0
-          description: ATA Disk
-          product: VBOX HARDDISK
-          vendor: VirtualBox
-          physical id: 0.0.0
-          bus info: scsi@0:0.0.0
-          logical name: /dev/sda
-          version: 1.0
-          serial: VB52156001-b9d45f63
-          size: 128GiB (137GB)
-          capabilities: partitioned partitioned:dos
-          configuration: ansiversion=5 logicalsectorsize=512 sectorsize=512 signature=8761c071
-     *-disk:1
-          description: ATA Disk
-          product: VBOX HARDDISK
-          vendor: VirtualBox
-          physical id: 0.1.0
-          bus info: scsi@0:0.1.0
-          logical name: /dev/sdb
-          version: 1.0
-          serial: VB26af49cf-9a5f51d0
-          size: 10GiB (10GB)
-          configuration: ansiversion=5 logicalsectorsize=512 sectorsize=512
-
-```
-
-3. С помощью команды lsblk получите следующую информацию о дисках в системе:
-○ имена дисковых устройств;
-○ разделы на каждом из дисков;
-○ точки монтирования.
-Добавьте полученные данные в отчет.
-
-```
-root@cpu1:~# lsblk
-NAME   MAJ:MIN RM   SIZE RO TYPE MOUNTPOINT
-sda      8:0    0   128G  0 disk
-├─sda1   8:1    0   487M  0 part /boot
-├─sda2   8:2    0   1.9G  0 part [SWAP]
-└─sda3   8:3    0 125.6G  0 part /
-sdb      8:16   0    10G  0 disk
-
-```
-
-4. С помощью команды iostat получите информацию о текущей нагрузке на диски (в секунду):
-○ количество операций чтения;
-○ количество операций записи;
-○ скорость чтения;
-○ скорость записи;
-○ величина задержки на чтение;
-○ величина задержки на запись;
-○ общая нагрузка на диск.
-Добавьте полученные данные в отчет.
-
-```
-root@cpu1:~#  iostat -x
-Linux 5.4.0-104-generic (cpu1)  03/28/22        _x86_64_        (1 CPU)
-
-avg-cpu:  %user   %nice %system %iowait  %steal   %idle
-           1.17    0.01    1.14    0.02    0.00   97.66
-
-Device            r/s     rkB/s   rrqm/s  %rrqm r_await rareq-sz     w/s     wkB/s   wrqm/s  %wrqm w_await wareq-sz     d/s     dkB/s   drqm/s  %drqm d_await dareq-sz  aqu-sz  %util
-loop0            0.00      0.00     0.00   0.00    0.00     1.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00   0.00
-sda             19.86    529.28    13.45  40.38    0.12    26.65    2.42     61.73     5.14  67.94    0.26    25.47    0.00      0.00     0.00   0.00    0.00     0.00    0.00   1.03
-sdb              0.31      6.28     0.00   0.00    0.13    20.24    0.00      0.00     0.00   0.00    0.00     0.00    0.00      0.00     0.00   0.00    0.00     0.00    0.00   0.01
-
-
-root@cpu1:~#
+root@cpu1:~# top
+top - 16:47:48 up  1:11,  2 users,  load average: 0.26, 0.10, 0.02
+Tasks:  93 total,   2 running,  91 sleeping,   0 stopped,   0 zombie
+%Cpu(s): 17.1 us, 15.5 sy,  0.0 ni, 66.8 id,  0.3 wa,  0.0 hi,  0.3 si,  0.0 st
+MiB Mem :    976.9 total,    479.5 free,    118.6 used,    378.8 buff/cache
+MiB Swap:   1953.0 total,   1951.5 free,      1.5 used.    697.5 avail Mem
 
 
 ```
 
-5. Подключите к ВМ дополнительный том размером 10G для исследования его производительности.
-6. Установите fio.
-7. Создайте файл задания для fio, добавив недостающие строки в шаблон:
-[global]
-rw=randread
-random_generator=lfsr
-direct=1
+
+Изменилось ли значение wa?
+3. Установите пакет iotop.
+
+```
+apt install iotop -y
+```
+
+
+4. Выясните, какие процессы в системе наиболее активно используют ввод-вывод.
+
+```
+Total DISK READ:         0.00 B/s | Total DISK WRITE:         0.00 B/s
+Current DISK READ:       0.00 B/s | Current DISK WRITE:       0.00 B/s
+    TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+....
+#пусто т.к. нету активный задач
+#запустил apt update для проверки
+...
+root@cpu1:~# sudo iotop --only
+Total DISK READ:        46.81 M/s | Total DISK WRITE:       329.61 K/s
+Current DISK READ:      46.81 M/s | Current DISK WRITE:       0.00 B/s
+    TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   4112 be/4 root       46.81 M/s    0.00 B/s  0.00 %  0.34 % apt update
+```
+
+5. Запустите тест fio из задачи «Анализ нагрузки и управление вводом-выводом.  Диски. Часть 1». Найдите процесс fio в выводе iotop. Является ли он теперь самым IO-активным процессом в системе?
+
+```
+#закоментировал latency_target=25000 чтобы сделать тест более продолжительным
+Total DISK READ:      1103.79 M/s | Total DISK WRITE:         0.00 B/s
+Current DISK READ:    1103.79 M/s | Current DISK WRITE:       0.00 B/s
+    TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   4441 be/4 root     1103.79 M/s    0.00 B/s  0.00 % 30.93 % fio ./fiofile.fio
+```
+
+6. Создайте следующий файл профиля fio:
+[ten-minutes-writing]
+time_based
+runtime=600
+rw=write
+size=1g
+blocksize=512k
 ioengine=libaio
-# 99.9% of IOs must be below the target
-latency_percentile=99.9
-[device]
-filename=/dev/sdX
-8. что бы он соответствовал параметрам:
-○ размер блока 4k;
-○ глубина очереди 128;
-○ целевое время задержки 25мс;
-○ время тестирования 5с.
-
+iodepth=256
+direct=1
+7. Запустите fio с созданным профилем и проверьте с помощью iotop, какой уровень нагрузки на диск создает задача.
 
 ```
-root@cpu1:~# cat ./fiofile.fio
-[global]
-rw=randread
-random_generator=lfsr
-direct=1
+Total DISK READ:       264.75 M/s | Total DISK WRITE:      1601.72 M/s
+Current DISK READ:     264.75 M/s | Current DISK WRITE:    1603.06 M/s
+    TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   4478 be/4 root      264.52 M/s    0.00 B/s  0.00 % 65.75 % fio ./fiofile.fio
+   4477 be/4 root        0.00 B/s 1601.72 M/s  0.00 % 38.22 % fio ./fiofile.fio
+     81 be/4 root        0.00 B/s    0.00 B/s  0.00 %  0.34 % [kswapd0]
+    694 be/4 root      140.42 K/s    0.00 B/s  0.00 %  0.13 % VBoxService [vminfo]
+    559 be/4 messageb   97.52 K/s    0.00 B/s  0.00 %  0.10 % dbus-daemon --system~ivation --syslog-only
+#100% ioload 
+```
+
+8. Изменяя параметр blocksize, добейтесь нагрузки 70-80%.
+
+```
+root@cpu1:~# vim ./fiofile.fio
+[ten-minutes-writing]
+time_based
+runtime=600
+rw=write
+size=1g
+blocksize=2026k
 ioengine=libaio
-# 99.9% of IOs must be below the target
-latency_percentile=99.9
-#размер блока 4k;
-bs=4K
-#глубина очереди 128;
-iodepth=128
-#целевое время задержки 25мс;
-latency_target=25000
-#время тестирования 5с.
-runtime=5s
+iodepth=256
+direct=1
 
 
 [device]
 filename=/dev/sdb
-root@cpu1:~#
-```
 
-9. Запустите задание. После его выполнения определите в выводе:
-○ максимальную скорость чтения;
-○ максимальное количество операций в секунду
-
-
-```
-root@cpu1:~# fio ./fiofile.fio
-device: (g=0): rw=randread, bs=(R) 4096B-4096B, (W) 4096B-4096B, (T) 4096B-4096B, ioengine=libaio, iodepth=128
-fio-3.16
-Starting 1 process
-
-device: (groupid=0, jobs=1): err= 0: pid=2927: Mon Mar 28 14:14:48 2022
-  read: IOPS=1000, BW=4000KiB/s (4096kB/s)(4096B/1msec)
-    slat (nsec): min=202490, max=202490, avg=202490.00, stdev= 0.00
-    clat (nsec): min=117030, max=117030, avg=117030.00, stdev= 0.00
-     lat (nsec): min=320141, max=320141, avg=320141.00, stdev= 0.00
-    clat percentiles (usec):
-     |  1.00th=[  118],  5.00th=[  118], 10.00th=[  118], 20.00th=[  118],
-     | 30.00th=[  118], 40.00th=[  118], 50.00th=[  118], 60.00th=[  118],
-     | 70.00th=[  118], 80.00th=[  118], 90.00th=[  118], 95.00th=[  118],
-     | 99.00th=[  118], 99.50th=[  118], 99.90th=[  118], 99.95th=[  118],
-     | 99.99th=[  118]
-  lat (usec)   : 250=100.00%
-  cpu          : usr=0.00%, sys=0.00%, ctx=2, majf=0, minf=14
-  IO depths    : 1=100.0%, 2=0.0%, 4=0.0%, 8=0.0%, 16=0.0%, 32=0.0%, >=64=0.0%
-     submit    : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
-     complete  : 0=0.0%, 4=100.0%, 8=0.0%, 16=0.0%, 32=0.0%, 64=0.0%, >=64=0.0%
-     issued rwts: total=1,0,0,0 short=0,0,0,0 dropped=0,0,0,0
-     latency   : target=25000000, window=0, percentile=99.90%, depth=1
-
-Run status group 0 (all jobs):
-   READ: bw=4000KiB/s (4096kB/s), 4000KiB/s-4000KiB/s (4096kB/s-4096kB/s), io=4096B (4096B), run=1-1msec
-
-Disk stats (read/write):
-  sdb: ios=0/0, merge=0/0, ticks=0/0, in_queue=0, util=0.00%
-root@cpu1:~#
-
-# максимальную скорость чтения - bw=4096KB/s 
-# максимальное количество операций в секунду - io=1000
+root@cpu1:~# iotop  --accumulated
+Total DISK READ:         0.00 B/s | Total DISK WRITE:      1441.27 M/s
+Current DISK READ:       0.00 B/s | Current DISK WRITE:    1441.27 M/s
+    TID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   4863 be/4 root        0.00 B/s 1441.27 M/s  0.00 % 72.66 % fio ./fiofile.fio
 
 ```
 
-для заданного значения задержки. Добавьте полученные данные в ответ
+9. В соседнем окне терминала запустите второй процесс fio с тем же профилем.
+10. С помощью iotop выясните PID обоих процессов (PID1 и PID2).
+
+```
+root@cpu1:~# ps -e -o uid,pid,ppid,pri,ni,cmd | grep 'fio'
+    0      91       2  39 -20 [vfio-irqfd-clea]
+    0    5384    5071  19   0 fio ./fiofile2.fio
+    0    5387    5384  19   0 fio ./fiofile2.fio
+    0    5388    5384  19   0 fio ./fiofile2.fio
+    0    5389    2875  19   0 fio fiofile1.fio
+    0    5392    5389  19   0 fio fiofile1.fio
+    0    5393    5389  19   0 fio fiofile1.fio
+    0    5400    5175  19   0 grep --color=auto fio
+root@cpu1:~# iotop -P -p 5387 -p 5392
+Total DISK READ:        38.00 M/s | Total DISK WRITE:       769.88 M/s
+Current DISK READ:      86.64 M/s | Current DISK WRITE:    1548.89 M/s
+    PID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   5392 be/4 root        0.00 B/s  769.88 M/s  0.00 % 24.20 % fio fiofile1.fio
+   5387 be/4 root       38.00 M/s    0.00 B/s 36.76 %  0.00 % fio ./fiofile2.fio
+
+
+
+
+
+```
+
+11. Каков класс и приоритет каждого из процессов?
+
+```
+#priority
+root@cpu1:~# ps -e -o uid,pid,ppid,pri,ni,cmd | grep '5392\|5387'
+    0    5387    5384  19   0 fio ./fiofile2.fio
+    0    5392    5389  19   0 fio fiofile1.fio
+
+
+```
+
+
+12. Измените значение приоритета для PID1. Убедитесь, что изменение произошло с помощью iotop.
+
+
+```
+ionice -c 1 -p 5392 #Specify  the  name or number of the scheduling class to use; 0 for none, 1 for realtime, 2 for best-effort, 3 for idle.
+...
+root@cpu1:~# iotop -P -p 5387 -p 5392
+Total DISK READ:        62.04 M/s | Total DISK WRITE:       975.61 M/s
+Current DISK READ:      62.15 M/s | Current DISK WRITE:    1023.35 M/s
+    PID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   5387 be/4 root        0.00 B/s  914.33 M/s  0.00 % 46.90 % fio ./fiofile2.fio
+   5392 rt/4 root       62.04 M/s   61.28 M/s 59.01 %  2.86 % fio fiofile1.fio
+...
+#Specify  the  name or number of the scheduling class to use; 0 for none, 1 for realtime, 2 for best-effort, 3 for idle.
+...
+ionice -c 3 -p 5392 #By changing scheduling class write to disk priority also changes accrordingly, look at PRIO column
+...
+root@cpu1:~# iotop -P -p 5387 -p 5392
+Total DISK READ:        78.34 M/s | Total DISK WRITE:       712.55 M/s
+Current DISK READ:      79.00 M/s | Current DISK WRITE:     788.77 M/s
+    PID  PRIO  USER     DISK READ  DISK WRITE  SWAPIN     IO>    COMMAND
+   5387 be/4 root       18.04 M/s  655.38 M/s  6.09 % 34.95 % fio ./fiofile2.fio
+   5392 idle root       60.30 M/s   57.16 M/s 49.45 %  2.72 % fio fiofile1.fio
+
+#Only scheduling class is working here(for I/O system) no priority 
+```
+
+
+

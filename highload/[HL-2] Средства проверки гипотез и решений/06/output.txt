@@ -1,16 +1,98 @@
 Задание:
 1. Установите пакет iftop на тестовую систему.
+
+```
+apt install iftop -y
+```
+
 2. С помощью iftop найдите ТОП-5 самых активных сетевых соединений за 1 минуту.
 Приведите в ответе команду которая вам подребовалась для получения данных и результат ее выполнения.
+
+```
+root@cpu1:~# iftop -i eth0 -t -s 60  -L 5
+interface: eth0
+IP address is: 10.0.2.15
+MAC address is: 08:00:27:f6:d1:34
+Listening on eth0
+   # Host name (port/service if enabled)            last 2s   last 10s   last 40s cumulative
+--------------------------------------------------------------------------------------------
+   1 cpu1                                     =>       912b       912b       912b       228B
+     _gateway                                 <=       480b       480b       480b       120B
+--------------------------------------------------------------------------------------------
+Total send rate:                                       912b       912b       912b
+Total receive rate:                                    480b       480b       480b
+Total send and receive rate:                         1.36Kb     1.36Kb     1.36Kb
+--------------------------------------------------------------------------------------------
+Peak rate (sent/received/total):                       912b       480b     1.36Kb
+Cumulative (sent/received/total):                      228B       120B       348B
+============================================================================================
+
+
+```
+
 3. Создайте нагрузку на сетевой интерфейс, запустив скачивание дистрибутива Ubuntu по ссылке или любой другой большой файл. Нагрузку запустите как процесс в фоне или в отдельной терминальной сессии.
+
+```
+curl http://cdimage.ubuntu.com/focal/daily-live/current/focal-desktop-amd64.iso --output iso.iso
+
+```
+
 4. С помощью iftop найдите запущенный процесс загрузки файла. Приведите в ответе команду которая вам подребовалась для получения данных и результат ее выполнения.
+
+### Не нашёл способа найти PID с помощью iftop из-за чего установил nethogs
+```
+apt install nethogs -y
+root@cpu1:~# nethogs eth0
+NetHogs version 0.8.5-2build2
+
+    PID USER     PROGRAM                                                                                                                                                     DEV        SENT      RECEIVED
+   2775 root     curl                                                                                                                                                        eth0       39.614    4927.642 KB/sec
+   2602 vagrant  sshd: vagrant@pts/0                                                                                                                                         eth0        3.040       1.945 KB/sec
+      ? root     unknown TCP                                                                                                                                                             0.000       0.000 KB/sec
+
+  TOTAL                                                                                                                                                                                 42.654    4929.587 KB/sec
+
+...
+# PID 2775
+
+```
+
 5. Установите пакет vnstat.
+
+```
+apt install vnstat -y
+```
+
 6. При помощи vnstat просмотрите доступные в системе сетевые интерфейсы.
 Приведите в ответе команду которая вам подребовалась для получения данных и результат ее выполнения.
+
+```
+vnstat --iflist
+```
+
 7. Включите сбор статистики на внешнем сетевом интерфейсе. Приведите в ответе команду которую вам понадобилося выполнить.
+
+```
+root@cpu1:~# cat /etc/vnstat.conf | grep eth0
+Interface "eth0"
+root@cpu1:~# cat /etc/vnstat.conf | grep -i 'Logging'
+# enable / disable logging (0 = disabled, 1 = logfile, 2 = syslog)
+UseLogging 2
+```
+
 8. Укажите какие ключи нужно использовать с командой vnstat для определения загрузки внешнего сетевого интерфейса, по таким условиям:
 ○ в реальном времени,
 ○ по часам,
 ○ по дням,
 ○ по месяцам,
 ○ ТОП 10 дней
+
+```
+vnstat --live -i eth0
+vnstat -hg
+vnstat --hours
+vnstat --days
+vnstat --months
+vnstat --top 10
+```
+

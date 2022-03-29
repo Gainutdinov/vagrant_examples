@@ -1,0 +1,140 @@
+
+
+Задание
+1. Установите пакет sysstat.
+
+```
+apt update
+apt install sysstat -y
+```
+
+
+2. Проверьте содержимое файла /etc/cron.d/sysstat и ответьте на вопросы:
+○ С какой целью запускается скрипт sar (2 случая)?
+○ С какой периодичностью запускается скрипт sar (2 случая)?
+
+```
+# запускается каждые 10 минут для сбора статистики
+# в 23:59 запускается для ротации файлов логов
+
+# Каждую 10-ую минуту с 5 до 55. 		
+# раз в день в 23:59
+```
+
+3. Включите сбор исторических данных с помощью sar, отредактировав файл настроек используемый по-умолчанию. Укажите в ответе, какой файл и что было отредактировано.
+
+```
+root@cpu1:/etc/default# realpath ./sysstat
+/etc/default/sysstat
+root@cpu1:/etc/default# cat ./sysstat
+#
+# Default settings for /etc/init.d/sysstat, /etc/cron.d/sysstat
+# and /etc/cron.daily/sysstat files
+#
+
+# Should sadc collect system activity informations? Valid values
+# are "true" and "false". Please do not put other values, they
+# will be overwritten by debconf!
+ENABLED="true"
+```
+
+4. Спустя 10 минут убедитесь, что sar создал файл в /var/log/sysstat. Укажите в ответе, что значат цифры в конце имени файла?
+
+```
+root@cpu1:/etc/default# ll /var/log/sysstat/
+total 20
+drwxr-xr-x  2 root root   4096 Mar 29 06:42 ./
+drwxrwxr-x 10 root syslog 4096 Mar 29 06:42 ../
+-rw-r--r--  1 root root   2368 Mar  9 04:05 sa08
+-rw-r--r--  1 root root   2312 Mar  9 04:15 sa09 #<---------- Standard system activity daily data files are named saDD or saYYYYMMDD, т.к. sar был установлен ранее то он уже на тот момент собрал кое-какую статистику
+-rw-r--r--  1 root root   2240 Mar 29 06:45 sa29 #<---------- 29 march, по дате создания файла можно убедится что это только что созданный файл
+root@cpu1:/etc/default# date
+Tue Mar 29 06:53:19 UTC 2022
+
+```
+
+5. Спустя 1 час или более определите нагрузку на CPU в течение дня. Приведите в ответе команду которая вам подребовалась для получения данных.
+
+```
+sar -u -s 10:00:00 -e 11:00:00 #statistic for last hour
+root@cpu1:~# sar -u -s 07:00:00 -e 08:00:00
+Linux 5.4.0-104-generic (ubuntu2004.localdomain)        03/29/22        _x86_64_        (1 CPU)
+
+07:05:01        CPU     %user     %nice   %system   %iowait    %steal     %idle
+07:15:01        all      0.23      0.00      0.12      0.01      0.00     99.65
+07:25:01        all      0.07      0.00      0.08      0.02      0.00     99.82
+07:35:01        all      0.00      0.00      0.02      0.00      0.00     99.98
+07:45:01        all      0.00      0.00      0.03      0.00      0.00     99.97
+07:55:01        all      0.00      0.00      0.03      0.00      0.00     99.97
+Average:        all      0.06      0.00      0.06      0.01      0.00     99.88
+root@cpu1:~#
+
+```
+
+6. Спустя 1 час или более определите нагрузку на память в течение дня. Приведите в ответе команду которая вам подребовалась для получения данных.
+
+```
+#statistic for last hour
+root@cpu1:~# sar -r -s 07:00:00 -e 08:00:00
+Linux 5.4.0-104-generic (ubuntu2004.localdomain)        03/29/22        _x86_64_        (1 CPU)
+
+07:05:01    kbmemfree   kbavail kbmemused  %memused kbbuffers  kbcached  kbcommit   %commit  kbactive   kbinact   kbdirty
+07:15:01       273724    708988     84512      8.45     58744    479852    277208      9.24    475596    107844       144
+07:25:01       289972    725248     70148      7.01     58932    479880    243632      8.12    463360    107484       144
+07:35:01       289760    725056     70340      7.03     58980    479880    243632      8.12    463404    107492       144
+07:45:01       290012    725368     70040      7.00     59028    479888    243632      8.12    463452    107500       144
+07:55:01       290036    725448     69948      6.99     59076    479896    243632      8.12    463500    107508       144
+Average:       286701    722022     72998      7.30     58952    479879    250347      8.34    465862    107566       144
+
+```
+
+7. Установите пакет atop.
+
+```
+apt install atop -y
+```
+
+8. Убедитесь, что atop создал файл с историческими данными. Приведите в ответе команду которая вам подребовалась для получения данных.
+
+```
+root@cpu1:/etc/default# ls /var/log/atop/
+atop_20220329  daily.log  dummy_after  dummy_before
+
+```
+
+9. Используя исторические данные, накополенные atop, определите и укажите в ответе:
+○ Cреднюю нагрузку на CPU в течение часа
+○ Cреднюю нагрузку на память в течение часа 
+
+```
+atopsar -c -b 07:00 -e 08:00 #statistic for last hour
+
+atopsar -m -b 07:00 -e 08:00 #statistic for last hour
+
+root@cpu1:~# atopsar -c -b 07:00 -e 08:00
+cpu1  5.4.0-104-generic  #118-Ubuntu SMP Wed Mar 2 19:02:41 UTC 2022  x86_64  2022/03/29
+
+-------------------------- analysis date: 2022/03/29 --------------------------
+
+07:06:49  cpu  %usr %nice %sys %irq %softirq  %steal %guest  %wait %idle  _cpu_
+07:16:49  all     0     0    0    0        0       0      0      0   100
+07:26:49  all     0     0    0    0        0       0      0      0   100
+07:36:49  all     0     0    0    0        0       0      0      0   100
+07:46:49  all     0     0    0    0        0       0      0      0   100
+07:56:49  all     0     0    0    0        0       0      0      0   100
+
+root@cpu1:~# atopsar -m -b 07:00 -e 08:00
+
+cpu1  5.4.0-104-generic  #118-Ubuntu SMP Wed Mar 2 19:02:41 UTC 2022  x86_64  2022/03/29
+
+-------------------------- analysis date: 2022/03/29 --------------------------
+
+07:06:49  memtotal memfree buffers cached dirty slabmem  swptotal swpfree _mem_
+07:16:49      976M    267M     57M   468M    0M    101M     1952M   1952M
+07:26:49      976M    283M     57M   468M    0M     99M     1952M   1952M
+07:36:49      976M    283M     57M   468M    0M     98M     1952M   1952M
+07:46:49      976M    283M     57M   468M    0M     98M     1952M   1952M
+07:56:49      976M    283M     57M   468M    0M     98M     1952M   1952M
+
+```
+

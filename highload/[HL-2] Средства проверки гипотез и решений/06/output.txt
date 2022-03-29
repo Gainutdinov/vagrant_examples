@@ -73,11 +73,17 @@ vnstat --iflist
 7. Включите сбор статистики на внешнем сетевом интерфейсе. Приведите в ответе команду которую вам понадобилося выполнить.
 
 ```
+
 root@cpu1:~# cat /etc/vnstat.conf | grep eth0
 Interface "eth0"
 root@cpu1:~# cat /etc/vnstat.conf | grep -i 'Logging'
 # enable / disable logging (0 = disabled, 1 = logfile, 2 = syslog)
 UseLogging 2
+
+root@cpu1:~# vnstat -u -i eth0
+root@cpu1:~# chown -R vnstat: /var/lib/vnstat
+root@cpu1:~# systemct enable vnstat
+root@cpu1:~# systemct restart vnstat
 ```
 
 8. Укажите какие ключи нужно использовать с командой vnstat для определения загрузки внешнего сетевого интерфейса, по таким условиям:

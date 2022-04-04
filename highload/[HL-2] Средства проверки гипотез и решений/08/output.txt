@@ -1,0 +1,134 @@
+Задание:
+
+
+Задание:
+1. Создайте новую VM. Параметры VM:
+● 2 vCPU, 2Gb RAM;
+● базовый образ ubuntu-18.04;
+● подключен Volume размером 25 Гб;
+● имеется внешний ipv4 адрес;
+● имеется внутренний ipv4 адрес.
+2. На ВМ установите docker, docker-compose.
+3. Напишите docker-compose.yml для запуска связки wordpress + mariadb:
+● Image wordpress - wordpress:5.3.2;
+● контейнер wordpress экспортирует порт 80 на порт 80 внешнего IP-адреса;
+● контейнер wordpress монтирует том ./html:/var/www/html;
+● контейнер wordpress имеет лимиты: cpus = 0.5, memory = 100M;
+● контейнер wordpress имеет зарезервированные ресурсы: cpus = 0.25, memory = 50M;
+● Image mariadb:10.4;
+● контейнер mariadb монтирует том ./database:/var/lib/mysql;
+● контейнер mariadb экспортирует порт 3306 на порт 3306 интерфейса loopback хостовой VM;
+● контейнер mariadb имеет лимиты: cpus = 0.5, memory = 200M;
+● контейнер mariadb имеет зарезервированные ресурсы: cpus = 0.25, memory = 100M.
+4. Приложите файл docker-compose.yml как ответ к заданию.
+
+```
+version: "3.8"
+services:
+  db:
+    image: mariadb:10.4
+    volumes:
+      - db_data:/var/lib/mysql
+    restart: always
+    deploy:
+        resources:
+            limits:
+              cpus: '0.50'
+              memory: 512M
+            reservations:
+              cpus: '0.25'
+              memory: 128M
+    ports:
+      - "127.0.0.1:3306:3306"
+    environment:
+      MYSQL_ROOT_PASSWORD: somewordpress
+      MYSQL_DATABASE: wordpress
+      MYSQL_USER: wordpress
+      MYSQL_PASSWORD: wordpress
+  wordpress:
+    depends_on:
+      - db
+    image: wordpress:5.3.2
+    volumes:
+      - wordpress_data:/var/www/html
+    ports:
+      - "135.181.85.130:80:80"
+    restart: always
+    deploy:
+      resources:
+        limits:
+          cpus: '0.50'
+          memory: 100M
+        reservations:
+          cpus: '0.25'
+          memory: 50M
+    environment:
+      WORDPRESS_DB_HOST: db
+      WORDPRESS_DB_USER: wordpress
+      WORDPRESS_DB_PASSWORD: wordpress
+      WORDPRESS_DB_NAME: wordpress
+volumes:
+  db_data: {}
+  wordpress_data: {}
+```
+
+5. Запустите docker-compose в каталоге проекта в фоновом режиме.
+6. Проверьте доступность Wordpress из глобальной сети. Выполните процедуру установки Wordpress http://IP/wp-admin/install.php. Созданные credentials сохраните.
+7. Установите plugin Fakepress для генерирования наполнения блога: в директорию html/wp-content/plugins/ распакуйте содержимое архива https://downloads.wordpress.org/plugin/fakerpress.zip. Убедитесь в корректности прав на распакованные файлы и директории.
+8. Перейдите в раздел конфигурации Plugins/Installed plugins. Активируйте плагин FakerPress.
+9. Перейдите в раздел конфигурации FakerPress. Сгенерируйте:
+● 300-300 Users с настройками по умолчанию;
+● 1000-1000 Posts за прошедший год (это займет длительное время);
+● 10 Comments - выполнить 5 раз.
+10. Создайте в Wordpress тестового пользователя user1 с ролью Editor.
+11. Выполните SQL-запросы. Результат приложите в ответы к заданию
+SELECT count(*) AS COUNT_USERS FROM wp_users;
+SELECT count(*) AS COUNT_POSTS FROM wp_posts;
+SELECT count(*) AS COUNT_COMMENTS FROM wp_comments;
+
+```
+MariaDB [wordpress]> SELECT count(*) AS COUNT_USERS FROM wp_users;
++-------------+
+| COUNT_USERS |
++-------------+
+|         302 |
++-------------+
+1 row in set (0.001 sec)
+
+MariaDB [wordpress]> SELECT count(*) AS COUNT_POSTS FROM wp_posts;
++-------------+
+| COUNT_POSTS |
++-------------+
+|        1034 |
++-------------+
+1 row in set (0.001 sec)
+
+MariaDB [wordpress]> SELECT count(*) AS COUNT_COMMENTS FROM wp_comments;
++----------------+
+| COUNT_COMMENTS |
++----------------+
+|             52 |
++----------------+
+1 row in set (0.001 sec)
+
+MariaDB [wordpress]>
+```
+
+12. Сделать бэкап директорий database и html в примонтированный volume.
+
+```
+rsync -au /var/lib/docker/volumes/highload_db_data/_data /mnt/HC_Volume_18364365/wordpress/mariadb
+rsync -au /var/lib/docker/volumes/highload_wordpress_data/_data /mnt/HC_Volume_18364365/wordpress/html
+
+```
+
+13. Выполните онлайн-проверку скорости загрузки главной страницы сайта через инструмент Google Insights.
+14. На основании полученной оценки сервисом Insights проведите анализ скорости работы сайта + БД при одиночном запросе
+
+```
+upload file from notion:
+
+https://s3.us-west-2.amazonaws.com/secure.notion-static.com/ce15786a-d915-4a2c-b1d0-ecfda55240c7/Untitled.png?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=AKIAT73L2G45EIPT3X45%2F20220404%2Fus-west-2%2Fs3%2Faws4_request&X-Amz-Date=20220404T181325Z&X-Amz-Expires=86400&X-Amz-Signature=525069e4e63170d5f473fbc2b2440312fa54ae97831000f97bce3269f0f16eaa&X-Amz-SignedHeaders=host&response-content-disposition=filename%20%3D%22Untitled.png%22&x-id=GetObject
+
+https://www.notion.so/HL-2-77563057ee1b4b07a543d77d856115b1#bff982749bd04b0bb65539a31b7cfed8
+```

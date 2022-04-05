@@ -1,0 +1,42 @@
+Задание:
+1. Установите на локальный компьютер Apache Jmeter 5.2.
+2. Создайте Thread Group, переименуйте в Thread pool 1. Параметры:
+○ количество конкурентных заданий - 5;
+○ задержка запуска в пределах 6 сек;
+○ количество повторений - 3.
+3. Добавьте HTTP Request Defaults. Заполните поле Server Name or IP, все запросы должны быть отправлены на IP-адрес тестового блога WP.
+4. Добавьте элемент HTTP Request, переименуйте в Open main page. Настройте его, чтобы запрос открывал главную страницу тестового блога WP.
+5. Добавьте Listener - Aggregate Report. Настройте сохранение результата в файл с именем TestPlan_main_page_1.csv.
+6. Сохраните тест-план под именем TestPlan_main_page_1.jmx.
+7. Запустите тестирование.
+8. Укажите полученные значения в ответе к заданию:
+○ Average - 223 ms
+○ 95% Line - 277 ms
+○ 99% Line - 816 ms
+○ Min - 101 ms
+○ Max - 816 ms
+
+9. Приложите сгенерированный файл TestPlan_main_page_1.csv в ответе к заданию.
+
+```
+❯ cat ./TestPlan_main_page_1.csv
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1649158114761,816,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,699,0,403
+1649158115583,108,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,61,0,0
+1649158115692,153,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,73,0,0
+1649158115912,271,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,120,0,45
+1649158116185,173,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,75,0,0
+1649158116359,143,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,71,0,0
+1649158117114,253,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,119,0,48
+1649158117369,184,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,66,0,0
+1649158117554,227,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,130,0,0
+1649158118312,255,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,136,0,69
+1649158118568,101,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,57,0,0
+1649158118670,115,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,67,0,0
+1649158119514,277,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,108,0,40
+1649158119792,160,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,87,0,0
+1649158119953,120,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,63,0,0
+
+
+
+```

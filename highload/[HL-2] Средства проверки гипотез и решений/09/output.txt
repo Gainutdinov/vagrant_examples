@@ -1,0 +1,58 @@
+Задание:
+1. Оценить время ответа стенда WordPress при запросе страицы с перечнем постов, используя curl. Результат добавить в отчет.
+
+```
+cat << EOF > curl-format.txt
+     time_namelookup:  %{time_namelookup}s\n
+        time_connect:  %{time_connect}s\n
+     time_appconnect:  %{time_appconnect}s\n
+    time_pretransfer:  %{time_pretransfer}s\n
+       time_redirect:  %{time_redirect}s\n
+  time_starttransfer:  %{time_starttransfer}s\n
+                     ----------\n
+          time_total:  %{time_total}s\n
+EOF
+
+curl -w "@curl-format.txt" -o /dev/null -s "http://highload.simpledevops.xyz/?post_type=post"
+     time_namelookup:  0,122565s
+        time_connect:  0,163831s
+     time_appconnect:  0,000000s
+    time_pretransfer:  0,164030s
+       time_redirect:  0,000000s
+  time_starttransfer:  0,343807s
+                     ----------
+          time_total:  1,532495s
+
+Время ответа 1.53s
+```
+
+2. Используя вывод curl, определить часть запроса, потребовавшую наибольшее количество времени. Результат добавить в отчет.
+
+```
+curl -w "@curl-format.txt" -o /dev/null -s "http://highload.simpledevops.xyz/?post_type=post"
+     time_namelookup:  0,122565s
+        time_connect:  0,163831s
+     time_appconnect:  0,000000s
+    time_pretransfer:  0,164030s
+       time_redirect:  0,000000s
+  time_starttransfer:  0,343807s <-------------------- часть запроса, потребовавшая наибольшее кол-во времени 1.53-0.34=1.19s на непосредственно передачу данных
+                     ----------
+          time_total:  1,532495s
+
+
+```
+
+3. Оценить время ответа стенда WordPress при запросе страицы с перечнем постов, используя developer tools браузера. Снимок экрана добавить в отчет.
+
+```
+pic1.png
+```
+
+4. Используя диаграмму загрузки страницы, выводимой developer tools браузера, определить какая часть сайта загружалась дольше всего? Результат добавить в отчет.
+
+самое долгое загружалось content с картинками 
+
+```
+pic2.png
+```
+

@@ -1,42 +1,51 @@
 Задание:
-1. Установите на локальный компьютер Apache Jmeter 5.2.
-2. Создайте Thread Group, переименуйте в Thread pool 1. Параметры:
-○ количество конкурентных заданий - 5;
-○ задержка запуска в пределах 6 сек;
-○ количество повторений - 3.
-3. Добавьте HTTP Request Defaults. Заполните поле Server Name or IP, все запросы должны быть отправлены на IP-адрес тестового блога WP.
-4. Добавьте элемент HTTP Request, переименуйте в Open main page. Настройте его, чтобы запрос открывал главную страницу тестового блога WP.
-5. Добавьте Listener - Aggregate Report. Настройте сохранение результата в файл с именем TestPlan_main_page_1.csv.
-6. Сохраните тест-план под именем TestPlan_main_page_1.jmx.
-7. Запустите тестирование.
-8. Укажите полученные значения в ответе к заданию:
-○ Average - 223 ms
-○ 95% Line - 277 ms
-○ 99% Line - 816 ms
-○ Min - 101 ms
-○ Max - 816 ms
-
-9. Приложите сгенерированный файл TestPlan_main_page_1.csv в ответе к заданию.
-
-```
-❯ cat ./TestPlan_main_page_1.csv
-timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
-1649158114761,816,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,699,0,403
-1649158115583,108,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,61,0,0
-1649158115692,153,HTTP Request,200,OK,Thread pool 1 1-1,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,73,0,0
-1649158115912,271,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,120,0,45
-1649158116185,173,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,75,0,0
-1649158116359,143,HTTP Request,200,OK,Thread pool 1 1-2,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,71,0,0
-1649158117114,253,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,119,0,48
-1649158117369,184,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,66,0,0
-1649158117554,227,HTTP Request,200,OK,Thread pool 1 1-3,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,130,0,0
-1649158118312,255,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,136,0,69
-1649158118568,101,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,57,0,0
-1649158118670,115,HTTP Request,200,OK,Thread pool 1 1-4,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,67,0,0
-1649158119514,277,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106766,172,1,1,http://highload.simpledevops.xyz/,108,0,40
-1649158119792,160,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,87,0,0
-1649158119953,120,HTTP Request,200,OK,Thread pool 1 1-5,text,true,,106765,172,1,1,http://highload.simpledevops.xyz/,63,0,0
-
+1. Установите дополнение https://chrome.google.com/webstore/search/blzaemeter в Браузер Chrome.
+2. Создайте учетную запись https://www.blazemeter.com/. Выполните вход в аккаунт.
+Это необходимо для сохранения сценария в формате jmx.
+3. Ознакомьтесь с документацией на plugin.
+4. Установите Top level requests and the Following.
+5. Запишите через дополнение следующий сценарий:
+○ открытие главной страницы стенда Wordpress;
+○ переход на страницу Sample Page;
+○ переход на страницу Login;
+○ вход под тестовым пользователем минимум с ролью Editor;
+○ переход на раздел Posts;
+○ переход на страницу Add New;
+○ переход в раздел Media;
+○ переход в раздел Pages;
+○ переход в раздел Comments;
+○ переход на главную страницу;
+○ выполнение Log Out.
+6. Сохраните полученную запись (запросы к IP WordPress) в формате JMX и откройте сохраненный файл в Jmeter.
+7. Запустите тестирование в 1 поток. Проверьте тест-план на наличие запросов, на которые возвращается статус ошибки. Отключите данные запросы в тест-плане.
+8. Выставите в параметрах потоков:
+○ количество конкурентных заданий - 300;
+○ задержка запуска в пределах 120 сек;
+○ количество повторений - бесконечное;
+○ время жизни потока - 600 сек.
+9. Сохраните тест-план с именем TestPlan_main_page_3.jmx.
+10. Скопируйте TestPlan_main_page_3.jmx на VM для запуска тестов. Запустите тестирование с формированием HTML-отчета и записью jtl лога.
+11. Найдите в отчете 3 запроса, которые сильнее всего деградируют при высокой нагрузке по показателю Percentiles. Какие это страницы? (Попробуйте обосновать, почему эти страницы открываются долго)
 
 
 ```
+#Если отсортировать по колонке 99th percentile по убыванию, то получим что вот эти запросы самые медленные:
+
+
+Total	12996	3877	29.83%	18758.45	0	208386	33986.00	53154.75	130485.27	20.31	401.64	16.60
+Test	288	288	100.00%	435854.63	212492	598598	540706.10	555960.80	590036.86	0.48	296.01	8.68
+http://highload.simpledevops.xyz/wp-admin/index.php-1	131	36	27.48%	14116.74	409	154556	22584.60	39946.60	146831.20	0.39	2.33	0.31
+http://highload.simpledevops.xyz/wp-admin/upload.php	439	142	32.35%	25669.56	4265	162055	50493.00	88142.00	145525.40	0.81	23.52	0.97
+http://highload.simpledevops.xyz/wp-admin/edit.php?post_type=page	339	105	30.97%	22162.04	4315	148476	39986.00	53055.00	144148.40	0.77	20.53	0.93
+
+первая страница это админка сама,
+вторая это media файлы,
+третья страница это posts,
+и т.к. админка начинает долго отркрыватся т.к. много сессий и это сама первая страница которая мы открываем при логине, media файлы долго открывается т.к. это не текст, а медиа файлы которые "тяжелые для передачи данных", ну последнее посты, их много, очень много и каждый раз скорее всего мы упираемся в DB т.к. он высчитывает на кол-во постов в DB, что тоже в свою очередь не очень быстро вдобавок при большом кол-во пользователей db точно не успевает быстро отрабатывать.
+```
+
+
+12. Приложите к ответу тест-план jmx, сжатый jtl лог-файл.
+
+TestPlan_main_page_1.jmx
+logs.jtl

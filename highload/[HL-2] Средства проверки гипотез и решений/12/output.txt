@@ -1,0 +1,21 @@
+Задание:
+1. Откройте Jmeter в режиме GUI. Создайте структуру:
+○ Thread Group с параметрами по умолчанию;
+○ HTTP Request Defaults. Укажите IP стенда WordPress;
+○ Sampler HTTP Request. Переименуйте его в Get Main Page. Установите соответствующий Path;
+○ Listener View Results Tree.
+2. Сохраните тест-план под именем TestPlan_main_page_4.jmx и запустите.
+3. Перейдите в View Results Tree. Убедитесь, что запрос выполнен без ошибок.
+4. Измените формат вывода с Text на TegExp Tester. Проверьте регулярное выражение <a href="([^#"]+)". В ответ вы должны получить список всех ссылок с главной страницы.
+5. Добавьте к запросу Get Main Page Post-processor Regular Expression Extractor:
+● Имя переменной, куда будут записаны результаты извлечения - URLs
+● Регулярное выражение из предыдущего пункта
+● Группа - $1$
+● Количество совпадений - -1
+6. С помощью ForEach Controller создайте HTTP запрос на каждое значение переменной URLs из предыдущего пункта.
+7. Переименуйте HTTP Request внутри ForEach Controller, чтобы каждый запрос отображаться в виде HTTP Request to $URL.
+8. Для Sampler Get Main Page добавьте Assertion на код ответа HTTP200.  Переименуйте его в Response HTTP200.
+9. Для запросов в ForEach Controller добавьте Assertionна длительность выполнения более 5 сек. переименуйте его в Duration less than 5 sec.
+10. Добавьте Listener Assertion Results для отслеживания результатов работы Assertions.
+11. Запустите тест план и проверьте корректность работы. Ошибочные статусы ответа можно игнорировать.
+12. В качетве ответа к заданию приложите тест план TestPlan_main_page_4.jmx.

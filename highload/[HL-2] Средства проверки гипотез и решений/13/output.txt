@@ -1,0 +1,35 @@
+Задание:
+1. Установите Plugin Manager в Jmeter.
+2. Перезапустите Jmeter и откройте Plugin Manager.
+3. Установите расширения:
+● Concurrency Thread Group,
+● 3 Basic Graphs,
+● PerfMon (Servers Performance Monitoring),
+● 5 Additional Graphs,
+● Composite Timeline Graph,
+● KPI vs KPI Graphs.
+4. Создайте bzm - Concurrency Thread Group с параметрами:
+● конечное число потоков - 30;
+● выход на конечное число потоков через 60 сек;
+● число ступеней - 5;
+● удержание целевого количества потоков - 180 сек.
+5. Добавьте HTTP Request Defaults и настройте на стенд WordPress.
+6. Создайте sampler HTTP Request, настройте его на открытие главной страницы, переименуйте в Open main page.
+7. Добавьте Listeners:
+● jp@gc - Response Times Over Time;
+● jp@gc - Active Threads Over Time;
+● jp@gc - Transaction Throughput vs Threads;
+● jp@gc - Response Times vs Threads;
+● jp@gc - Transactions per Second;
+● jp@gc - Composite Graph;
+● View Results Tree.
+8. Выполните настройку jp@gc - Composite Graph. В разделе Graphs добавьте отображение:
+● Open main page;
+● bzm - Concurrency Thread Group - Threadstarter;
+● Open main page (success);
+● Failed transactions per Second.
+9. Сохраните тест-план под именем TestPlan_main_page_5.jmx и запустите.
+10. Ознакомьтесь с результатами тестирования.
+11. Проанализируйте получившийся график jp@gc - Composite Graph.
+Стабильно ли работает открытие главной страницы при проведенном тестировании?
+12. В качестве ответа к заданию приложите тест-план TestPlan_main_page_5.jmx.

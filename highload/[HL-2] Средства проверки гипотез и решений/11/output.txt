@@ -47,5 +47,5 @@ http://highload.simpledevops.xyz/wp-admin/edit.php?post_type=page	339	105	30.97%
 
 12. Приложите к ответу тест-план jmx, сжатый jtl лог-файл.
 
-TestPlan_main_page_1.jmx
+TestPlan_main_page_3.jmx
 logs.jtl

@@ -1,5 +1,31 @@
 Задание:
 1. Скачайте Docker-имидж alpine последней версии. Определите его размер.
+
+```
+docker pull alpine:latest
+```
+
 2. Скачайте Docker-имидж ubuntu последней версии. Определите его размер.  Сравните размер с имиджем alpine.
+
+```
+❯ docker pull ubuntu:latest
+❯ docker images | grep 'alpine\|ubuntu'
+ubuntu           latest    825d55fb6340   8 days ago     72.8MB
+alpine           latest    0ac33e5f5afa   9 days ago     5.57MB
+
+```
+
 3. Запустите контейнер, используя имидж alpine. В качестве команды используйте ash (Almquist shell, используемый в alpine по умолчанию).
 4. Обновите контейнер до последней версии пакетов.
+
+```
+❯ docker run --rm -ti alpine:latest ash
+/ # apk update && apk upgrade
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/main/x86_64/APKINDEX.tar.gz
+fetch https://dl-cdn.alpinelinux.org/alpine/v3.15/community/x86_64/APKINDEX.tar.gz
+v3.15.4-28-gf3bb9d0183 [https://dl-cdn.alpinelinux.org/alpine/v3.15/main]
+v3.15.4-27-gc5ddbcec7b [https://dl-cdn.alpinelinux.org/alpine/v3.15/community]
+OK: 15855 distinct packages available
+OK: 6 MiB in 14 packages
+```
+

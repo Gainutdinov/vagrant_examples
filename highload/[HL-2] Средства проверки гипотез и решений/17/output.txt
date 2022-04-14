@@ -1,14 +1,71 @@
 Задание:
 1. Скачайте Docker-образ Siege.
+
+```bash
+docker pull yokogawa/siege
+```
+
 2. Вызовите встроенную справку.
+
+```
+docker run --rm -t yokogawa/siege -help
+```
+
 3. Выясните версию Siege в имидже.
+
+```
+❯ docker run --rm -t yokogawa/siege -V
+SIEGE 3.0.5
+
+Copyright (C) 2013 by Jeffrey Fulmer, et al.
+This is free software; see the source for copying conditions.
+There is NO warranty; not even for MERCHANTABILITY or FITNESS
+FOR A PARTICULAR PURPOSE.
+
+```
+
 4. Выполните тест стенда WordPress, используя следующие параметры:
 ○ количество конкурентных заданий - 25;
 ○ количество повторений - 10;
 ○ задержка запуска в пределах 10 с.
+
+```bash
+
+❯ docker run --rm -t yokogawa/siege highload.simpledevops.xyz --concurrent=25 --reps=10 --delay=10
+** SIEGE 3.0.5
+** Preparing 25 concurrent users for battle.
+The server is now under siege..      done.
+
+Transactions:                    250 hits
+Availability:                 100.00 %
+Elapsed time:                  67.83 secs
+Data transferred:               3.92 MB
+Response time:                  0.42 secs
+Transaction rate:               3.69 trans/sec
+Throughput:                     0.06 MB/sec
+Concurrency:                    1.54
+Successful transactions:         250
+Failed transactions:               0
+Longest transaction:            0.99
+Shortest transaction:           0.24
+
+FILE: /var/log/siege.log
+You can disable this annoying message by editing
+the .siegerc file in your home directory; change
+the directive 'show-logfile' to false.
+
+```
+
 5. Проанализируйте вывод Siege и найдите следующие параметры:
-○ общее время выполнения теста;
-○ количество удачных транзакций;
-○ количество ошибочных транзакций;
-○ время выполнения самой быстрой транзакции;
-○ время выполнения самой медленной транзакции.
+○ общее время выполнения теста;                  ` Elapsed time:                  67.83 secs`
+○ количество удачных транзакций;                 ` Successful transactions: 250`
+○ количество ошибочных транзакций;               ` Failed transactions: 0`
+○ время выполнения самой быстрой транзакции;     ` Longest transaction:            0.99`
+○ время выполнения самой медленной транзакции.   ` Shortest transaction:           0.24`
+
+
+
+
+
+
+

@@ -7,5 +7,16 @@
 ○ Выясните версию установленного MySQL-клиента.
 
 ```Dockerfile
+FROM alpine:3.15.4
+RUN apk add mysql-client
 
+docker build . -t myimage
+$ docker images
+REPOSITORY   TAG       IMAGE ID       CREATED         SIZE
+myimage      latest    3eb112184d9c   9 minutes ago   42.4MB
+
+
+$ docker run --rm -ti myimage ash
+/ # apk list --installed | grep mysql
+mysql-client-10.6.7-r0 x86_64 {mariadb} (GPL-2.0-or-later) [installed]
 ```

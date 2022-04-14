@@ -1,0 +1,77 @@
+Задание:
+1. Выполните нагрузочное тестирование стенда WordPress, используя следующие параметры:
+○ количество конкурентных подключений - 1;
+○ время тестирования - 60 с;
+○ задержка - 1 с.
+
+```
+docker run --rm -t yokogawa/siege highload.simpledevops.xyz --concurrent=1 --delay=1 --time=60S
+```
+
+2. Ответьте на вопросы:
+○ Какова нагрузка на CPU и память на ВМ целевого сайта во время теста?
+○ Повлияла или не повлияла созданная нагрузка на ВМ?
+○ Каково максимальное время обработки транзакции?
+
+```
+CPU load avg: 
+  before: 0.00
+  after:  0.04
+
+не сильно VM на котором хостится wordpress работал нормально, перегрузок не наблюдалось
+
+Memory used:
+  before: 626MB
+  after:  630MB
+
+Longest transaction:            0.87
+```
+
+3. Увеличивайте количество конкурентных подключений в 2 раза и повторяйте тест до тех пор, пока максимальное время обработки транзакции на увеличится до 3 с.  Ответьте на вопросы:
+○ Какое количество конкурентных подключений выдерживает целевой сайт при тестировании Siege, если принять максимально допустимое время ответа 3 с?
+○ Какова загрузка CPU и памяти ВМ в момент тестирования?
+○ Что нужно предпринять, чтобы увеличить количество одновременных подключений?
+
+```
+❯ docker run --rm -t yokogawa/siege highload.simpledevops.xyz --concurrent=16 --delay=1 --time=60S
+** SIEGE 3.0.5
+** Preparing 16 concurrent users for battle.
+The server is now under siege...
+Lifting the server siege...      done.
+
+Transactions:                    433 hits
+Availability:                 100.00 %
+Elapsed time:                  59.88 secs
+Data transferred:               6.79 MB
+Response time:                  1.67 secs
+Transaction rate:               7.23 trans/sec
+Throughput:                     0.11 MB/sec
+Concurrency:                   12.07
+Successful transactions:         433
+Failed transactions:               0
+Longest transaction:            6.85
+Shortest transaction:           0.33
+
+FILE: /var/log/siege.log
+You can disable this annoying message by editing
+the .siegerc file in your home directory; change
+the directive 'show-logfile' to false.
+
+
+CPU load avg: 
+  before: 0.00
+  after:  1.02
+
+Memory used:
+  before: 626MB
+  after:  682MB
+
+
+Чтобы улучшить результаты надо добавить больше ресурсов контейнерам
+```
+
+4. Имитация DDoS. Как нужно изменить параметры запуска? DDoS-атаку какой мощности выдержит наш сайт? 
+
+```
+необходимо запустить siege на разных хостах чтобы осуществить DDoS
+```

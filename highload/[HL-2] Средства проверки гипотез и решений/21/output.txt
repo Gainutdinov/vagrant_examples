@@ -1,0 +1,25 @@
+Задание:
+1. Откройте план тестирования TestPlan_main_page_3.jmx (Задание Jmeter. Запись сценария. Поиск сложных запросов) и пересохраните его под именем TestPlan_main_page_appdex.jmx.
+2. Уменьшите время разгона со 120 сек до 60 сек.
+3. Скопируйте TestPlan_main_page_appdex.jmx на VM для запуска тестов. Запустите тестирование с формированием HTML-отчета и записью jtl лога.
+
+```
+./jmeter -g '/home/mgainutdinov/repos/vagrant_examples/highload/[HL-2] Средства проверки гипотез и решений/11/logs.jtl' -o '/tmp/testoutput'
+```
+
+4. Проанализируйте получившийся отчет. Выпишите значения Apdex для:
+● Total: 0.000
+
+● Main Page: 0.000
+● Login: 0.000
+● Sample page: 0.000
+● Add new: 0.000
+
+5. Установите более жесткие критерии для индекса ApDex, изменив параметры запуска в CLI. Satisfied Threshold = 1000, Tolerated Threshold = 2000. Укажите добавленные параметры.
+
+6. Проанализируйте получившийся отчет. Выпишите значения Apdex для:
+● Total: 0.000
+● Main Page: 0.000
+● Login: 0.000
+● Sample page: 0.000
+● Add new: 0.000

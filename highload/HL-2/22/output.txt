@@ -13,11 +13,11 @@ docker-compose --profile all up -d
 ● Какие контейнеры были созданы и какова их роль?
 
 ```
-zabbix-web-nginx-pgsql - Zabbix frontend on Nginx web-server with PostgreSQL database support
+zabbix-web-nginx-pgsql - Zabbix web interface is a part of Zabbix software. It is used to manage resources under monitoring and view monitoring statistics.
 zabbix-agent           - zabbix-agent
-zabbix-web-service     - Zabbix web service, '/usr/sbin/zabbix_web_service -c /etc/zabbix/zabbix_web_service.conf'
-zabbix-server          - Zabbix server itself, pollers, discoverer, housekeepers, trappers etc.
-postgres-server        - контейнер в котором запущена DB
+zabbix-web-service     - Zabbix web service for performing various tasks using headless web browser (for example, reporting).
+zabbix-server          - Zabbix server is the central process of Zabbix software.  The server performs the polling and trapping of data, it calculates triggers, sends notifications to users. It is the central component to which Zabbix agents and proxies report data on availability and integrity of systems. The server can itself remotely check networked services (such as web servers and mail servers) using simple service checks.
+postgres-server        - container which hosts PostgreSQL itself
 db_data_pgsql          - контейнер полезен для организации backup'ов
 ```
 

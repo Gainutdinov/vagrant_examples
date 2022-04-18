@@ -11,6 +11,11 @@ smh/ILFYRcGxdGy3npwEK+qzWnHo5vMY
 ○ Host metadata должна содержать Linux и строку из п.1;
 ○ должно произойти добавление в группу хостов Linux servers;
 ○ должен быть прилинкован шаблон Template OS Linux by Zabbix agent.
+
+```
+1.png
+```
+
 3. На тестовом стенде WordPress запустите контейнер со следующими параметрами:
 ○ удаление после остановки контейнера;
 ○ проброс диска хостовой машины внутрь контейнера;
@@ -21,11 +26,46 @@ smh/ILFYRcGxdGy3npwEK+qzWnHo5vMY
 ○ итоговую команду приложите как ответ к заданию.
 
 ```
-docker run --rm --name wordpress-zabbix-agent -P 10050:10050 --privileged -d zabbix/zabbix-agent:ubuntu-4.4.6
+docker run --rm --name wordpress-zabbix-agent -v /dev/sda:/dev/sda -p 10050:10050 \
+       -e ZBX_HOSTNAME='Wordpress' \
+       -e ZBX_SERVER_HOST='zabbix.simpledevops.xyz' \ 
+       -e ZBX_METADATA=='Linux smh\ILFYRcGxdGy3npwEK+qzWnHo5vMY' \
+       --privileged -d zabbix/zabbix-agent:6.0-ubuntu-latest
 
 ```
 
 4. Убедитесь, что произошло обнаружение хоста и метрики успешно собираются в Zabbix-Server.
+
+```
+   277:20220418:113603.410 enabling Zabbix agent checks on host "Wordpress": interface became available
+   280:20220418:113611.367 cannot send list of active checks to "172.16.239.2": host [Zabbix server] not found
+
+```
+
 5. Выполните запрос в БД PostgreSQL. Вывод запроса приложите в ответ к заданию.
 \x on
-SELECT * FROM "autoreg_host" WHERE "host" = 'WordPress';
+SELECT * FROM "autoreg_host" WHERE "host" = 'Wordpress';
+
+
+```
+root@44cdae495c3d:/# psql -U zabbix -W
+Password:
+psql (13.6 (Debian 13.6-1.pgdg110+1))
+Type "help" for help.
+zabbix=# \x
+Expanded display is on.
+zabbix=# \x on
+Expanded display is on.
+zabbix=# SELECT * FROM "autoreg_host" WHERE "host" = 'Wordpress';
+-[ RECORD 1 ]--+----------------------------------------
+autoreg_hostid | 2
+proxy_hostid   |
+host           | Wordpress
+listen_ip      | 51.250.36.177
+listen_port    | 10050
+listen_dns     |
+host_metadata  | =Linux smh\ILFYRcGxdGy3npwEK+qzWnHo5vMY
+flags          | 0
+tls_accepted   | 1
+
+```

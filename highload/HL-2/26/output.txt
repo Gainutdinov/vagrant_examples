@@ -1,0 +1,24 @@
+Задание:
+1. На VM с WordPress запустите Zabbix-proxy контейнер со следующими параметрами:
+● имя контейнера zabbix-proxy-sqlite3;
+● хостнейм zbx-test-proxy;
+● режим работы агента - активный;
+● подключение к ранее развернутому Zabbix-Server. Указать IP;
+● использовать образ zabbix-proxy-sqlite3:ubuntu-4.4.6. Итоговую команду приложите в ответ к заданию.
+
+```
+
+```
+
+2. В Zabbex Web UI добавьте Proxy:
+● название zbx-test-proxy;
+● адрес - укажите IP со стендом WordPress.
+3. Убедитесь, что Zabbix Server и Zabbix Proxy установили соединение (Last seen (age) < 10 сек).
+4. На VM с WordPress перезапустите агент мониторинга с указанием IP Zabbix Proxy в параметрах сервера (ранее был указан IP адрес Zabbix Server).
+
+```
+
+```
+
+5. В настройках хоста WordPress в Zabbix GUI укажите использовать zbx-test-proxy.
+6. Убедитесь, что данные успешно собираются с VM WordPress.e

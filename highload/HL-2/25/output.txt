@@ -1,0 +1,53 @@
+docker container ls --format "name {{.Names}}" |     jq -nR '[inputs | split(" ") | { "name": .[1]}]'
+
+Задание:
+1. Создайте файл userparameter_docker.conf. Определите в нем 2 UserParameter:
+● UserParameter=docker.discovery - должен возвращать список всех запущенных контейнеров в формате JSON. Используйте docker cotainer ls + форматирование.  Для преобразования JSON строк в единый документ можно использовать утилиту jq. Пример вывода:
+[
+{
+"name": "adminer_1"
+},
+{
+"name": "zabbix-web-nginx-pgsql_1"
+}
+]
+● UserParameter=docker.stats[*] - должен возвращать метрики контейнера, указанные в параметре $1. Реализуйте 2 метрики - CPU% и Mem%, используя docker stats + форматирование. Пример запроса:
+docker.stats[zabbix-web-nginx-pgsql_1]
+Пример вывода:
+{"CPU":"2.36", "Memory":"15.84"}
+Получившийся файл приложите в ответ к заданию.
+2. В Zabbix Frontend создайте новый шаблон Template Docker containers.
+3. В шаблоне Template Docker containers создайте правило обнаружения:
+● название правила - Docker containers;
+● ключ - docker.discovery;
+● интервал обновления - 10 мин;
+● хранение потерянных ресурсов - 7 дней;
+● в закладке LDD Macros создайте правило преобразования JSON пути .name в макрос $NAME.
+4. Создайте Item prototypes с названием Docker stats {#NAME}:
+● тип - Zabbix agent;
+● ключ - docker.stats[{#NAME}];
+● тип данных - Text;
+● интервал обновления - 60 сек;
+● приложение - Docker container.
+5. Создайте Item prototypes с названием CPU {#NAME}:
+● тип - Dependent item;
+● ключ - docker_container_cpu[{#NAME}];
+● Master item - Docker stats {#NAME};
+● тип данных - Numeric (float);
+● единицы - %;
+● приложение - Docker container;
+● во вкладке Preprocessing создайте JSONpath для извлечения значения .CPU.
+6. Создайте Item prototypes с названием Memory {#NAME} по аналогии с предыдущим пунктом для извлечения значения .Memory.
+7. Установите zabbix-agent версии 4.4 на VM с контейнерами zabbix.
+8. Скопируйте userparameter_docker.conf в директорию /etc/zabbix/zabbix_agentd.conf.d и перезагрузите агент мониторинга.
+9. Выполните проверку обнаружения с помощью команды
+docker exec -ti zabbix-server_1 zabbix_get -s $IP_ZABBIX_SERVER -k docker.discovery
+Результат выпонения приложите в ответ к заданию.
+10. Выполните проверку получения статистики с помощью команды
+docker exec -ti zabbix-server_1 zabbix_get -s $IP_ZABBIX_SERVER -k docker.stats[zabbix-server_1]
+Результат выполнения приложите в ответ к заданию.
+11. Разрешите пользователю zabbix выполнять команду /usr/bin/docker.
+12. Добавьте zabbix-agent на хосте zabbix-server в конфигурацию Zabbix. Назначьте на новый хост шаблон Template Docker containers.
+13. Убедитесь, что автообнаружение элементов отработало в штатном режиме и метрики корректно собираются.
+14. Выполните команду и приложите результат выполнения в ответ к заданию
+docker logs zabbix_1_zabbix-server_1 | grep 'docker.*became supported'

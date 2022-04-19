@@ -1,5 +1,3 @@
-docker container ls --format "name {{.Names}}" |     jq -nR '[inputs | split(" ") | { "name": .[1]}]'
-
 Задание:
 1. Создайте файл userparameter_docker.conf. Определите в нем 2 UserParameter:
 ● UserParameter=docker.discovery - должен возвращать список всех запущенных контейнеров в формате JSON. Используйте docker cotainer ls + форматирование.  Для преобразования JSON строк в единый документ можно использовать утилиту jq. Пример вывода:
@@ -16,6 +14,13 @@ docker.stats[zabbix-web-nginx-pgsql_1]
 Пример вывода:
 {"CPU":"2.36", "Memory":"15.84"}
 Получившийся файл приложите в ответ к заданию.
+
+```
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker# cat ./userparameter_docker.conf
+UserParameter=docker.discovery, docker container ls --format "name {{.Names}}" | jq -nR '[inputs | split(" ") | { "name": .[1]}]'
+UserParameter=docker.stats[*], docker stats $1 --format="{{.CPUPerc}} {{.MemPerc}}" --no-stream | tr -d '%' | jq -nR 'inputs | split(" ") |  { "CPU": .[0], 'Memory': .[1] }'
+r
+```
 2. В Zabbix Frontend создайте новый шаблон Template Docker containers.
 3. В шаблоне Template Docker containers создайте правило обнаружения:
 ● название правила - Docker containers;
@@ -38,16 +43,101 @@ docker.stats[zabbix-web-nginx-pgsql_1]
 ● приложение - Docker container;
 ● во вкладке Preprocessing создайте JSONpath для извлечения значения .CPU.
 6. Создайте Item prototypes с названием Memory {#NAME} по аналогии с предыдущим пунктом для извлечения значения .Memory.
+
+```
+1.png
+```
+
 7. Установите zabbix-agent версии 4.4 на VM с контейнерами zabbix.
+
+```
+wget https://repo.zabbix.com/zabbix/4.0/ubuntu/pool/main/z/zabbix-release/zabbix-release_4.0-3+bionic_all.deb
+dpkg -i zabbix-release_4.0-3+bionic_all.deb
+apt update 
+apt install zabbix-agent 
+systemctl start zabbix-agent.service
+```
+
 8. Скопируйте userparameter_docker.conf в директорию /etc/zabbix/zabbix_agentd.conf.d и перезагрузите агент мониторинга.
+
+```
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker# cat ./userparameter_docker.conf
+UserParameter=docker.discovery, docker container ls --format "name {{.Names}}" | jq -nR '[inputs | split(" ") | { "name": .[1]}]'
+UserParameter=docker.stats[*], docker stats $1 --format="{{.CPUPerc}} {{.MemPerc}}" --no-stream | tr -d '%' | jq -nR 'inputs | split(" ") |  { "CPU": .[0], 'Memory': .[1] }'
+
+
+cat << EOF > /etc/zabbix/zabbix_agentd.d/docker.conf
+UserParameter=docker.discovery, docker container ls --format "name {{.Names}}" | jq -nR '[inputs | split(" ") | { "name": .[1]}]'
+UserParameter=docker.stats[*], docker stats $1 --format="{{.CPUPerc}} {{.MemPerc}}" --no-stream | tr -d '%' | jq -nR 'inputs | split(" ") |  { "CPU": .[0], 'Memory': .[1] }'
+
+EOF
+systemctl restart zabbix-agent.service
+usermod -aG docker zabbix
+
+cat /etc/zabbix/zabbix_agentd.conf
+...
+Hostname=coredns
+HostMetadata=Linux smh/ILFYRcGxdGy3npwEK+qzWnHo5vMY
+Server=zabbix.simpledevops.xyz,172.16.238.2
+...
+systemctl restart zabbix-agent.service
+systemctl status zabbix-agent.service
+```
+
 9. Выполните проверку обнаружения с помощью команды
 docker exec -ti zabbix-server_1 zabbix_get -s $IP_ZABBIX_SERVER -k docker.discovery
 Результат выпонения приложите в ответ к заданию.
+
+```
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker# docker exec -ti zabbix-docker_zabbix-server_1 zabbix_get -s zabbix.simpledevops.xyz -k docker.discovery
+zabbix_get [304]: Check access restrictions in Zabbix agent configuration
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker#
+
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker# docker exec -ti zabbix-docker_zabbix-server_1 zabbix_get -s zabbix.simpledevops.xyz -k docker.discovery
+[
+  {
+    "name": "zabbix-docker_zabbix-web-nginx-pgsql_1"
+  },
+  {
+    "name": "zabbix-docker_zabbix-server_1"
+  },
+  {
+    "name": "zabbix-docker_postgres-server_1"
+  },
+  {
+    "name": "zabbix-docker_zabbix-web-service_1"
+  },
+  {
+    "name": "highload_wordpress_1"
+  },
+  {
+    "name": "highload_db_1"
+  }
+]
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker#
+
+```
+
 10. Выполните проверку получения статистики с помощью команды
 docker exec -ti zabbix-server_1 zabbix_get -s $IP_ZABBIX_SERVER -k docker.stats[zabbix-server_1]
 Результат выполнения приложите в ответ к заданию.
+
+```
+root@coredns-slave:/mnt/HC_Volume_18364365/zabbix-docker# docker exec -ti zabbix-docker_zabbix-server_1 zabbix_get -s zabbix.simpledevops.xyz  -k docker.stats[zabbix-docker_zabbix-server_1]
+{
+  "CPU": "3.19",
+  "Memory": "8.46"
+}
+```
+
 11. Разрешите пользователю zabbix выполнять команду /usr/bin/docker.
 12. Добавьте zabbix-agent на хосте zabbix-server в конфигурацию Zabbix. Назначьте на новый хост шаблон Template Docker containers.
 13. Убедитесь, что автообнаружение элементов отработало в штатном режиме и метрики корректно собираются.
 14. Выполните команду и приложите результат выполнения в ответ к заданию
 docker logs zabbix_1_zabbix-server_1 | grep 'docker.*became supported'
+
+```
+2.png
+```
+
+

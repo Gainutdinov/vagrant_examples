@@ -1,0 +1,56 @@
+Задание:
+Правила выполнения:
+
+В данном задании вам предоставляется доступ к машине, на которой предустановлен haproxy и развернуты 2 веб-сервера на портах 80 и 8080 Файл конфигурации haproxy находится по пути /etc/haproxy/haproxy.cfg
+
+Вам необходимо настроить haproxy следующим образом:
+
+    Конфиг haproxy должен содержать 2 фронтенда с именами rebrain_front_1 и rebrain_front_2
+    Конфиг haproxy должен содержать 2 бэкенда с именами rebrain_back_80 и rebrain_back_8080
+    Фронтенд rebrain_front_1 должен соответствовать следующим условиями:
+        Прослушивать порт 443
+        Работать в режиме tcp
+        backend по умолчанию: rebrain_back_80
+    Фронтенд rebrain_front_2 должен соответствовать следующим условиями:
+        Прослушивать порт 442
+        Работать в режиме http
+        backend по умолчанию: rebrain_back_8080
+    Бэкенд rebrain_back_80 должен соответствовать следующим условиям:
+        Перенаправлять трафик на 2 сервера с именами stand_01_80 и stand_02_80 на 127.0.0.1:80
+    Бэкенд rebrain_back_8080 должен соответствовать следующим условиям:
+        Перенаправлять трафик на 2 сервера с именами stand_01_8080 и stand_02_8080 на 127.0.0.1:8080
+        Работать в режиме http
+
+Если вы считаете, что правильно выполнили задание, но автопроверка не засчитывает задание, вы можете задать вопрос кураторам, приложив файл конфигурации к вопросу. Наши кураторы оценят выполнение в ручном режиме.
+
+Внимание, запрещено изменять путь файла конфигурации и модифицировать следующую часть файла конфигурации
+
+program api command dataplaneapi -f /etc/haproxy/dataplaneapi.hcl no option start-on-reload
+
+
+```
+
+frontend rebrain_front_1
+  mode tcp
+  bind *:443
+  option tcplog
+  default_backend rebrain_back_80
+
+frontend rebrain_front_2
+  mode http
+  bind *:442
+  default_backend rebrain_back_8080
+
+backend rebrain_back_80
+  server stand_01_80 127.0.0.1:80
+  server stand_02_80 127.0.0.1:80
+
+backend rebrain_back_8080
+  server stand_01_8080 127.0.0.1:8080
+  server stand_02_8080 127.0.0.1:8080
+
+program api
+  command dataplaneapi -f /etc/haproxy/dataplaneapi.hcl
+  no option start-on-reload
+```
+

@@ -1,0 +1,155 @@
+Задание:
+1. Создайте тестовую ВМ со следующими параметрами:
+○ 1 CPU,
+○ 2Гб оперативной памяти,
+○ 25Гб - диск.
+2. На тестовую ВМ установите Docker и docker-compose.
+3. На тестовой ВМ создайте файл docker-compose.yml следующего содержания:
+
+```
+version: '2'
+services:
+  web:
+    image: httpd
+    ports:
+      - "80:80"
+    links:
+      - fluentd
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: localhost:24224
+        tag: httpd.access
+  fluentd:
+    build: ./fluentd
+    volumes:
+      - ./fluentd/conf:/fluentd/etc
+    links:
+      - "elasticsearch"
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
+  elasticsearch:
+    image: elasticsearch:7.6.0
+    expose:
+      - 9200
+    ports:
+      - "9200:9200"
+    environment:
+      - 'discovery.type=single-node'
+  kibana:
+    image: kibana:7.6.0
+    links:
+    - "elasticsearch"
+    ports:
+    - "5601:5601"
+```
+
+
+Ответьте на контрольные вопросы:
+○ Какие контейнеры будут созданы?
+
+```
+kibana + elasticsearch + fluentd + web (httpd)
+```
+
+○ Какие имиджи используются?
+
+```
+fluentd - Dockerfile below
+httpd 
+elasticsearch 
+kibana 
+```
+
+○ Какие TCP-порты используются?
+
+```
+
+kibana: 5601
+elasticsearch: 9200 #Expose ports without publishing them to the host machine - they’ll only be accessible to linked services. 
+fluentd: 24224 + 24224/udp
+web: 80
+```
+
+○ Каково назначение контейнера web?
+
+```
+чтобы делать логи для fluentd
+```
+
+4. Создайте директорию fluentd и в ней Dockerfile:
+
+```
+mkdir fluentd
+
+cat << EOF > ./fluentd/Dockerfile
+FROM fluent/fluentd:v0.12-debian
+RUN ["gem", "install", "elasticsearch", "--no-rdoc", "--no-ri", "--version", "7.5.0"]
+RUN ["gem", "install", "fluent-plugin-elasticsearch", "--no-rdoc", "--no-ri", "--version", "1.9.2"]
+EOF
+```
+
+5. Создайте директорию fluentd/conf и в ней файл fluent.conf:
+
+```
+mkdir ./fluentd/conf
+cat << EOF > ./fluentd/conf/fluent.conf
+<source>
+@type forward
+port 24224
+bind 0.0.0.0
+</source>
+<match *.**>
+@type copy
+<store>
+  @type elasticsearch
+  host elasticsearch
+  port 9200
+  logstash_format true
+  logstash_prefix fluentd
+  logstash_dateformat %Y%m%d
+  include_tag_key true
+  type_name access_log
+  tag_key @log_name
+  flush_interval 1s
+</store>
+<store>
+  @type stdout
+</store>
+</match>
+EOF
+
+```
+
+6. Установите значение системного параметра vm.max_map_count равным 262144.
+
+```
+echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+sysctl -p
+
+```
+
+7. Запустите EFK-стек.
+
+```
+export HOSTNAME=${HOSTNAME}
+docker-compose up -d --build
+```
+
+8. Выполните несколько раз запрос к веб-серверу контейнера web.
+9. Откройте в браузере заглавную страницу Kibana.
+10. Зайдите в настройки Kibana и создайте новый индекс с паттерном fluentd-*.
+
+```
+curl -X PUT "localhost:9200/fluentd_$(date -u +'%Y_%m_%d')?pretty"
+
+```
+
+11. Перейдите на страницу Discover и убедитесь, что логи от тестового контейнера web сохраняются в системе EFK.
+
+```
+kibana.simpledevops.xyz:5601
+```
+
+

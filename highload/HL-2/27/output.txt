@@ -138,6 +138,7 @@ docker-compose up -d --build
 ```
 
 8. Выполните несколько раз запрос к веб-серверу контейнера web.
+
 9. Откройте в браузере заглавную страницу Kibana.
 10. Зайдите в настройки Kibana и создайте новый индекс с паттерном fluentd-*.
 
@@ -150,6 +151,8 @@ curl -X PUT "localhost:9200/fluentd_$(date -u +'%Y_%m_%d')?pretty"
 
 ```
 kibana.simpledevops.xyz:5601
+1.png
 ```
+
 
 

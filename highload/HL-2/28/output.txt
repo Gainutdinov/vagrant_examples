@@ -9,13 +9,85 @@ root soft nofile 65536
 root hard nofile 65536
 * soft nofile 65536
 * hard nofile 65536
+
+```
+cat << EOF >> /etc/security/limits.conf
+root soft nofile 65536
+root hard nofile 65536
+* soft nofile 65536
+* hard nofile 65536
+EOF
+```
+
 3. и перезагрузите тестовую ВМ.
 4. Установите td-agent версии 3.x.
+
+```
+# td-agent 3
+curl -fsSL https://toolbelt.treasuredata.com/sh/install-ubuntu-bionic-td-agent3.sh | sh
+sudo systemctl start td-agent.service
+sudo systemctl status td-agent.service
+```
+
 5. Создайте конфигурационый файл /etc/td-agent/td-agent.conf, который:
 ○ позволяет принимать сообщения syslog на порту 5140 UDP и помечает их тегом system;
 ○ пересылает полученные сообщения в Elasticsearch кластера EFK.
+
+```
+cat << EOF > /etc/td-agent/td-agent.conf
+<source>
+  type syslog
+  port 5140
+  protocol_type udp
+  tag  system
+</source>
+
+<match system.**>
+  type copy
+  <store>
+    # for debug (see /var/log/td-agent.log)
+    type stdout
+  </store>
+  <store>
+    type elasticsearch
+    host kibana.simpledevops.xyz
+    logstash_format true
+    logstash_dateformat %Y%m%d
+    logstash_prefix fluentd
+    include_tag_key true
+    flush_interval 10s # for testing.
+    port 9200
+  </store>
+</match>
+EOF
+
+sudo systemctl restart td-agent.service
+```
+
 6. Включите td-agent и стартуйте его.
+
+```
+sudo systemctl start td-agent.service
+sudo systemctl status td-agent.service
+```
+
 7. Убедитесь, что td-agent успешно стартовал и слушает порт 5140 UDP.
+
+```
+ss -lnutp
+```
+
 8. Добавьте в конфигурацию rsyslog отправку логов на адрес 127.0.0.1:5140.
 Перезапустите rsyslog.
+
+```
+echo "*.* @127.0.0.1:5140" >> /etc/rsyslog.conf
+systemctl restart rsyslog.service
+```
+
 9. Откройте Kibana и убедитесь, что логи с тестовой ВМ видны на странице Discover.
+
+```
+1.png
+```
+

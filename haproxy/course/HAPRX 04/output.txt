@@ -1,0 +1,52 @@
+В данном задании вам предоставляется доступ к машине, на которой предустановлен haproxy и развернуты 2 веб-сервера на портах 80 и 8080. Файл конфигурации haproxy находится по пути /etc/haproxy/haproxy.cfg.
+
+    Конфиг haproxy должен содержать 2 фронтенда с именами front_health и front_weigths.
+    Конфиг haproxy должен содержать 2 бэкенда с именами rebrain_health и rebrain_weights.
+    Фронтенд front_health должен соответствовать следующим требованиям:
+        прослушивать порт 443
+        работать в режиме http
+        backend по умолчанию: rebrain_health
+    Фронтенд front_weigths должен соответствовать следующим требованиям:
+        прослушивать порт 442
+        работать в режиме http
+        backend по умолчанию: rebrain_weights
+    Бэкенд rebrain_health должен соответстовать следующим условиям:
+        Метод балансировки source
+        Работать в режиме http
+        Активирована опция httpchk
+        Перенаправлять трафик на 2 сервера с именами stand_01 и stand_02 по адресу 127.0.0.1:80 (указать явно). Для stand_01 и stand_02 необходимо активировать health checks на порт 8080.
+    Бэкенд rebrain_weights должен соответствовать следующим условиям:
+        Метод балансировки roundrobin
+        Работать в режиме http
+        Перенаправлять трафик на 3 сервер с именами stand_01, stand_02 и stand_03 по адресу 127.0.0.1:80 (указать явно). Для всех серверов необходимо активировать health checks.
+        Серверу stand_01 назначить вес 1
+        Серверу stand_02 назначить вес 4
+        Серверу stand_03 назначить вес 6
+
+
+```
+frontend front_weigths
+  mode http
+  bind *:442
+  default_backend rebrain_weights
+
+backend rebrain_health
+  mode http
+  balance source
+  option httpchk
+  server stand_01 127.0.0.1:80 check port 8080
+  server stand_02 127.0.0.1:80 check port 8080
+
+backend rebrain_weights
+  mode http
+  balance roundrobin
+  server stand_01 127.0.0.1:80 check weight 1
+  server stand_02 127.0.0.1:80 check weight 4
+  server stand_03 127.0.0.1:80 check weight 6
+
+program api
+  command dataplaneapi -f /etc/haproxy/dataplaneapi.hcl
+  no option start-on-reload
+
+```
+

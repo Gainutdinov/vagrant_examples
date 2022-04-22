@@ -1,0 +1,77 @@
+Задание:
+Правила выполнения:
+
+В данном задании вам предоставляется доступ к машине, на которой предустановлен haproxy и развернуты 3 веб-сервера на портах 81, 82 и 83. Файл конфигурации haproxy находится по пути /etc/haproxy/haproxy.cfg.
+
+Перед началом работы вам необходимо добавить строку 127.0.0.1 api.rebrain.ru в файл /etc/hosts
+
+    Конфиг haproxy должен содержать фронтенд rebrain_front
+    Конфиг haproxy должен содержать 3 бэкенда с именами rebrain_api, rebrain_lk и rebrain_default
+    Фронтенд rebrain_front должен соответствовать следующим требованиям:
+
+    прослушивать порт 443
+    работать в режиме http
+    Добавлять ip адрес клиента ко всем входящим пакетам в header X-Forwarded-For
+    Содержать именованный acl с именем whitelist, который срабатывает, если ip адрес клиента находится в сети 10.0.0.0/16 (указать адрес сети явно, назначать данный acl никакому бэкенду не нужно)
+    Содержать именованный acl с именем rebrain_api, проверяющий, что значения Header Host ачинается с api.rebrain.ru
+    Бэкенд rebrain_api используется, если выполнены условия acl rebrain_api
+    Бэкенд rebrain_lk используется, если path запроса начинается с /lk. Данный acl настроить безымянным
+    Бэкенд по умолчанию rebrain_default
+
+    Бэкенд rebrain_api должен соответствовать следующим условиям:
+
+    Режим балансировки source
+    Перенаправлять трафик на 2 сервера с именами stand_01_81 и stand_02_81 по адресу 127.0.0.1:81
+    Активировать health check для каждого сервера
+    Настроить максимальное количество подключений для каждого сервера, равное 10000
+    Сервер stand_02_81 использовать как запасной
+
+    Бэкенд rebrain_lk должен соответствовать следующим условиям:
+
+    Режим балансировки roundrobin
+    Перенаправлять трафик на 2 сервера с именами stand_01_82 и stand_01_82 по адресу 127.0.0.1:82
+    Активировать health check для каждого сервера
+    Настроить максимальное количество подключений для каждого сервера, равное 10000
+    Сервер stand_02_82 использовать как запасной
+
+    Бэкенд rebrain_default должен соответствовать следующим условиям:
+
+    Режим балансировки source
+    Перенаправлять трафик на 2 сервера с именами stand_01_83 и stand_02_83 по адресу 127.0.0.1:83
+    Активировать health check для каждого сервера
+    Настроить максимальное количество подключений для каждого сервера, равное 10000
+    Сервер stand_02_83 использовать как запасной
+
+
+```
+frontend rebrain_front
+  mode http
+  bind *:443
+  acl whitelist src 10.0.0.0/16
+  acl rebrain_api hdr_beg(Host) -i api.rebrain.ru
+  http-request set-header X-Forwarded-For %[src]
+  use_backend rebrain_api if rebrain_api
+  use_backend rebrain_lk if { path -i -m beg /lk }
+  default_backend rebrain_default
+
+# acl rebrain_api hdr_beg(Host) -i api.rebrain.ru
+backend rebrain_api
+  mode http
+  balance source
+  server stand_01_81 127.0.0.1:81 check maxconn 10000
+  server stand_02_81 127.0.0.1:81 check maxconn 10000 backup
+
+# option httpchk
+backend rebrain_default
+  mode http
+  balance source
+  server stand_01_83 127.0.0.1:83 check maxconn 10000
+  server stand_02_83 127.0.0.1:83 check maxconn 10000 backup
+
+backend rebrain_lk
+  mode http
+  balance roundrobin
+  server stand_01_82 127.0.0.1:82 check maxconn 10000
+  server stand_02_82 127.0.0.1:82 check maxconn 10000 backup
+```
+

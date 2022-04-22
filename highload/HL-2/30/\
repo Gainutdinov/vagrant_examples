@@ -1,0 +1,147 @@
+Задание:
+Замечание: для создания тестовых ВМ рекомендуется использование Terraform.
+1. Создайте 3 тестовых ВМ1, ВМ2, ВМ3 со следующими параметрами:
+○ 1 CPU,
+○ 2Гб оперативной памяти,
+○ 25Гб - диск.
+2. На ВМ1,2,3:
+○ обновите ОС;
+○ установите Docker и docker-compose;
+○ установите системный параметр vm.max_map_count равным 262144.
+3. На ВМ1 создайте файл docker-compose.yml следующего содержания:
+version: '3.0'
+services:
+  <ВМ1_имя_хоста>:
+    image: elasticsearch:7.6.1
+    container_name: <ВМ1_имя_хоста>
+    hostname: <ВМ1_имя_хоста>
+    environment:
+      - node.name=<ВМ1_имя_хоста>
+      - cluster.name=<имя кластера>
+      - discovery.seed_hosts=<ВМ2_имя_хоста>,<ВМ3_имя_хоста>
+      - cluster.initial_master_nodes=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>,<ВМ 3_имя_хоста>
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    network_mode: "host"
+    ports:
+      - 9200:9200
+      - 9300:9300
+    extra_hosts:
+      - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
+      - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
+      - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
+  volumes:
+    data01:
+      driver: local
+Ответьте на контрольные вопросы:
+○ Какие контейнеры будут созданы?
+○ Какие имиджи используются?
+○ Какие TCP-порты используются?
+○ Каково назначение переменных окружения?
+○ Каково назначение секции extra_hosts?
+4. По аналогии на ВМ2 создайте файл docker-compose.yml следующего содержания:
+version: '3.0'
+services:
+  <ВМ2_имя_хоста>:
+  image: elasticsearch:7.6.1
+  container_name: <ВМ2_имя_хоста>
+  hostname: <ВМ2_имя_хоста>
+  environment:
+    - node.name=<ВМ2_имя_хоста>
+    - cluster.name=<имя кластера>
+    - discovery.seed_hosts=<ВМ1_имя_хоста>,<ВМ3_имя_хоста>
+    - cluster.initial_master_nodes=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>,<ВМ_3_имя_хоста>
+    - bootstrap.memory_lock=true
+    - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+  ulimits:
+    memlock:
+      soft: -1
+      hard: -1
+  volumes:
+    - data01:/usr/share/elasticsearch/data
+  network_mode: "host"
+  ports:
+    - 9200:9200
+    - 9300:9300
+  extra_hosts:
+    - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
+    - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
+    - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
+  volumes:
+    data02:
+      driver: local
+5. По аналогии на ВМ3 создайте файл docker-compose.yml следующего содержания:
+version: '3.0'
+services:
+<ВМ3_имя_хоста>:
+image: elasticsearch:7.6.1
+container_name: <ВМ3_имя_хоста>
+hostname: <ВМ3_имя_хоста>
+environment:
+- node.name=<ВМ3_имя_хоста>
+- cluster.name=<имя кластера>
+- discovery.seed_hosts=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>
+- cluster.initial_master_nodes=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>,<ВМ 3_имя_хоста>
+- bootstrap.memory_lock=true
+- "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+ulimits:
+memlock:
+soft: -1
+hard: -1
+volumes:
+- data01:/usr/share/elasticsearch/data
+network_mode: "host"
+ports:
+- 9200:9200
+- 9300:9300
+extra_hosts:
+- "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
+- "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
+- "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
+volumes:
+data03:
+driver: local
+6. Стартуйте контейнер Elasticsearch на каждой из нод.
+Замечание: рекомендуется первый запуск выполнять в режиме foreground для отслеживания логов.
+7. Создайте тестовую ВМ4 со следующими параметрами:
+○ 1 CPU,
+○ 2Гб оперативной памяти,
+○ 25Гб - диск.
+8. На ВМ4:
+○ обновите ОС;
+○ установите Docker и docker-compose;
+○ установите системный параметр vm.max_map_count равным 262144.
+9. На ВМ4 создайте файл docker-compose.yml следующего содержания:
+version: '3'
+services:
+kibana:
+image: kibana:7.6.1
+volumes:
+- ./kibana.yml:/usr/share/kibana/config/kibana.yml
+network_mode: "host"
+ports:
+- "<BM4_ip_адрес>:5601:5601"
+extra_hosts:
+- "<BM1_имя_хоста>:<BM1_ip_адрес>"
+- "<BM2_имя_хоста>:<BM2_ip-адрес>"
+- "<BM3_имя_хоста>:<BM3_ip-адрес>"
+10. На ВМ4 создайте конфигурационный файл kibana.yml:
+server.host: "<BM4_ip_адрес>"
+elasticsearch.hosts: ["http://<BM1_имя_хоста>:9200","http://<BM2_имя_хоста>:9200","http://<BM3_имя_хоста>:9200"]
+Обратите внимание, что здесь указываются все хосты кластера Elasticsearch.
+11. Стартуйте контейнер Kibana, проверьте доступность порта и откройте Kibana в браузере.
+12. Создайте тестовую ВМ5 со следующими параметрами:
+● 1 CPU,
+● 1Гб оперативной памяти,
+● 25Гб - диск.
+8. На ВМ4 обновите ОС.
+9. Установите и настройте td-agent так, как это описано в задаче «HL 34. EFK. Настройка агента». В конфигурационном файле td-agent укажите все ноды кластера Elasticsearch.
+10. Создайте в Kibana индекс, используя паттерн fluentd-*.
+11. Убедитесь, что логи от ВМ5 регистрируются в кластере Elasticsearch.
+

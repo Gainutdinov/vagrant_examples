@@ -1,0 +1,30 @@
+version: '3.0'
+services:
+  <ВМ3_имя_хоста>:
+    image: elasticsearch:7.6.1
+    container_name: <ВМ3_имя_хоста>
+    hostname: <ВМ3_имя_хоста>
+    environment:
+      - node.name=<ВМ3_имя_хоста>
+      - cluster.name=<имя кластера>
+      - discovery.seed_hosts=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>
+      - cluster.initial_master_nodes=<ВМ1_имя_хоста>,<ВМ2_имя_хоста>,<ВМ 3_имя_хоста>
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    network_mode: "host"
+    ports:
+      - 9200:9200
+      - 9300:9300
+    extra_hosts:
+      - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
+      - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
+      - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
+  volumes:
+    data03:
+      driver: local

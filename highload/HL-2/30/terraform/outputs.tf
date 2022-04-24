@@ -10,3 +10,7 @@ output "public_ip" {
 output "private_ip" {
   value = values(aws_instance.app_servers)[*].private_ip
 }
+
+output "private_dns" {
+  value = values(aws_instance.app_servers)[*].private_dns
+}

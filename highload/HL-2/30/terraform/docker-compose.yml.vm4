@@ -1,0 +1,13 @@
+version: '3'
+services:
+  kibana:
+    image: kibana:7.6.1
+    volumes:
+      - ./kibana.yml:/usr/share/kibana/config/kibana.yml
+    network_mode: "host"
+    ports:
+      - "<BM4_ip_адрес>:5601:5601"
+    extra_hosts:
+      - "<BM1_имя_хоста>:<BM1_ip_адрес>"
+      - "<BM2_имя_хоста>:<BM2_ip-адрес>"
+      - "<BM3_имя_хоста>:<BM3_ip-адрес>"

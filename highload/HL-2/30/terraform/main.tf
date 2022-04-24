@@ -14,35 +14,6 @@ provider "aws" {
   region  = "us-west-2"
 }
 
-##resource "aws_vpc" "example" {
-##  cidr_block = "10.0.0.0/16"
-##}
-##
-#data "aws_ami_ids" "ubuntu" {
-#  owners = ["099720109477"]
-#
-#  filter {
-#    name   = "name"
-#    values = ["ubuntu/images/ubuntu-*-*-amd64-server-*"]
-#  }
-#}
-#
-#
-#resource "aws_vpc" "main" {
-#  cidr_block = "10.33.0.0/16"
-#}
-#
-#
-#resource "aws_subnet" "my_subnet" {
-#  vpc_id            = aws_vpc.main.id
-#  cidr_block        = "10.33.0.0/16"
-#  availability_zone = "us-west-2a"
-#
-#  tags = {
-#    Name = "tf-example"
-#  }
-#}
-
 ## vpc.tf
 resource "aws_vpc" "vpc" {
   cidr_block           = var.cidr_block
@@ -86,47 +57,14 @@ resource "aws_key_pair" "mykey" {
   public_key = "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC2IBlB12yWzdoW0LHdjl97W7Me7v+aLUio7WxS2ZnK1C6gJmedRcQryK5JVZchwenErTx7AwvEvdNhCk+FGhjTBuAydlI/tPqg0N0ymueuimdky7Pbj9gIwMv7Ae2zVje0Svv0PflUUI0jvDzRZfoiq8XZ4qBhLJkMY32BLEp2GtfkAYrU8f2gn+uNMICOumEJ7q+8o8cxssn+O+/2BW7Yn2Wu9oBx94wqxnhWIxnZc6kU7Qs4vAG8FJdtNwqI9U96bmNDp+1Pnx/zUgVDo+aGuSna3FAztpzxN95/8Hydm0Ua13t0fI6nFRoFzSKNkOy8VUkRGKSdWXyVEJUgKhZR gainutdinov@atlas.ru"
 }
 
-#resource "aws_instance" "app_server1" {
-#  ami           = "ami-0892d3c7ee96c0bf7"
-#  instance_type = "t2.medium"
-#  associate_public_ip_address = true
-#  subnet_id = aws_subnet.subnet.id
-#  key_name = "mykey"
-#  vpc_security_group_ids = [aws_security_group.mysecgroup.id]
-#
-#  tags = {
-#    Name = "ExampleAppServerInstance"
-#  }
-#
-#  root_block_device {
-#    volume_size = 25
-#  } 
-#
-#  provisioner "remote-exec" {
-#    inline = [
-#      "touch hello.txt",
-#      "echo helloworld remote provisioner >> hello.txt",
-#    ]
-#  }
-#  connection {
-#      type        = "ssh"
-#      host        = self.public_ip
-#      user        = "ubuntu"
-#      private_key = file("/Users/atlas/.ssh/id_rsa")
-#      timeout     = "4m"
-#   }
-#
-#
-#}
-
 resource "aws_instance" "app_servers" {
 
   for_each = {
-    "VM1" = { vm_size = "t2.medium" }
-    "VM2" = { vm_size = "t2.medium" }
-    "VM3" = { vm_size = "t2.medium" }
-    "VM4" = { vm_size = "t2.medium" }
-    "VM5" = { vm_size = "t2.medium" }
+    "VM1" = { vm_size = "t2.medium", compose_name = "docker-compose.yml.vm1" }
+    "VM2" = { vm_size = "t2.medium", compose_name = "docker-compose.yml.vm2" }
+    "VM3" = { vm_size = "t2.medium", compose_name = "docker-compose.yml.vm3" }
+    "VM4" = { vm_size = "t2.medium", compose_name = "docker-compose.yml.vm4" }
+    "VM5" = { vm_size = "t2.medium", compose_name = "docker-compose.yml.vm1" }
   }
   ami           = "ami-0892d3c7ee96c0bf7"
   instance_type = each.value.vm_size
@@ -146,6 +84,11 @@ resource "aws_instance" "app_servers" {
   provisioner "file" {
     source      = "script.sh"
     destination = "/home/ubuntu/script.sh"
+  }
+
+  provisioner "file" {
+    source      = "${each.value.compose_name}"
+    destination = "/home/ubuntu/${each.value.compose_name}"
   }
 
   provisioner "remote-exec" {

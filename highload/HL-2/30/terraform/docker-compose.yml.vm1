@@ -18,9 +18,9 @@ services:
     volumes:
       - data01:/usr/share/elasticsearch/data
     network_mode: "host"
-    ports:
-      - 9200:9200
-      - 9300:9300
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
     extra_hosts:
       - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
       - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"

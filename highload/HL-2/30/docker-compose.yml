@@ -1,0 +1,31 @@
+#Example config for real production
+version: '3.0'
+services:
+  VM1:
+    image: elasticsearch:7.6.1
+    container_name: VM1
+    hostname: ip-10-11-0-90.us-west-2.compute.internal
+    environment:
+      - node.name=ip-10-11-0-90.us-west-2.compute.internal
+      - cluster.name=cluster1
+      - discovery.seed_hosts=ip-10-11-0-192.us-west-2.compute.internal,ip-10-11-0-215.us-west-2.compute.internal
+      - cluster.initial_master_nodes=ip-10-11-0-90.us-west-2.compute.internal,ip-10-11-0-192.us-west-2.compute.internal,ip-10-11-0-215.us-west-2.compute.internal
+      - bootstrap.memory_lock=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    volumes:
+      - data01:/usr/share/elasticsearch/data
+    network_mode: "host"
+    #    ports:
+    #      - 9200:9200
+    #      - 9300:9300
+    extra_hosts:
+      - "ip-10-11-0-215.us-west-2.compute.internal:10.11.0.90"
+      - "ip-10-11-0-192.us-west-2.compute.internal:10.11.0.192"
+      - "ip-10-11-0-215.us-west-2.compute.internal:10.11.0.215"
+volumes:
+  data01:
+    driver: local

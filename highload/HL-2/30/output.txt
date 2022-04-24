@@ -29,22 +29,60 @@ services:
     volumes:
       - data01:/usr/share/elasticsearch/data
     network_mode: "host"
-    ports:
-      - 9200:9200
-      - 9300:9300
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
     extra_hosts:
       - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
       - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
       - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
-  volumes:
-    data01:
-      driver: local
+volumes:
+  data01:
+    driver: local
 Ответьте на контрольные вопросы:
 ○ Какие контейнеры будут созданы?
+
+```
+elasticsearch - один контейнер
+```
+
 ○ Какие имиджи используются?
+
+```
+elasticsearch:7.6.1
+```
+
 ○ Какие TCP-порты используются?
+
+```
+9200,9300
+```
+
 ○ Каково назначение переменных окружения?
+
+```
+cluster-name 
+discovery.seed_hosts
+cluster.initial_master_nodes
+bootstrap.memory_lock
+ES_JAVA_OPTS 
+```
+
 ○ Каково назначение секции extra_hosts?
+
+```
+Add hostname mappings. Use the same values as the docker client --add-host parameter.
+
+extra_hosts:
+  - "somehost:162.242.195.82"
+  - "otherhost:50.31.209.229"
+
+An entry with the ip address and hostname is created in /etc/hosts inside containers for this service, e.g:
+162.242.195.82 somehost
+50.31.209.229 otherhost
+
+```
+
 4. По аналогии на ВМ2 создайте файл docker-compose.yml следующего содержания:
 version: '3.0'
 services:
@@ -64,18 +102,18 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - data01:/usr/share/elasticsearch/data
+      - data02:/usr/share/elasticsearch/data
     network_mode: "host"
-    ports:
-      - 9200:9200
-      - 9300:9300
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
     extra_hosts:
       - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
       - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
       - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
-  volumes:
-    data02:
-      driver: local
+volumes:
+  data02:
+    driver: local
 5. По аналогии на ВМ3 создайте файл docker-compose.yml следующего содержания:
 version: '3.0'
 services:
@@ -95,18 +133,18 @@ services:
         soft: -1
         hard: -1
     volumes:
-      - data01:/usr/share/elasticsearch/data
+      - data03:/usr/share/elasticsearch/data
     network_mode: "host"
-    ports:
-      - 9200:9200
-      - 9300:9300
+#    ports:
+#      - 9200:9200
+#      - 9300:9300
     extra_hosts:
       - "<ВМ1_имя_хоста>:<ВМ1_ip_адрес>"
       - "<ВМ2_имя_хоста>:<ВМ2_ip_адрес>"
       - "<ВМ3_имя_хоста>:<ВМ3_ip_адрес>"
-  volumes:
-    data03:
-      driver: local
+volumes:
+  data03:
+    driver: local
 6. Стартуйте контейнер Elasticsearch на каждой из нод.
 Замечание: рекомендуется первый запуск выполнять в режиме foreground для отслеживания логов.
 7. Создайте тестовую ВМ4 со следующими параметрами:
@@ -125,8 +163,8 @@ services:
     volumes:
       - ./kibana.yml:/usr/share/kibana/config/kibana.yml
     network_mode: "host"
-    ports:
-      - "<BM4_ip_адрес>:5601:5601"
+#    ports:
+#      - "<BM4_ip_адрес>:5601:5601"
     extra_hosts:
       - "<BM1_имя_хоста>:<BM1_ip_адрес>"
       - "<BM2_имя_хоста>:<BM2_ip-адрес>"
@@ -136,12 +174,68 @@ server.host: "<BM4_ip_адрес>"
 elasticsearch.hosts: ["http://<BM1_имя_хоста>:9200","http://<BM2_имя_хоста>:9200","http://<BM3_имя_хоста>:9200"]
 Обратите внимание, что здесь указываются все хосты кластера Elasticsearch.
 11. Стартуйте контейнер Kibana, проверьте доступность порта и откройте Kibana в браузере.
+
+```
+1.png
+```
+
 12. Создайте тестовую ВМ5 со следующими параметрами:
 ● 1 CPU,
 ● 1Гб оперативной памяти,
 ● 25Гб - диск.
 8. На ВМ4 обновите ОС.
+
+```
+sudo apt update && apt upgrade
+```
+
 9. Установите и настройте td-agent так, как это описано в задаче «HL 34. EFK. Настройка агента». В конфигурационном файле td-agent укажите все ноды кластера Elasticsearch.
+
+```
+curl -fsSL https://toolbelt.treasuredata.com/sh/install-ubuntu-bionic-td-agent3.sh | sh
+sudo systemctl start td-agent.service
+sudo systemctl status td-agent.service
+
+sudo -i
+cat << EOF > /etc/td-agent/td-agent.conf
+<source>
+  type syslog
+  port 5140
+  protocol_type udp
+  tag  system
+</source>
+
+<match system.**>
+  type copy
+  <store>
+    # for debug (see /var/log/td-agent.log)
+    type stdout
+  </store>
+  <store>
+    type elasticsearch
+    hosts 10.11.0.90,10.11.0.192,10.11.0.215
+    logstash_format true
+    logstash_dateformat %Y%m%d
+    logstash_prefix fluentd
+    include_tag_key true
+    flush_interval 10s # for testing.
+    port 9200
+  </store>
+</match>
+EOF
+
+sudo systemctl restart td-agent.service
+
+echo "*.* @127.0.0.1:5140" >> /etc/rsyslog.conf
+systemctl restart rsyslog.service
+systemctl status rsyslog.service
+
+
+```
+
 10. Создайте в Kibana индекс, используя паттерн fluentd-*.
 11. Убедитесь, что логи от ВМ5 регистрируются в кластере Elasticsearch.
 
+```
+2.png
+```

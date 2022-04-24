@@ -27,3 +27,10 @@ git clone https://gist.github.com/76b450a0c986e576e98b.git
 cd 76b450a0c986e576e98b
 sudo mv docker-cleanup /usr/local/bin/docker-cleanup
 sudo chmod +x /usr/local/bin/docker-cleanup
+
+sudo -i
+echo 'vm.max_map_count=262144' >> /etc/sysctl.conf
+sysctl -p
+
+sudo mkdir -p /usr/share/elasticsearch/data
+sudo chmod 777 /usr/share/elasticsearch/data

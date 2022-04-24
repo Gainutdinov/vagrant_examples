@@ -223,7 +223,6 @@ cat << EOF > /etc/td-agent/td-agent.conf
   </store>
 </match>
 EOF
-
 sudo systemctl restart td-agent.service
 
 echo "*.* @127.0.0.1:5140" >> /etc/rsyslog.conf

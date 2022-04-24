@@ -4,11 +4,9 @@
 #}
 
 output "public_ip" {
-#  value = [aws_instance.app_server1.public_ip,aws_instance.app_server2.public_ip,aws_instance.app_server3.public_ip,aws_instance.app_server4.public_ip,aws_instance.app_server5.public_ip]
-#  value = [aws_instance.app_server1.public_ip]
-  value = [aws_instance.app_servers[*]]
+  value = values(aws_instance.app_servers)[*].public_ip
+}
 
-
-
-
+output "private_ip" {
+  value = values(aws_instance.app_servers)[*].private_ip
 }

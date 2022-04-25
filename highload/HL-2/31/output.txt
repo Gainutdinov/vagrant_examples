@@ -1,0 +1,129 @@
+Задание:
+1. Создайте виртуальную машину со следующими параметрами:
+○ 2 CPU,
+○ 4Гб оперативной памяти,
+○ 25Гб - диск.
+2. На созданной виртуальной машине:
+○ обновите ОС;
+○ установите Docker и docker-compose.
+3. Создайте файл docker-compose.yml следующего содержания:
+```
+version: '3'
+services:
+# MongoDB: https://hub.docker.com/_/mongo/
+  mongo:
+    image: mongo:3
+    networks:
+      - graylog
+# Elasticsearch: https://www.elastic.co/guide/en/elasticsearch/reference/6.x/docker.html
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch-oss:6.8.5
+    environment:
+      - http.host=0.0.0.0
+      - transport.host=localhost
+      - network.host=0.0.0.0
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ulimits:
+      memlock:
+        soft: -1
+        hard: -1
+    deploy:
+      resources:
+        limits:
+          memory: 1g
+    networks:
+      - graylog
+  # Graylog: https://hub.docker.com/r/graylog/graylog/
+  graylog:
+    image: graylog/graylog:3.2
+    environment:
+      # CHANGE ME (must be at least 16 characters)!
+      - GRAYLOG_PASSWORD_SECRET=somepasswordpepper
+      # Password: admin
+      - GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918
+      - GRAYLOG_HTTP_EXTERNAL_URI=http://0.0.0.0:9000/
+    networks:
+      - graylog
+    depends_on:
+    - mongo
+    - elasticsearch
+    ports:
+      # Graylog web interface and REST API
+      - 9000:9000
+      # Syslog TCP
+      - 1514:1514
+      # Syslog UDP
+      - 1514:1514/udp
+      # GELF TCP
+      - 12201:12201
+      # GELF UDP
+      - 12201:12201/udp
+networks:
+  graylog:
+    driver: bridge
+```
+
+4. Стартуйте контейнеры.
+
+```
+docker-compose up -d
+```
+
+5. Откройте в браузере URL http://<ВМ_ip_адрес>:9000 и залогиньтесь в Graylog с именем admin и паролем admin.
+
+```
+vagrant ssh -- -L 9000:localhost:9000
+```
+
+6. Убедитесь, что Graylog слушает порты 1514 TCP и 1514 UDP.
+
+```
+ss -lnutp
+```
+
+7. Используя web-интерфейс, создайте input со следующими параметрами:
+○ сервер - тестовая ВМ (выберите из списка);
+○ имя - SyslogUDP;
+○ bind_address 0.0.0.0;
+○ port 1514.
+В логах контейнера Graylog проверьте, что input стартовал на ноде.
+
+```
+1.png
+```
+
+8. Установите на тестовую ВМ nmap.
+
+```
+sudo -i
+apt update
+apt install nmap ncat -y
+```
+
+9. Отправьте тестовое сообщение в Graylog: 
+
+```
+echo “Testy” | ncat -u localhost 1514
+```
+
+10. Используя web-интерфейс, убедитесь, что тестовое сообщение попало в Graylog.
+
+```
+2.png
+```
+
+11. Настройте rsyslog на тестовой ВМ для отправки всех сообщений на localhost, порт 1514 UDP.
+
+```
+echo "*.* @127.0.0.1:1514" >> /etc/rsyslog.conf
+systemctl restart rsyslog.service
+systemctl status rsyslog.service
+
+```
+
+12. Откройте новую SSH-сессию на тестовую ВМ и убедитесь, что логи об этом попали в Graylog.
+
+```
+3.png
+```
+

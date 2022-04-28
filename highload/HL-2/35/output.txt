@@ -1,0 +1,50 @@
+Задание:
+Замечание: данное задание предполагает, что ранее были выполнены задания:
+● HL 38. Prometheus: deploy
+1. Добавьте в docker-compose.yml сервис:
+cadvisor:
+  image: google/cadvisor:v0.28.3
+  volumes:
+    - /:/rootfs:ro
+    - /var/run:/var/run:rw
+    - /sys:/sys:ro
+    - /var/lib/docker/:/var/lib/docker:ro
+    - /dev/disk/:/dev/disk:ro
+  ports:
+    - 8080:8080
+Ответьте на контрольные вопросы:
+○ Каково имя сервиса?
+
+cadvisor
+
+○ Какой имидж используется?
+
+gcr.io/cadvisor/cadvisor:v0.39.3
+
+○ Какой порт будет слушать сервис?
+
+8080
+
+2. Запустите добавленный сервис. Убедитесь, что указанный порт доступен.
+3. Используя команду curl, получите метрики, передаваемые cAdvisor.
+
+```
+curl http://localhost:8080/metrics
+```
+
+4. В файл prometheus.yml, секцию scrape_configs добавьте дополнительный job:
+○ имя cadvisor;
+○ порт 8080.
+
+```
+
+```
+
+5. Перезапустите стек.
+6. Используя WebUI Prometheus, выясните загрузку CPU на всех контейнерах тестовой ВМ.
+
+```
+rate(container_cpu_usage_seconds_total{name="prometheus"}[1m])
+container_cpu_load_average_10s
+```
+

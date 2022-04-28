@@ -23,3 +23,9 @@ scrape_configs:
     static_configs:
       - targets: ['135.181.85.130:9256']
 
+rule_files:
+  - rules.yml
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: ['localhost:9093']

@@ -34,6 +34,10 @@ scrape_configs:
     scrape_interval: 5s
     static_configs:
       - targets: ['135.181.85.130:9100']
+  - job_name: 'process_exporter'
+    scrape_interval: 5s
+    static_configs:
+      - targets: ['135.181.85.130:9256']
 ```
 
 4. Перезапустите контейнер с Prometheus.
@@ -46,17 +50,25 @@ scrape_configs:
 6. Используя язык запросов, выясните, какое количество в памяти ВМ занимает процесс Node exporter.
 
 ```
+mkdir /tmp/node
+cd /tmp/node
+https://github.com/ncabatoff/process-exporter/releases/download/v0.7.10/process-exporter-0.7.10.linux-amd64.tar.gz
+tar xvfz ./process-exporter-0.7.10.linux-amd64.tar.gz
+cd ./process-exporter-0.7.10.linux-amd64/
+
+process_virtual_memory_bytes – uses vsize – virtual memory size is the amount of address space that a process is managing. This includes all types of memory, both in RAM and swapped out.
+process_virtual_memory_bytes{instance="135.181.85.130:9100", job="node_exporter"} 734855168
 
 ```
 
 7. Используя язык запросов, выясните наиболее загруженный сетевой интерфейс ВМ.
 
 ```
-node_network_receive_bytes
+topk(3, sort_desc(node_network_receive_bytes_total{job='node_exporter'}))
 ```
 
 8. Используя язык запросов, выясните, сколько места доступно на корневой файловой системе ВМ.
 
 ```
-
+node_filesystem_avail_bytes{mountpoint="/"}/1024/1024/1024  #GB free
 ```

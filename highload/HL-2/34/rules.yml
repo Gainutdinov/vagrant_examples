@@ -1,0 +1,9 @@
+groups:
+  - name: OsChecks
+    rules:
+    - alert: RootSpaceLow
+      expr: |
+        (node_filesystem_size_bytes {mountpoint="/"} -
+        node_filesystem_avail_bytes {mountpoint="/"}) /
+        node_filesystem_size_bytes {mountpoint="/"} * 100 != 5
+      for: 1m

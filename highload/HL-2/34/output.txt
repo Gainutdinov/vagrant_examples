@@ -1,0 +1,124 @@
+Задание:
+Замечание: данное задание предполагает, что ранее были выполнены задания:
+● HL 38. Prometheus: deploy
+● HL 38. Prometheus: Node exporter
+1. Добавьте в файл docker-compose.yml сервис alertmanager, который:
+○ монтирует файл alertmanager.yml из текущей директории в файл: /etc/alertmanager/alertmanager.yml контейнера;
+○ привязывает порт 9093 ВМ к порту 9093 контейнера.
+
+```
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    ports:
+      - 9090:9090
+  alertmanager:
+    image: prom/alertmanager:v0.23.0
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - "./alertmanager:/config"
+    command: --config.file=/config/alertmanager.yml --log.level=debug
+```
+
+2. Создайте файл alertmanager.yml следующего содержания:
+global:
+  smtp_smarthost: 'localhost:25'
+  smtp_from: 'prometheus@example.org'
+route:
+  receiver: example-email
+receivers:
+- name: example-email
+  email_configs:
+  - to: 'duty@example.org'
+Ответьте на контрольные вопросы:
+○ Какой способ оповещения будет использован?
+
+via email
+
+○ Каков адрес smart host?
+
+localhost:25
+
+○ От какого адреса будут отправляться уведомления?
+
+from: prometheus@example.org
+
+○ На какой адрес будут отправляться уведомления?
+
+duty@example.org
+
+3. Добавьте в prometheus.yml следующие части:
+rule_files:
+  - rules.yml
+alerting:
+  alertmanagers:
+  - static_configs:
+    - targets: ['localhost:9093']
+4. Создайте файл rules.yml следующего содержания:
+groups:
+  - name: OsChecks
+    rules:
+    - alert: RootSpaceLow
+      expr: |
+        (node_filesystem_size_bytes {mountpoint="/"} -
+        node_filesystem_avail_bytes {mountpoint="/"}) /
+        node_filesystem_size_bytes {mountpoint="/"} * 100 > 5
+      for: 1m
+Ответьте на контрольные вопросы:
+○ Что описывает выражение expr?
+
+Выражение триггера для оповещения
+
+○ Через какое время сработает оповещение?
+
+после 1минуты с моментакогда правила стало верным произойдет оповещение
+
+5. Перезапустите стек. Убедитесь, что оба контейнера стартовали.
+6. Убедитесь, что контейнер alertmanager слушает порт 9093 ВМ.
+
+```
+MacBook-Pro-atlas:34 atlas$ docker-compose ps
+      Name                     Command               State           Ports
+-----------------------------------------------------------------------------------
+34_alertmanager_1   /bin/alertmanager --config ...   Up      0.0.0.0:9093->9093/tcp
+34_prometheus_1     /bin/prometheus --config.f ...   Up      0.0.0.0:9090->9090/tcp
+```
+
+7. Откройте в браузере web-интерфейс Alertmanager.
+8. В web-интерфейсе Prometheus откройте страницу Alerts. Убедитесь, что проверка из файла rules.yml добавилась.
+
+```
+0.png
+```
+
+9. Создайте в корневой файловой системе ВМ файл, который переведет условие в expr в истину.
+
+```
+groups:
+  - name: OsChecks
+    rules:
+    - alert: RootSpaceLow
+      expr: |
+        (node_filesystem_size_bytes {mountpoint="/"} -
+        node_filesystem_avail_bytes {mountpoint="/"}) /
+        node_filesystem_size_bytes {mountpoint="/"} * 100 != 5 #<------
+      for: 1m
+```
+
+10. Убедитесь, что тестовое оповещение перешло в статус Pending.
+
+```
+1.png
+```
+
+11. Спустя 1 минуту убедитесь, что тестовое оповещение перешло в статус Firing.
+
+```
+2.png
+```
+

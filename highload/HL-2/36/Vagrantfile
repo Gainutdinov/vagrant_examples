@@ -1,0 +1,45 @@
+Vagrant.configure("2") do |config|
+  config.vm.define "cpu1" do |lab1b|
+    lab1b.vm.box = "ubuntu/focal64"
+    lab1b.vm.hostname = "cpu1"
+    lab1b.vm.disk :disk, size: "40GB", primary: true
+    lab1b.vm.provider "virtualbox" do |vb|
+      vb.memory = 4096
+      vb.cpus = 2
+    end
+  end
+  config.vm.define "cpu2" do |lab1b|
+    lab1b.vm.box = "ubuntu/focal64"
+    lab1b.vm.hostname = "cpu2"
+    lab1b.vm.disk :disk, size: "40GB", primary: true
+    lab1b.vm.provider "virtualbox" do |vb|
+      vb.memory = 4096
+      vb.cpus = 2
+    end
+  end
+  config.vm.define "cpu3" do |lab1b|
+    lab1b.vm.box = "ubuntu/focal64"
+    lab1b.vm.hostname = "cpu3"
+    lab1b.vm.disk :disk, size: "40GB", primary: true
+    lab1b.vm.provider "virtualbox" do |vb|
+      vb.memory = 4096
+      vb.cpus = 2
+    end
+  end
+  config.vm.define "cpu4" do |lab1b|
+    lab1b.vm.box = "ubuntu/focal64"
+    lab1b.vm.hostname = "cpu4"
+    lab1b.vm.disk :disk, size: "40GB", primary: true
+    lab1b.vm.provider "virtualbox" do |vb|
+      vb.memory = 2096
+      vb.cpus = 1
+    end
+  end
+
+#  config.vm.provision "ansible" do |ansible|
+#    ansible.playbook = "playbook.yml"
+#  end
+#  config.vm.provision "file", source: "./docker-compose.yml", destination: "docker-compose.yml"
+#  config.vm.provision "file", source: "./prometheus.yml", destination: "prometheus.yml"
+end
+

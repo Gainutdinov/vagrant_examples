@@ -1,0 +1,91 @@
+Задание:
+Правила выполнения:
+
+В данном задании вам предоставляется доступ к машине, на которой предустановлен haproxy и развернуты 3 веб-сервера на портах 81, 82 и 83. Файл конфигурации haproxy находится по пути /etc/haproxy/haproxy.cfg.
+
+    Конфиг haproxy должен содержать фронтенд rebrain_front
+    Конфиг haproxy должен содержать 3 бэкенда с именами rebrain_api, rebrain_lk и rebrain_default
+    Конфиг haproxy должен содержать блок cache rebrain_cache, удовлетворяющий следующим условиям:
+        Максимальный размер памяти, которая может быть использована для кэша 100 МБ
+        Максимальный размер одного файла кэша 10000 байт
+        Время жизни 30 секунд
+    Фронтенд rebrain_front должен соответствовать следующим требованиям:
+        Прослушивать порт 80
+        Работать в режиме http
+        Содержать именованный acl с именем url_api, проверяющий, что path запроса начинается с /api
+        Содержать именованный acl с именем url_lk, проверяющий, что path запроса начинается с /lk
+        Добавлять ip адрес клиента ко всем входящим пакетам в header X-Forwarded-For
+        Использовать кэш rebrain_cache для получения файлов кэша и добавления новых
+        Использовать бэкенд rebrain_api, если выполняется acl url_api
+        Использовать бэкенд rebrain_lk, если выполняется acl url_lk
+        Бэкенд по умолчанию rebrain_default
+    Бэкенд rebrain_api должен соответствовать следующим условиям:
+        Работать в режиме http
+        Тип балансировки roundrobin
+        Перенаправлять трафик на 2 сервера rebrain_01_81 и rebrain_02_81 по адресу 127.0.0.1:81
+        Добавлять cookie SERVERID со значением rebrain_01_81 для сервера rebrain_01_81 и rebrain_02_81 для сервера rebrain_02_81, не переназначать куки, если они есть в запросе
+        Активировать health check для каждого сервер
+        Активировать опцию prefer-last-server
+    Бэкенд rebrain_default должен соответствовать следующим условиям:
+        Работать в режиме http
+        Тип балансировки leastconn
+        Перенаправлять трафик на 2 сервера rebrain_01_83 и rebrain_02_83 по адресу 127.0.0.1:83
+        Добавлять в куки PHPSESSID префикс s1 для сервер rebrain_01_83 и s2 для сервера rebrain_02_83, отключить кэширование куки
+        Активировать health check для каждого сервер
+        Назначить максимальное количество подключений 1000 для каждого сервера
+    Бэкенд rebrain_lk должен соответствовать следующим условиям:
+        Работать в режиме http
+        Тип балансировки leastconn
+        Перенаправлять трафик на 2 сервера rebrain_01_82 и rebrain_02_82 по адресу 127.0.0.1:82
+        Содержать именованный acl с именем is_cached, проверяющий, что path запрос оканчивается на .js, .jpg. или .css
+        Использовать кэш rebrain_cache для получения файлов кэша и добавления новых, если выполнены условия acl is_cached
+        Активировать health check для каждого сервер
+
+
+
+```
+cache rebrain_cache
+  total-max-size 100 # MB
+  max-object-size 10000 # bytes
+  max-age 30 # seconds
+
+frontend rebrain_front
+  mode http
+  bind *:80
+  acl url_api path_beg /api
+  acl url_lk path_beg /lk
+  http-request set-header X-Forwarded-For %[src]
+  http-request cache-use rebrain_cache
+  use_backend rebrain_api if url_api
+  use_backend rebrain_lk if url_lk
+  default_backend rebrain_default
+  http-response cache-store rebrain_cache
+
+backend rebrain_api
+  mode http
+  balance roundrobin
+  cookie SERVERID indirect nocache insert
+  server rebrain_01_81 127.0.0.1:81 check cookie rebrain_01_81
+  server rebrain_02_81 127.0.0.1:81 check cookie rebrain_02_81
+  option prefer-last-server
+
+# option httpchk
+backend rebrain_default
+  mode http
+  balance leastconn
+  cookie PHPSESSID indirect nocache prefix
+  server rebrain_01_83 127.0.0.1:83 check cookie s1 maxconn 1000
+  server rebrain_02_83 127.0.0.1:83 check cookie s2 maxconn 1000
+
+backend rebrain_lk
+  mode http
+  balance leastconn
+  acl is_cached path_end .js .jpg .css
+  http-request cache-use rebrain_cache if is_cached
+  server rebrain_01_82 127.0.0.1:82 check
+  server rebrain_02_82 127.0.0.1:82 check
+  http-response cache-store rebrain_cache if is_cached
+
+
+```
+

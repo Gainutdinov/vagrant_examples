@@ -1,0 +1,49 @@
+В данном задании вам предоставляется доступ к машине, на которой предустановлен haproxy. Файл конфигурации haproxy находится по пути /etc/haproxy/haproxy.cfg.
+
+    Создать самоподписной сертификат rebrain.pem, содержащий сертификат и приватный ключ, и расположить его по пути /etc/haproxy/rebrain.pem
+    Конфиг haproxy должен содержать 1 фронтенд с именем rebrain_ssl.
+    Конфиг haproxy должен содержать 1 бэкенд с именем rebrain_ssl.
+    Фронтенд rebrain_ssl должен соответствовать следующим требованиям:
+        Прослушивать порт 443 с терминацией трафика с использованием rebrain.pem
+        Работать в режиме http
+        backend по умолчанию: rebrain_ssl
+        Добавлять ip адрес клиента ко всем входящим пакетам в header X-Forwarded-For
+    Бэкенд rebrain_ssl должен соответстовать следующим условиям:
+        Метод балансировки source
+        Работать в режиме http
+        Перенаправлять трафик на 3 сервера с именами stand_01_777, stand_02_777, stand_03_777, где приоритетным является 2ой сервер (остальные определяются ключевым словом backup), для всех серверов необходимо активировать health checks на порт 777.
+    Проверить валидацию конфигурационного файла haproxy.cfg.
+
+
+```
+# Generate a unique private key (KEY)
+sudo openssl genrsa -out rebrain.key 2048
+
+# Generating a Certificate Signing Request (CSR)
+sudo openssl req -new -key rebrain.key -out rebrain.csr
+
+# Creating a Self-Signed Certificate (CRT)
+openssl x509 -req -days 365 -in rebrain.csr -signkey rebrain.key -out rebrain.crt
+
+# Append KEY and CRT to mydomain.pem
+sudo bash -c 'cat rebrain.key rebrain.crt >> /etc/haproxy/rebrain.pem'
+
+```
+
+
+```
+frontend rebrain_ssl
+  mode http
+  bind *:443 ssl crt /etc/haproxy/rebrain.pem
+  http-request set-header X-Forwarded-For %[src]
+  default_backend rebrain_ssl
+
+backend rebrain_ssl
+  mode http
+  balance source
+  cookie SERVERID indirect nocache insert
+  server stand_01_777 127.0.0.1:777 check backup
+  server stand_02_777 127.0.0.1:777 check
+  server stand_03_777 127.0.0.1:777 check backup
+```
+

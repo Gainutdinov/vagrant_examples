@@ -44,6 +44,27 @@ export TOKEN=$(kubectl get secrets -o
 jsonpath="{.items[?(@.metadata.annotations['kubernetes\.io/service-account\.name']=='prometheus')].data.token}"|base64 --decode)
 6. Убедитесь, что ServiceAccount prometheus имеет доступ к метрикам API-среверов:
 curl -k https://<LOADBALANCER_IP>:6443/metrics --header "Authorization: Bearer $TOKEN" --insecure
+
+```
+root@ip-10-11-0-79:/home/ubuntu# curl -k https://54.189.198.148:6443/metrics --header "Authorization: Bearer $TOKEN" --insecure | head
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0# HELP aggregator_openapi_v2_regeneration_count [ALPHA] Counter of OpenAPI v2 spec regeneration count broken down by causing APIService name and reason.
+# TYPE aggregator_openapi_v2_regeneration_count counter
+aggregator_openapi_v2_regeneration_count{apiservice="*",reason="startup"} 0
+aggregator_openapi_v2_regeneration_count{apiservice="k8s_internal_local_delegation_chain_0000000002",reason="update"} 0
+# HELP aggregator_openapi_v2_regeneration_duration [ALPHA] Gauge of OpenAPI v2 spec regeneration duration in seconds.
+# TYPE aggregator_openapi_v2_regeneration_duration gauge
+aggregator_openapi_v2_regeneration_duration{reason="startup"} 0.806540134
+aggregator_openapi_v2_regeneration_duration{reason="update"} 0.867507781
+# HELP aggregator_unavailable_apiservice [ALPHA] Gauge of APIServices which are marked as unavailable broken down by APIService name.
+# TYPE aggregator_unavailable_apiservice gauge
+100 12288    0 12288    0     0   631k      0 --:--:-- --:--:-- --:--:--  631k
+curl: (23) Failed writing body (0 != 4096)
+root@ip-10-11-0-79:/home/ubuntu#
+
+```
+
 7. На ВМ c Prometheus создайте файл token и поместите в него полученный ранее токен.
 8. Добавьте в файл docker-compose.yml монтирование созданного файла token в /etc/prometheus/token контейнера Prometheus.
 9. Добавьте в scrape-configs (prometheus.yml) секцию мониторинга API-серверов кластера Kubernetes:
@@ -64,6 +85,11 @@ curl -k https://<LOADBALANCER_IP>:6443/metrics --header "Authorization: Bearer $
   regex: default;kubernetes;https
 Рестартуйте стек Prometheus.
 Используя WebUI Prometheus, убедитесь, что в Targets доступна информация об API-серверах кластера Kubernetes.
+
+```
+1.png
+```
+
 10. Добавьте в scrape-configs (prometheus.yml) секцию мониторинга нод кластера
 Kubernetes:
 - job_name: 'kubernetes-nodes'
@@ -88,6 +114,11 @@ Kubernetes:
     replacement: /api/v1/nodes/${1}/proxy/metrics
 Рестартуйте стек Prometheus.
 Используя WebUI Prometheus, убедитесь, что в Targets доступна информация о нодах кластера Kubernetes.
+
+```
+2.png
+```
+
 11. Добавьте в scrape-configs (prometheus.yml) секцию мониторинга встроенного cAdvisor:
 - job_name: 'kubernetes-cadvisor'
   scheme: https
@@ -111,5 +142,14 @@ Kubernetes:
     replacement: /api/v1/nodes/${1}/proxy/metrics/cadvisor
 Рестартуйте стек Prometheus.
 Используя WebUI Prometheus, убедитесь, что в Targets доступна информация метрик cAdvisor нод.
+
+```
+3.png
+```
+
 12. Выполните тестовый запрос параметра container_cpu_usage_seconds_total для определения текущей загрузки CPU контейнеров.
+
+```
+4.png
+```
 

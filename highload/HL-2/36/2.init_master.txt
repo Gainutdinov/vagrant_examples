@@ -1,0 +1,39 @@
+*****kubeadm config - master 1********
+
+{
+
+cat <<EOF > kubeadm-config.yaml
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: ClusterConfiguration
+controlPlaneEndpoint: "172.16.16.200:6443"
+networking:
+  podSubnet: "192.168.0.0/16"
+etcd:
+  local:
+    imageRepository: "k8s.gcr.io"
+    imageTag: "3.2.24"
+    dataDir: "/var/lib/etcd"
+#  external:
+#    endpoints:
+#    - http://172.16.16.201:2379
+#    - http://172.16.16.202:2379
+#    - http://172.16.16.203:2379
+---
+apiVersion: kubeadm.k8s.io/v1beta2
+kind: InitConfiguration
+localAPIEndpoint:
+  advertiseAddress: "172.16.16.200"
+EOF
+
+}
+
+****kubeadm init command - master 1****
+#kubeadm init --config kubeadm-config.yaml --ignore-preflight-errors=all --upload-certs
+kubeadm init --control-plane-endpoint "172.16.16.200:6443" --upload-certs  --pod-network-cidr="192.168.0.0/16"
+
+****get node status****
+kubectl --kubeconfig=/etc/kubernetes/admin.conf get nodes
+
+****install calico****
+kubectl --kubeconfig=/etc/kubernetes/admin.conf create -f https://docs.projectcalico.org/v3.14/manifests/calico.yaml
+

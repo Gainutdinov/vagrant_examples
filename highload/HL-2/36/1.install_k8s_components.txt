@@ -1,0 +1,30 @@
+---------Step0: install haproxy (haproxy)
+apt update && apt install haproxy -y
+
+
+Note: Run on all nodes (master1, master2, master3, worker1, worker2, worker3)
+
+---------Step1: disable swap
+swapoff -a; sed -i '/swap/d' /etc/fstab
+
+---------Step2: install docker engine
+{
+  apt install -y apt-transport-https ca-certificates curl gnupg-agent software-properties-common
+  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
+  add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
+  apt update
+  apt install -y docker-ce=5:19.03.10~3-0~ubuntu-focal containerd.io
+}
+
+
+---------Step3: k8s apt repo
+{
+  curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
+  echo "deb https://apt.kubernetes.io/ kubernetes-xenial main" > /etc/apt/sources.list.d/kubernetes.list
+}
+
+--------Step4: k8s components
+apt update && apt install -y kubeadm=1.19.2-00 kubelet=1.19.2-00 kubectl=1.19.2-00
+
+
+

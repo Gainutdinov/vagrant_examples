@@ -1,0 +1,18 @@
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+      - ./token:/etc/prometheus/token
+    ports:
+      - 9090:9090
+  alertmanager:
+    image: prom/alertmanager:v0.23.0
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - "./alertmanager.yml:/config/alertmanager.yml"
+    command: --config.file=/config/alertmanager.yml --log.level=debug

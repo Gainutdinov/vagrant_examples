@@ -1,0 +1,81 @@
+Задание:
+Замечание: данное задание предполагает, что ранее были выполнены задания:
+● "HL 39. Prometheus: Node exporter"
+1. В docker-compose.yml добавьте сервис Grafana:
+grafana:
+  image: grafana/grafana:5.0.0
+  network_mode: host
+
+```
+version: '3'
+services:
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./rules.yml:/etc/prometheus/rules.yml
+    ports:
+      - 9090:9090
+  alertmanager:
+    image: prom/alertmanager:v0.23.0
+    restart: unless-stopped
+    ports:
+      - "9093:9093"
+    volumes:
+      - "./alertmanager.yml:/config/alertmanager.yml"
+    command: --config.file=/config/alertmanager.yml --log.level=debug
+  grafana:
+    image: grafana/grafana:5.0.0
+    expose:
+      - 3000
+    network_mode: host
+```
+
+Рестартуйте стек.
+2. Откройте Web-интерфейс Grafana в броузере. Авторизуйтесь с именем admin, пароль admin.
+3. Добавьте Data Source для Prometheus со следующими параметрами:
+○ Name Prometheus
+○ Type Prometheus
+○ URL <ВМ_ip_адрес>:9090
+○ Access proxy
+4. Используя WebUI Prometheus, убедитесь, что target Node exporter доступен.
+5. Создайте dashboard Prometheus VM.
+6. На созданной dashboard:
+○ Добавьте панель Nodename типа Singlestat
+○ На вкладке Metrics выберите источник данных Prometheus
+○ Задайте запрос node_uname_info, Format as - Table
+○ На вкладке Options выберите колонку nodename
+○ Сохраните изменения
+○ Убедитесь, что панель содержит имя хоста ВМ
+7. На созданной dashboard:
+○ Добавьте панель Version типа Singlestat
+○ На вкладке Metrics выберите источник данных Prometheus
+○ Задайте запрос node_uname_info, Format as - Table
+○ На вкладке Options выберите колонку version
+○ Сохраните изменения
+○ Убедитесь, что панель содержит версию ядра ВМ
+8. На созданной dashboard:
+○ Добавьте панель CPU типа Graph
+○ На вкладке Metrics выберите источник данных Prometheus
+○ Задайте запрос, возвращающий загрузку процессоров ВМ в процентах
+○ На вкладке Axes выберите Unit равным percent(1-100), Y-Min равным 0, Y-Max равным 100
+○ Сохраните изменения
+○ Убедитесь, что панель содержит график загрузки процессоров ВМ
+9. На созданной dashboard:
+○ Добавьте панель Memory типа Graph
+○ На вкладке Metrics выберите источник данных Prometheus
+○ Задайте запрос, , возвращающий загрузку памяти ВМ в процентах
+○ На вкладке Axes выберите Unit равным percent(1-100), Y-MiN равным 0, Y-Max равным 100
+○ Сохраните изменения
+○ Убедитесь, что панель содержит график загрузки памяти ВМ
+
+```
+1.png
+```
+
+Ответы:
+2. Web-интерфейс Grafana http://<ВМ_ip_адрес>:3000.
+3. Запрос для рассчета загрузки CPU:
+100 - (sum(irate(node_cpu_seconds_total {mode="idle"} [1m])) without (cpu)) / count(node_cpu_seconds_total) without (cpu) * 100
+4. Запрос для рассчета загрузки памяти:
+100 - node_memory_MemAvailable_bytes{instance="<ВМ_ip_адрес>:9100"} / node_memory_MemTotal_bytes{instance="<ВМ_ip_адрес>:9100"} * 100

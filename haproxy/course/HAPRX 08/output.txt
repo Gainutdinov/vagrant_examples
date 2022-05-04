@@ -137,6 +137,7 @@ global_defs {
     smtp_connect_timeout 30
     enable_traps
   }
+  user root
 }
 
 vrrp_script haproxy {
@@ -164,7 +165,7 @@ vrrp_instance VRRP1 {
   }
 
   virtual_ipaddress {
-    51.250.10.125/24
+    51.250.82.91/24 brd 51.250.82.255 scope global label eth0:10
   }
 
   track_script {
@@ -212,7 +213,7 @@ vrrp_instance VRRP1 {
   }
 
   virtual_ipaddress {
-    51.250.10.125/24
+    51.250.82.91/24 brd 51.250.82.255 scope global label eth0:10
   }
 
   track_script {

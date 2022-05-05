@@ -3,7 +3,69 @@
 2. Найдите в Telegram пользователя BotFather и отправьте ему сообщение /newbot.
 3. Введите имя вашего бота (name) и уникальное имя пользователя (username) для него, заканчивающееся на Bot или bot.
 4. Сохраните полученный токен.
+
+```
+name:     highavailable_bot
+username: @highavailable_bot
+
+Done! Congratulations on your new bot. You will find it at t.me/highavailable_bot. You can now add a description, about section and profile picture for your bot, see /help for a list of commands. By the way, when you've finished creating your cool bot, ping our Bot Support if you want a better username for it. Just make sure the bot is fully operational before you do this.
+Use this token to access the HTTP API:
+TOKEN.....
+Keep your token secure and store it safely, it can be used by anyone to control your bot.
+For a description of the Bot API, see this page: https://core.telegram.org/bots/api
+```
+
 5. Найдите в Telegram вашего бота по username и отправьте ему пробное сообщение.
 6. Используя вызов curl, получите chat_id вашего c ботом чата.
+
+```
+MacBook-Pro-atlas:37 atlas$ curl  https://api.telegram.org/bot<TOKEN>/getUpdates | jq
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+100   361  100   361    0     0    996      0 --:--:-- --:--:-- --:--:--  1019
+{
+  "ok": true,
+  "result": [
+    {
+      "update_id": 159726058,
+      "message": {
+        "message_id": 2,
+        "from": {
+          "id": 830537111,
+          "is_bot": false,
+          "first_name": "Marat",
+          "last_name": "Gainutdinov",
+          "username": "mgaynutdinov",
+          "language_code": "en"
+        },
+        "chat": {
+          "id": 830537111,
+          "first_name": "Marat",
+          "last_name": "Gainutdinov",
+          "username": "mgaynutdinov",
+          "type": "private"
+        },
+        "date": 1651773643,
+        "text": "test message"
+      }
+    }
+  ]
+}
+chat id is 830537111
+```
+
 7. Используя вызов curl, отправьте сообщение вашему боту. Убедитесь, что сообщение видно в Telegram.
+
+```
+curl -s -X POST https://api.telegram.org/bot<TOKEN>/sendMessage -d chat_id=830537111 -d text="Hello World"
+```
+
 8. Используя вызов curl, отправьте вашему боту файл. Убедитесь, что его содержимое видно в Telegram
+
+```
+curl -F document=@"/tmp/output.txt" https://api.telegram.org/bot<TOKEN>/sendDocument?chat_id=830537111
+```
+
+```
+1.png
+```

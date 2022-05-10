@@ -37,8 +37,8 @@ plugin name: WordPress REST API Authentication
 10. На ВМ3 jmeter запускайте тест с созданным тест-планом, увеличивая значение Number of Threads и Loops Count до тех пор, пока время отклика Average не превысит 3с. Зафиксируйте полученные значения.
 
 ```
-Number of Threads (users): 72
-Loop Count: 72
+Number of Threads (users): 35
+Loop Count: 35
 ```
 
 11. Результаты с вашими выводами о производительности системы пришлите в ответе.

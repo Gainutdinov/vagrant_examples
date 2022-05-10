@@ -77,7 +77,7 @@
     #admin admin
     - name: Template a file to /etc/apache2/sites-enabled/wp.conf
       ansible.builtin.shell: |
-        a2enmod rewrite && a2enmod vhost_alias && rm /etc/apache2/sites-enabled/000-default.conf && /etc/init.d/apache2 restart || true
+        chown -R www-data:www-data /usr/share/wordpress && a2enmod rewrite && a2enmod vhost_alias && rm /etc/apache2/sites-enabled/000-default.conf && /etc/init.d/apache2 restart || true
       args:
         chdir: /etc/apache2
         executable: /bin/bash
@@ -99,7 +99,7 @@
 
     - name: shell jmeter install
       ansible.builtin.shell: |
-        wget https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.3.zip && unzip apache-jmeter-5.3.zip
+        wget https://downloads.apache.org/jmeter/binaries/apache-jmeter-5.4.3.zip && unzip apache-jmeter-5.4.3.zip
       args:
         chdir: /root
         executable: /bin/bash

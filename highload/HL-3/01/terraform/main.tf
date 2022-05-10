@@ -98,7 +98,7 @@ resource "aws_instance" "app_servers" {
       type        = "ssh"
       host        = self.public_ip
       user        = "ubuntu"
-      private_key = file("/Users/atlas/.ssh/id_rsa")
+      private_key = file("~/.ssh/id_rsa")
       timeout     = "4m"
    }
 }

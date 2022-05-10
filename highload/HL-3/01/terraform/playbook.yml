@@ -1,0 +1,106 @@
+---
+- name: mariadb install
+  hosts: VM1
+  become: yes
+  vars:
+    wp_ip: "54.244.162.242"
+  gather_facts: yes
+  tasks:
+    - name: Add repository key to the system
+      ansible.builtin.apt_key:
+        url: https://mariadb.org/mariadb_release_signing_key.asc
+        state: present
+    - name: Install MariaDB repository 10.6
+      apt_repository:
+        repo: 'deb [arch=amd64] https://mirror.docker.ru/mariadb/repo/10.6/ubuntu focal main'
+        state: present
+    - name: update
+      apt: update_cache=yes   
+      ignore_errors: yes      
+    - name: Install MariaDB Server 10.6
+      apt: name=mariadb-server state=latest
+    - name: Install MariaDB Client 10.6
+      apt: name=mariadb-client state=latest
+    - name: Run on all interfaces
+      ansible.builtin.shell: |
+        sed -i 's/bind-address            = 127.0.0.1/bind-address            = 0.0.0.0/g' /etc/mysql/mariadb.conf.d/50-server.cnf
+      args:
+        chdir: /etc/mysql/mariadb.conf.d/
+        executable: /bin/bash
+    - name: Restart MariaDB 10.6
+      service: name=mysql state=restarted
+
+    - name: "Install ansible python3 mysql dependency"
+      apt:
+        name: python3-mysqldb
+        state: latest
+
+    - name: Create a new database with name 'wordpress'
+      community.mysql.mysql_db:
+        name: wordpress
+        state: present
+
+    - name: Create database user with name 'wordpress' and password 'wordpress' with all database privileges
+      community.mysql.mysql_user:
+        name: wordpress
+        password: wordpress
+        priv: 'wordpress.*:ALL'
+        host: '%'
+        state: present
+
+
+- name: wordpress install
+  hosts: VM2
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Install wordpress 
+      apt: name=wordpress  state=latest update_cache=yes
+      
+    - name: Template a file to /etc/apache2/sites-enabled/wp.conf
+      ansible.builtin.template:
+        src: templates/apache.conf.j2
+        dest: /etc/apache2/sites-enabled/apache.conf
+        owner: root
+        group: root
+        mode: '0644'
+
+    - name: Template a file to /etc/wordpress/config-default.php.j2
+      ansible.builtin.template:
+        src: templates/config-default.php.j2
+        dest: /etc/wordpress/config-default.php
+        owner: root
+        group: root
+        mode: '0644'
+ 
+    #mysql -h 54.202.227.82 -uwordpress -pwordpress
+    #admin admin
+    - name: Template a file to /etc/apache2/sites-enabled/wp.conf
+      ansible.builtin.shell: |
+        a2enmod rewrite && a2enmod vhost_alias && rm /etc/apache2/sites-enabled/000-default.conf && /etc/init.d/apache2 restart || true
+      args:
+        chdir: /etc/apache2
+        executable: /bin/bash
+
+
+- name: jmeter install
+  hosts: VM3
+  become: yes
+  gather_facts: yes
+  tasks:
+    - name: Install openjdk 
+      apt: name=openjdk-8-jdk state=latest update_cache=yes
+      
+    - name: Install unzip 
+      apt: name=unzip state=latest
+
+    - name: Install wget 
+      apt: name=wget state=latest
+
+    - name: shell jmeter install
+      ansible.builtin.shell: |
+        wget https://downloads.apache.org//jmeter/binaries/apache-jmeter-5.3.zip && unzip apache-jmeter-5.3.zip
+      args:
+        chdir: /root
+        executable: /bin/bash
+

@@ -1,0 +1,4 @@
+VM1 ansible_host=54.202.227.82  ansible_user=ubuntu #mariadb
+VM2 ansible_host=54.244.162.242 ansible_user=ubuntu #wordpress
+VM3 ansible_host=35.89.59.242   ansible_user=ubuntu #jmeter
+

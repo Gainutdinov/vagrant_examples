@@ -1,0 +1,10 @@
+---
+- name: docker-compose edition
+  hosts: all
+  become: yes
+  gather_facts: yes
+
+  roles:
+    - role: geerlingguy.docker
+    - role: robertdebock.docker_compose
+

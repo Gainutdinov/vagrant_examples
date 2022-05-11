@@ -1,0 +1,22 @@
+version: '3.1'
+
+services:
+
+  wordpress:
+    image: wordpress:beta-php8.0-apache
+    environment:
+      - WORDPRESS_DB_HOST=54.69.229.238:3306
+      - WORDPRESS_DB_USER=wordpress
+      - WORDPRESS_DB_PASSWORD=wordpress
+      - WORDPRESS_DB_NAME=wordpress
+    ports:
+     - "0.0.0.0:80:80"
+    volumes:
+     - ./html:/var/www/html
+    network_mode: host
+
+
+
+#define('FS_METHOD', 'direct');
+#+
+#chmod -R 777 ./html/wp-content

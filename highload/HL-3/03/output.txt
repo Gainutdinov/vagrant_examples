@@ -1,0 +1,70 @@
+Задание:
+1. Для выполнения задания необходимо создать такую инфраструтуру:
+● ВМ1 percona со следующими параметрами: 1 CPU / 2G memory;
+● ВМ2 wordpress со следующими параметрами: 1 CPU / 1G memory.
+Обновите систему на ВМ1,2.
+Добавьте адреса ВМ1,2 в файл /etc/hosts каждой из ВМ.
+2. На ВМ1 percona:
+○ добавьте репозиторий Percona;
+○ установите Percona Server 5.7;
+○ проверьте статус сервиса mysql;
+○ подключитесь к Percona серверу пользователем root с заданным паролем.
+3. Используя открытое подключение:
+○ создайте пользователя БД wordpress@<wordpress> с паролем wordpress;
+○ создайте БД wordpress;
+○ задайте пользователю wordpress полные права на БД wordpress.
+4. На ВМ2 wordpress установите пакеты:
+○ php-fpm
+○ php-mysql
+5. На ВМ2 wordpress установите веб-сервер Nginx.
+Измените конфигурационный файл /etc/nginx/sites-available/default следующим
+образом:
+○ В директиву index добавьте index.php.
+○ В директиве server_name укажите wordpress.
+○ Снимите комментарий с директив location, чтобы получилось:
+location ~ \.php$ {
+include snippets/fastcgi-php.conf;
+fastcgi_pass unix:/run/php/php7.2-fpm.sock;
+}
+location ~ /\.ht {
+deny all;
+}
+○ Протестируйте внесенные изменения.
+○ Рестартуйте сервис nginx.
+6. На ВМ2 wordpress cоздайте тестовый PHP-скрипт:
+echo "<?php phpinfo(); ?>" | sudo tee /var/www/html/info.php
+7. Откройте тестовый PHP-скрипт в браузере. Убедитесь, что он обрабатывается
+модулем FPM/FastCGI.
+8. На ВМ2 wordpress установите Wordpress:
+○ скачайте последнюю версию Wordpress;
+○ распакуйте архив в /var/www/html.
+9. Сконфигурируйте Wordpress:
+○ откройте в браузере адрес ВМ2 wordpress;
+○ введите данные сервера БД;
+○ создайте файл wp-config.php;
+○ задайте параметры Wordpress;
+○ пройдите аутентификацию созданным пользователем.
+10. Используя Digital Ocean WebUI или CLI doctl, создайте:
+○ Space для статического контента Worpdress;
+○ Space access key для доступа к созданному space.
+11. На ВМ2 wordpress установите пакеты:
+○ unzip
+○ php-xml
+○ php-curl
+Скачайте плагин WP Offload Media Lite в директорию /var/www/html/wp-content/plugins.
+Распакуйте архив.
+Создайте директорию /var/www/html/wp-content/uploads. Измените для нее владельца и
+группу на www-data.
+12. Используя Wordpress WebUI:
+○ активируйте плагин WP Offload Media Lite.
+13. На ВМ2 wordpress добавьте в файл wp-config.php следующее:
+define( 'AS3CF_SETTINGS', serialize( array(
+'provider' => 'do',
+'access-key-id' => '<SPACE_ACCESS_KEY_ID>',
+'secret-access-key' => '<SPACE_ACCESS_KEY>',
+) ) );
+14. Используя Wordpress WebUI, произведите загрузку тестового изображения.
+15. Используя Digital Ocean WebUI, убедитесь, что тестовое изображение было
+загружено в DO space.
+16. Используя Wordpress WebUI браузера, убедитесь, что тестовое изображение
+загружается теперь не с ВМ wordpress, а с DO space.

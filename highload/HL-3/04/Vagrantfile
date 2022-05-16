@@ -1,0 +1,22 @@
+Vagrant.configure("2") do |config|
+  config.vm.define "cpu1" do |lab1b|
+    lab1b.vm.box = "generic/ubuntu2004"
+    lab1b.vm.hostname = "cpu1"
+    lab1b.vm.provider "virtualbox" do |vb|
+    lab1b.vm.network "private_network", ip: "172.16.16.100"
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+  end
+  config.vm.define "cpu2" do |lab2b|
+    lab2b.vm.box = "generic/ubuntu2004"
+    lab2b.vm.hostname = "cpu2"
+    lab2b.vm.network "private_network", ip: "172.16.16.200"
+    lab2b.vm.provider "virtualbox" do |vb|
+      vb.memory = 1024
+      vb.cpus = 1
+    end
+  end
+end
+
+

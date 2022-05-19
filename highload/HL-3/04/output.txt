@@ -35,39 +35,56 @@ openssl req -x509 -nodes -days 3650 -newkey ec:<(openssl ecparam -name prime256v
 ○ Запустите OpenSSL s_server с ранее сгенерированным RSA сертификатом и ключом в фоновом режиме и перенаправлением std в /dev/null.
 
 ```
-openssl s_server -key ./rsakey.pem -cert rsacert.pem -accept 443 -www
+openssl s_server -key ./rsakey.pem -cert rsacert.pem -accept 443 -www &> /dev/null &
 ```
 
 ○ Выполните тест скорости подключения при помощи OpenSSL s_time, запустив клиента на той же ВМ. Последние 2 строки вывода OpenSSL s_time приложите в ответ к заданию.
 
 ```
-openssl s_client -connect localhost:443
+openssl s_time -connect localhost:443
+
+8650 connections in 4.40s; 1965.91 connections/user sec, bytes read 0
+8650 connections in 31 real seconds, 0 bytes read per connection
 ```
 
 ○ Во время выполнения теста обратите внимание на утилизацию CPU процессами OpenSSL s_server и OpenSSL s_time. Выпишите среднюю утилизацию в ответ к заданию для каждого процесса.
 
 ```
 
+watch -n 1 'ps aux | grep openssl | grep -v grep'
+root        2144 70.4  0.5   7148  5612 pts/1    R+   14:05   1:09 openssl s_server -key ./rsakey.pem -c
+root        2352 23.4  0.5   7208  5928 pts/0    S+   14:07   0:06 openssl s_time -connect localhost:443
 ```
 
 5. Протестируйте скорость создания подключений для ECDSA:
 ○ Запустите OpenSSL s_server с ранее сгенерированным prime256v1 сертификатом и ключом в фоновом режиме и перенаправлением std в /dev/null.
 
 ```
-openssl s_server -key ./ecdsakey.pem -cert ecdsacert.pem -accept 443 -www 
+openssl s_server -key ./ecdsakey.pem -cert ecdsacert.pem -accept 443 -www &> /dev/null &
 ```
 
 ○ Выполните тест скорости подключения при помощи OpenSSL s_time, запустив клиента на той же ВМ. Последние 2 строки вывода OpenSSL s_time приложите в ответ к заданию.
 
 ```
-openssl s_client -connect localhost:443
+openssl s_time -connect localhost:443
 
+30593 connections in 14.42s; 2121.57 connections/user sec, bytes read 0
+30593 connections in 31 real seconds, 0 bytes read per connection
 ```
 
 ○ Во время выполнения теста обратите внимание на утилизацию CPU процессами OpenSSL s_server и OpenSSL s_time. Выпишите среднюю утилизацию в ответ к заданию для каждого процесса.
 
 ```
+root        2829 47.6  0.5   7148  5752 pts/1    R+   14:08   0:16 openssl s_server -key ./ecdsakey.pem
+root        2845 70.9  0.6   7208  6196 pts/0    R+   14:08   0:22 openssl s_time -connect localhost:443
 
 ```
 
 6. На основании полученных данных в п.5 и п.6. сделайте вывод о целесообразности использования ECC для потенциального увеличения пропускной способности сервера при операции TLS HandShake.
+
+
+```
+Основываясь на результатах можно сделать вывод что при использовании ECDSA алгоритма получим немного большую пропускную способность сервера при операциях TLS Handshake ( 1965 connections/user per second (RSA) vs 2121 connectsion/user per sec (ECDSA) )
+Вдобавок исхода из результатов стоит отметить, что потребление ресурсов в случае использования алгоритма ECDSA будет намного выше на стороне клиента нежели в случае использования RSA, в последнем случае основная нагрузка будет на стороне сервера, если мы хотим уменьшить нагрузку на TLS handshake'и нам стоит выбирать алгоритм использующих на элиптических кривых (EC).
+```
+

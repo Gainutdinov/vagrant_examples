@@ -1,0 +1,226 @@
+Задание:
+1. На тестовой VM (2 vCPU) создайте структуру директорий:
+○ ~/nginx-server/certs
+○ ~/nginx-server/conf.d
+
+```
+curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+mkdir -p ~/nginx-server/certs
+mkdir -p ~/nginx-server/conf.d
+```
+
+2. В ~/nginx-server/certs скопируйте ранее сгенерированные секретные ключи и сертификаты ECC и RSA.
+
+```
+openssl req -x509 -nodes -days 3650 -newkey rsa:3072 -keyout rsakey.pem -out rsacert.pem
+mv rsakey.pem   ~/nginx-server/certs
+mv rsacert.pem  ~/nginx-server/certs
+
+openssl req -x509 -nodes -days 3650 -newkey ec:<(openssl ecparam -name prime256v1) -keyout ecdsakey.pem -out ecdsacert.pem
+mv ecdsakey.pem   ~/nginx-server/certs
+mv ecdsacert.pem  ~/nginx-server/certs
+
+```
+
+3. В ~/nginx-server/conf.d создайте новый конфигурационный файл:
+○ имя файла — example.com.conf;
+○ server_name - example.com www.example.com;
+○ слушать на порту 443;
+○ указать сертификаты и ключи для ECC и RSA;
+○ поддержка ssl-протоколов TLSv1 TLSv1.1 TLSv1.2;
+○ шифры HIGH+kEECDH+AESGCM:HIGH+kEECDH:HIGH+kEDH:HIGH:!aNULL;
+○ отключите ssl_session_cache;
+○ включите ssl_prefer_server_ciphers;
+○ создайте секцию localtion. В качестве корневой директории укажите /usr/share/nginx/html/. Итоговое содержимое файла приложите в ответ к заданию.
+
+```
+cat << EOF > ~/nginx-server/conf.d/example.com.conf;
+server {
+    server_name example.com www.example.com;
+    listen 443 ssl default_server;
+
+    #RSA
+    ssl_certificate /etc/nginx/certs/rsacert.pem;
+    ssl_certificate_key /etc/nginx/certs/rsakey.pem;
+    #ECDSA
+    ssl_certificate /etc/nginx/certs/ecdsacert.pem;
+    ssl_certificate_key /etc/nginx/certs/ecdsakey.pem;
+
+    ssl_protocols TLSv1 TLSv1.1 TLSv1.2;
+    ssl_ciphers HIGH+kEECDH+AESGCM:HIGH+kEECDH:HIGH+kEDH:HIGH:!aNULL;
+    ssl_session_cache off;
+    ssl_prefer_server_ciphers on;
+    #ssl_ecdh_curve secp384r1;
+
+    location / {
+        root /usr/share/nginx/html/; 
+    }
+}
+EOF
+
+nginx -t
+
+```
+4. Запустите docker-контейнер со следующими параметрами:
+○ образ — nginx:1.17.9;
+○ имя контейнера — nginx;
+○ монтирование директории ~/nginx-server/certs. Путь до ключей в контейнере должен совпадать с указанным в предыдущем пункте;
+○ монтирование файла ~/nginx-server/conf.d/example.com.conf в директорию контейнера /etc/nginx/conf.d/;
+○ проброс порта 443.
+
+```
+docker run -d nginx:1.17.9 \
+     -v ./nginx-server/certs:/etc/nginx/certs \
+     -v ./nginx-server/conf.d/example.com.conf:/etc/nginx/conf.d/example.com.conf 
+     -p 443:443
+```
+
+5. Пропишите в /etc/hosts резолвинг www.example.com на внутренний интерфейс VM.
+6. Выполните проверку подключения с помощью OpenSSL S_CLIENT с использованием разных шифров ECDSA и RSA. Убедитесь, что 2 шифра работают одновременно.
+
+```
+root@cpu1:/etc/nginx/sites-enabled# openssl s_client -cipher aRSA -connect example.com:443
+root@cpu1:/etc/nginx/sites-enabled# openssl s_client -cipher aECDSA -connect example.com:443
+```
+
+7. Установите пакет apache2-utils для использования бенчмарка ab.
+
+```
+apt install apache2-utils -y
+```
+
+8. Запустите ab со следующимим параметрами:
+○ протокол TLS1.2;
+○ время выполнения теста — 30 сек;
+○ конкурентных потоков 100;
+○ шифр — ECDHE-RSA-AES256-GCM-SHA384;
+○ URL — www.example.com. Итоговую команду приложите в ответ к заданию.
+
+```
+ab  -f TLS1.2 -t 30 -c 100 -Z ECDHE-RSA-AES256-GCM-SHA384 https://www.example.com/
+
+
+root@cpu1:/etc/nginx/sites-enabled# ab  -f TLS1.2 -t 30 -c 100 -Z ECDHE-RSA-AES256-GCM-SHA384 https://www.example.com/ > output1.txt
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Finished 16559 requests
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking www.example.com (be patient)
+
+
+Server Software:        nginx/1.18.0
+Server Hostname:        www.example.com
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.2,ECDHE-RSA-AES256-GCM-SHA384,3072,256
+Server Temp Key:        X25519 253 bits
+TLS Server Name:        www.example.com
+
+Document Path:          /
+Document Length:        612 bytes
+
+Concurrency Level:      100
+Time taken for tests:   30.001 seconds
+Complete requests:      16559
+Failed requests:        0
+Total transferred:      14141386 bytes
+HTML transferred:       10134108 bytes
+Requests per second:    551.95 [#/sec] (mean)
+Time per request:       181.175 [ms] (mean)
+Time per request:       1.812 [ms] (mean, across all concurrent requests)
+Transfer rate:          460.32 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        4  177  14.0    176     233
+Processing:     0    4   3.1      6      57
+Waiting:        0    4   3.1      6      57
+Total:          9  181  15.0    181     244
+
+Percentage of the requests served within a certain time (ms)
+  50%    181
+  66%    183
+  75%    185
+  80%    187
+  90%    194
+  95%    202
+  98%    214
+  99%    224
+ 100%    244 (longest request)
+```
+
+9. Повторите тестирование из предыдущего пункта для шифра ECDHE-ECDSA-AES256-GCM-SHA384. Итоговую команду приложите в ответ к заданию.
+
+```
+ab  -f TLS1.2 -t 30 -c 100 -Z ECDHE-ECDSA-AES256-GCM-SHA384 https://www.example.com/
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Completed 20000 requests
+Completed 25000 requests
+Completed 30000 requests
+Completed 35000 requests
+Completed 40000 requests
+Completed 45000 requests
+Completed 50000 requests
+Finished 50000 requests
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking www.example.com (be patient)
+
+
+Server Software:        nginx/1.18.0
+Server Hostname:        www.example.com
+Server Port:            443
+SSL/TLS Protocol:       TLSv1.2,ECDHE-ECDSA-AES256-GCM-SHA384,256,256
+Server Temp Key:        X25519 253 bits
+TLS Server Name:        www.example.com
+
+Document Path:          /
+Document Length:        612 bytes
+
+Concurrency Level:      100
+Time taken for tests:   21.943 seconds
+Complete requests:      50000
+Failed requests:        0
+Total transferred:      42700000 bytes
+HTML transferred:       30600000 bytes
+Requests per second:    2278.62 [#/sec] (mean)
+Time per request:       43.886 [ms] (mean)
+Time per request:       0.439 [ms] (mean, across all concurrent requests)
+Transfer rate:          1900.34 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        1   32   7.4     33      90
+Processing:     2   12   6.3     10      78
+Waiting:        0    8   4.8      7      76
+Total:          7   44   5.5     43     120
+
+Percentage of the requests served within a certain time (ms)
+  50%     43
+  66%     44
+  75%     45
+  80%     46
+  90%     49
+  95%     51
+  98%     56
+  99%     69
+ 100%    120 (longest request)
+```
+
+10. Проанализируйте полученные результаты. Какие выводы можно сделать о целесообразности использования ECDSA подписи?
+
+```
+Сертификат используемый алгоритм/шифр на основе ECDSA имеет более высокую пропускную способность из чего следует чтобы повысить производительность пропускную способность сервера следует использовать сертификат на основе алгоритма ECDSA
+
+Complete requests:      50000 (ECDSA)
+Complete requests:      16559 (RSA)
+
+```

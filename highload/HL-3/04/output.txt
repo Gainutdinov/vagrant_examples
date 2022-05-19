@@ -21,21 +21,53 @@ root@coredns-slave:~#
 2. Сгенерируйте самоподписной сертификат RSA 3072bit.
 
 ```
-
+openssl req -x509 -nodes -days 3650 -newkey rsa:3072 -keyout rsakey.pem -out rsacert.pem
 ```
 
 3. Сгенерируйте самоподписной сертификат ECDSA prime256v1.
 
 ```
-
+# Generate self-signed certificate with ECDSA using two common curves
+openssl req -x509 -nodes -days 3650 -newkey ec:<(openssl ecparam -name prime256v1) -keyout ecdsakey.pem -out ecdsacert.pem
 ```
 
 4. Протестируйте скорость создания подключений для RSA:
 ○ Запустите OpenSSL s_server с ранее сгенерированным RSA сертификатом и ключом в фоновом режиме и перенаправлением std в /dev/null.
+
+```
+openssl s_server -key ./rsakey.pem -cert rsacert.pem -accept 443 -www
+```
+
 ○ Выполните тест скорости подключения при помощи OpenSSL s_time, запустив клиента на той же ВМ. Последние 2 строки вывода OpenSSL s_time приложите в ответ к заданию.
+
+```
+openssl s_client -connect localhost:443
+```
+
 ○ Во время выполнения теста обратите внимание на утилизацию CPU процессами OpenSSL s_server и OpenSSL s_time. Выпишите среднюю утилизацию в ответ к заданию для каждого процесса.
+
+```
+
+```
+
 5. Протестируйте скорость создания подключений для ECDSA:
 ○ Запустите OpenSSL s_server с ранее сгенерированным prime256v1 сертификатом и ключом в фоновом режиме и перенаправлением std в /dev/null.
+
+```
+openssl s_server -key ./ecdsakey.pem -cert ecdsacert.pem -accept 443 -www 
+```
+
 ○ Выполните тест скорости подключения при помощи OpenSSL s_time, запустив клиента на той же ВМ. Последние 2 строки вывода OpenSSL s_time приложите в ответ к заданию.
+
+```
+openssl s_client -connect localhost:443
+
+```
+
 ○ Во время выполнения теста обратите внимание на утилизацию CPU процессами OpenSSL s_server и OpenSSL s_time. Выпишите среднюю утилизацию в ответ к заданию для каждого процесса.
+
+```
+
+```
+
 6. На основании полученных данных в п.5 и п.6. сделайте вывод о целесообразности использования ECC для потенциального увеличения пропускной способности сервера при операции TLS HandShake.

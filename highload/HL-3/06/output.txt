@@ -1,0 +1,237 @@
+Задание:
+1. На тестовой VM создайте директорию balancer и перейдите в нее.
+
+```
+mkdir ~/balancer
+cd ~/balancer
+```
+
+2. Создайте файл docker-compose.yaml со следующим содержимым:
+
+```
+cat << EOF > docker-compose.yml
+version: '3.5'
+services:
+  backend-server:
+    image: nginxdemos/hello:0.2
+    networks:
+    - internal-net
+  proxy:
+    image: nginx:1.17.9
+    ports:
+      - 8080:80
+    depends_on:
+      - backend-server
+    networks:
+      - internal-net
+      - external-net
+networks:
+  internal-net :
+    driver: bridge
+    internal: true
+  external-net:
+    driver: bridge
+EOF
+```
+
+3. Запустите контейнеры Docker compose, при запуске укажите количество экземпляров сервиса backend-server равным 2.
+
+```
+sudo curl -fsSL https://get.docker.com -o get-docker.sh
+sudo sh get-docker.sh
+
+sudo curl -L "https://github.com/docker/compose/releases/download/1.29.2/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+docker-compose up -d
+```
+
+4. Создайте файл конфигурации proxy.conf Nginx со следующими параметрами:
+● upstream конфигурация ссылается на 2 контейнера backend-server (по имени контейнера);
+● количество ошибок на backend до того, как пометить его недоступным, — 3;
+● тайм-аут — 5 сек. Содержимое proxy.conf приложите в ответ к заданию.
+
+```
+
+cat << EOF > proxy.conf
+upstream backend-server {
+  server backend-server max_fails=3 fail_timeout=5s;
+  server proxy          max_fails=3 fail_timeout=5s;
+}
+
+server {
+  listen 8080;
+  server_name default;
+  location / {
+    proxy_pass http://backend-server;
+  }
+}
+EOF
+
+cat << EOF > docker-compose.yml
+version: '3.5'
+services:
+  backend-server:
+    image: nginxdemos/hello:0.2
+    networks:
+    - internal-net
+  proxy:
+    image: nginx:1.17.9
+    ports:
+      - 8080:8080
+    depends_on:
+      - backend-server
+    networks:
+      - internal-net
+      - external-net
+    volumes:
+      - ./proxy.conf:/etc/nginx/conf.d/proxy.conf
+networks:
+  internal-net :
+    driver: bridge
+    internal: true
+  external-net:
+    driver: bridge
+EOF
+
+docker-compose up -d
+```
+
+5. Измените docker-compose.yaml так, чтобы файл proxy.conf был смонтирован в /etc/nginx/conf.d. Перезапустите контейнер proxy.
+6. Откройте в браузере адрес proxy IP:8080. Обновите страницу несколько раз.  Работает ли балансировка? Меняется ли Server address и Server name?
+
+```
+#In backend container
+echo 'backend' > /usr/share/nginx/html/index.html
+#In proxy container
+echo 'proxy' > /usr/share/nginx/html/index.html
+```
+
+7. Установите пакет apache2-utils. Запустите тест ab:
+○ время выполнения теста — 20 сек;
+○ число конкурентных потоков — 50;
+○ URL — обращения на контейнер balancer_proxy по порту 8080.
+Ознакомьтесь с результатами тестирования.
+
+p.s. сделал nginx локальный в качестве балансировщика т.к. когда он был в контейнере ошибки были у ab утилиты
+```
+apt update
+apt install apache2-utils -y
+root@cpu1:~/balancer# ab -t 20 -c 50 -k http://localhost:80/ #https://blog.fearcat.in/a?ID=01200-19ca07c7-e3d3-4c1e-8263-22de68091226
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking localhost (be patient)
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Finished 17538 requests
+
+
+Server Software:        nginx/1.18.0
+Server Hostname:        localhost
+Server Port:            80
+
+Document Path:          /
+Document Length:        9 bytes
+
+Concurrency Level:      50
+Time taken for tests:   35.084 seconds
+Complete requests:      17538
+Failed requests:        0
+Keep-Alive requests:    0
+Total transferred:      3595290 bytes
+HTML transferred:       157842 bytes
+Requests per second:    499.88 [#/sec] (mean)
+Time per request:       100.023 [ms] (mean)
+Time per request:       2.000 [ms] (mean, across all concurrent requests)
+Transfer rate:          100.07 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0   19 544.9      0   15401
+Processing:     0   37 614.4     11   15411
+Waiting:        0   37 614.4     11   15410
+Total:          0   56 820.6     11   15411
+
+Percentage of the requests served within a certain time (ms)
+  50%     11
+  66%     13
+  75%     15
+  80%     16
+  90%     19
+  95%     22
+  98%     27
+  99%     33
+ 100%  15411 (longest request)
+
+
+```
+
+8. Повторите тестирование из предыдущего пункта, но во время выполнения теста перезапустите один из контейнеров backend-server. Была ли потеря трафика при рестарте контейнера?
+p.s. сделал nginx локальный в качестве балансировщика т.к. когда он был в контейнере ошибки были у ab утилиты
+
+```
+root@cpu1:~/balancer# ab -t 20 -c 50 -k http://localhost:80/
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking localhost (be patient)
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Completed 20000 requests
+Completed 25000 requests
+Completed 30000 requests
+Completed 35000 requests
+Completed 40000 requests
+Completed 45000 requests
+Completed 50000 requests
+Finished 50000 requests
+
+
+Server Software:        nginx/1.18.0
+Server Hostname:        localhost
+Server Port:            80
+
+Document Path:          /
+Document Length:        9 bytes
+
+Concurrency Level:      50
+Time taken for tests:   3.593 seconds
+Complete requests:      50000
+Failed requests:        47846
+   (Connect: 0, Receive: 0, Length: 47846, Exceptions: 0)
+Non-2xx responses:      47846
+Keep-Alive requests:    47391
+Total transferred:      16324167 bytes
+HTML transferred:       7961822 bytes
+Requests per second:    13916.69 [#/sec] (mean)
+Time per request:       3.593 [ms] (mean)
+Time per request:       0.072 [ms] (mean, across all concurrent requests)
+Transfer rate:          4437.08 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0  19.9      0    1031
+Processing:     0    2  25.6      1    3089
+Waiting:        0    2  25.6      1    3088
+Total:          0    2  32.5      1    3089
+
+Percentage of the requests served within a certain time (ms)
+  50%      1
+  66%      1
+  75%      1
+  80%      2
+  90%      3
+  95%      8
+  98%     12
+  99%     15
+ 100%   3089 (longest request)
+
+```
+
+```
+Получили что при перезапуске nginx не быстро переключит трафик и некоторые клиенты могу "словить" ошибки что приведёт к плохому User Experience'у в следствии чего лучше в качестве балансировщика использовать что-то другое например haproxy
+```

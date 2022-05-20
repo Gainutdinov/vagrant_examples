@@ -1,56 +1,236 @@
 Задание:
 1. На тестовой VM создайте директорию haproxy и перейдите в нее.
+
+```
+mkdir ~/haproxy
+```
+
 2. Создайте файл docker-compose.yaml со следующим содержимым:
+
+```
+cat << EOF > docker-compose.yml
 version: '3.5'
 services:
-backend-server:
-image: nginxdemos/hello:0.2
+  backend-server:
+    image: nginxdemos/hello:0.2
+    networks:
+      - internal-net
+  proxy:
+    image: haproxy:2.0.14
+    ports:
+      - 8080:80
+    volumes:
+      - ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
+    depends_on:
+      - backend-server
+    networks:
+      - internal-net
+      - external-net
 networks:
-- internal-net
-proxy:
-image: haproxy:2.0.14
-ports:
-- 8080:80
-volumes:
-- ./haproxy.cfg:/usr/local/etc/haproxy/haproxy.cfg:ro
-depends_on:
-- backend-server
-networks:
-- internal-net
-- external-net
-networks:
-internal-net :
-driver: bridge
-internal: true
-external-net:
-driver: bridge
-3. Запустите контейнеры Docker compose, при запуске укажите количество
-экземпляров сервиса backend-server равным 2.
+  internal-net :
+    driver: bridge
+    internal: true
+  external-net:
+    driver: bridge
+EOF
+
+```
+
+3. Запустите контейнеры Docker compose, при запуске укажите количество экземпляров сервиса backend-server равным 2.
+
+```
+curl -fsSL https://get.docker.com -o get-docker.sh
+sh get-docker.sh
+sudo curl -L "https://github.com/docker/compose/releases/download/1.26.0/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+sudo chmod +x /usr/local/bin/docker-compose
+docker-compose up -d --scale backend-server=2
+```
+
 4. Создайте файл конфигурации haproxy.cfg HAProxy со следующими параметрами:
 ● глобальная настройка — количество одновременных подключений 1024;
 ● значение по умолчанию — режим работы http;
 ● значение по умолчанию — тайм-аут подключения 3 сек;
-● значение по умолчанию — максимальное время просто соединения до клиента 30
-сек;
-● значение по умолчанию — максимальное время просто соединения до сервера 40
-сек;
+● значение по умолчанию — максимальное время просто соединения до клиента 30 сек;
+● значение по умолчанию — максимальное время просто соединения до сервера 40 сек;
 ● имя фронтенда — haproxy_test;
 ● порт балансировки на фронтенде — 80;
 ● статистика доступна на фронтенде по URL — /haproxy_stat;
 ● название бэкенда — nginx_test_page;
 ● метод балансировки — roundrobin;
 ● балансировка на 80 порт контейнеров backend-server;
-● доступность бэкенда проверяется на уровне L4. Содержимое haproxy.cfg
-приложите в ответ к заданию.
-5. Откройте в браузере адрес proxy IP:8080. Обновите страницу несколько раз.
-Работает ли балансировка? Меняется ли Server address и Server name?
+● доступность бэкенда проверяется на уровне L4. Содержимое haproxy.cfg приложите в ответ к заданию.
+
+```
+global
+    maxconn 1024
+defaults
+    mode http
+    timeout connect 3s
+    timeout client 30s
+    timeout server 30s
+
+frontend haproxy_test
+    bind *:80
+    stats uri /haproxy_stat
+    default_backend nginx_test_page
+
+backend nginx_test_page
+    balance roundrobin
+    server server1 haproxy_backend-server_1:80 check
+    server server2 haproxy_backend-server_2:80 check
+
+```
+
+5. Откройте в браузере адрес proxy IP:8080. Обновите страницу несколько раз.  Работает ли балансировка? Меняется ли Server address и Server name?
+
+```
+#On first backend server
+echo '1111' > /usr/share/nginx/html/index.html
+#On second backend server
+echo '2222' > /usr/share/nginx/html/index.html
+```
+
 6. Установите пакет apache2-utils, если он не установлен. Запустите тест ab:
 ○ время выполнения теста — 20 сек;
 ○ число конкурентных потоков — 50;
-○ URL — обращения на контейнер haproxy_proxy по порту 8080. Ознакомьтесь
-с результатами тестирования. Есть ли отличия в скорости работы по
-сравнению с балансировкой через nginx?
+○ URL — обращения на контейнер haproxy_proxy по порту 8080. Ознакомьтесь с результатами тестирования. Есть ли отличия в скорости работы по сравнению с балансировкой через nginx?
+
+```
+NGINX
+Requests per second:    499.88 [#/sec]
+HAPROXY
+Requests per second:    2770.21 [#/sec] (mean)
+
+Исходя из результатов Haproxy более производительней nginx'а в качестве балансировщика
+```
+
+```
+docker inspect haproxy_proxy_1 | grep IPA
+ab -k -t 20 -c 50  http://IP:8080/
+root@cfdc3d6b5b1c:~/haproxy# ab -k -t 20 -c 50  http://192.168.0.2/ > output.txt
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Completed 20000 requests
+Completed 25000 requests
+Completed 30000 requests
+Completed 35000 requests
+Completed 40000 requests
+Completed 45000 requests
+Completed 50000 requests
+Finished 50000 requests
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.0.2 (be patient)
+
+
+Server Software:        nginx/1.21.6
+Server Hostname:        192.168.0.2
+Server Port:            80
+
+Document Path:          /
+Document Length:        5 bytes
+
+Concurrency Level:      50
+Time taken for tests:   18.049 seconds
+Complete requests:      50000
+Failed requests:        0
+Keep-Alive requests:    0
+Total transferred:      9600000 bytes
+HTML transferred:       250000 bytes
+Requests per second:    2770.21 [#/sec] (mean)
+Time per request:       18.049 [ms] (mean)
+Time per request:       0.361 [ms] (mean, across all concurrent requests)
+Transfer rate:          519.41 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.2      0       6
+Processing:     1   18   4.1     18      52
+Waiting:        1   18   4.1     17      52
+Total:          1   18   4.1     18      52
+
+Percentage of the requests served within a certain time (ms)
+  50%     18
+  66%     19
+  75%     20
+  80%     21
+  90%     23
+  95%     25
+  98%     28
+  99%     31
+ 100%     52 (longest request)
+```
+
 7. Откройте статистику haproxy в браузере. Ознакомьтесь с доступной информацией.
-8. Повторите тестирование из предыдущего п. 6, но во время выполнения теста
-перезапустите один из контейнеров backend-server. Была ли потеря трафика при
-рестарте контейнера при текущей конфигурации?
+
+```
+curl localhost:8080/haproxy_stat
+```
+
+8. Повторите тестирование из предыдущего п. 6, но во время выполнения теста перезапустите один из контейнеров backend-server. Была ли потеря трафика при рестарте контейнера при текущей конфигурации?
+
+
+```
+#Была потеря траффика не значительно меньшая чем при использовании NGINX'а
+#Requests per second:    499.88 [#/sec]
+
+
+root@cfdc3d6b5b1c:~/haproxy# ab -k -t 20 -c 50  http://192.168.0.2/ 
+Completed 5000 requests
+Completed 10000 requests
+Completed 15000 requests
+Completed 20000 requests
+Completed 25000 requests
+Completed 30000 requests
+Completed 35000 requests
+Finished 38236 requests
+root@cfdc3d6b5b1c:~/haproxy# cat ./output.txt
+This is ApacheBench, Version 2.3 <$Revision: 1843412 $>
+Copyright 1996 Adam Twiss, Zeus Technology Ltd, http://www.zeustech.net/
+Licensed to The Apache Software Foundation, http://www.apache.org/
+
+Benchmarking 192.168.0.2 (be patient)
+
+
+Server Software:        nginx/1.21.6
+Server Hostname:        192.168.0.2
+Server Port:            80
+
+Document Path:          /
+Document Length:        5 bytes
+
+Concurrency Level:      50
+Time taken for tests:   20.000 seconds
+Complete requests:      38236
+Failed requests:        156
+   (Connect: 0, Receive: 0, Length: 156, Exceptions: 0)
+Non-2xx responses:      150
+Keep-Alive requests:    0
+Total transferred:      7345494 bytes
+HTML transferred:       206460 bytes
+Requests per second:    1911.79 [#/sec] (mean)
+Time per request:       26.153 [ms] (mean)
+Time per request:       0.523 [ms] (mean, across all concurrent requests)
+Transfer rate:          358.67 [Kbytes/sec] received
+
+Connection Times (ms)
+              min  mean[+/-sd] median   max
+Connect:        0    0   0.4      0      12
+Processing:     0   26 126.4     17    2069
+Waiting:        0   26 126.4     17    2069
+Total:          1   26 126.5     17    2071
+
+Percentage of the requests served within a certain time (ms)
+  50%     17
+  66%     19
+  75%     21
+  80%     22
+  90%     24
+  95%     27
+  98%     31
+  99%     36
+ 100%   2071 (longest request)
+```

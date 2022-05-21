@@ -1,0 +1,14 @@
+Задание:
+1. Установите в Wordpress плагин для basic authentication и активируйте его.
+
+```
+#Use the following host:
+http://135.181.85.130/
+```
+
+2. С ВМ Jmeter: выполните запрос к Wordpress REST API для получения всех постов (без авторизации).
+3.              выполните запрос к Wordpress REST API для получения всех постов (используя basic authentication).
+4.              выполните запрос к Wordpress REST API для создания поста.
+5.              выполните запрос к Wordpress REST API для изменения поста.
+6.              выполните запрос к Wordpress REST API для удаления поста.
+

@@ -1,0 +1,53 @@
+Задание:
+1. Войдите в аккаунт AWS. Откройте панель сервиса RDS. Используйте ваш $USERNAME в дальнейших пунктах.
+2. Создайте БД:
+● тип БД — Mysql;
+● версия — 5.7;
+● шаблон — Dev/Test;
+● название экзепляра — $USERNAME-rds;
+● задайте пароль для экземпляра и сохраните его;
+● тип экземпляра — db.t2.micro;
+● максимальный размер хранилища при автомасштабировании — 30Гб;
+● Backup отключен;
+● остальные параметры по умолчанию.
+3. Запустите Instance EC2:
+● образ — Amazon Linux 2 AMI;
+● тип экземпляра t2.nano.
+● В настройках firewall откройте доступ по протоколу HTTP в дополнение к SSH с любого адреса.
+● При запуске экземпляра должен выполняться скрипт. Определите переменные $DB_PASS и $RDS_ENDPOINT паролем для пользователя wordpress и endpoint RDS DB соответственно
+
+```
+#!/bin/bash
+export DB_PASS=
+export RDS_ENDPOINT=
+sudo yum install -y httpd mariadb.x86_64
+sudo amazon-linux-extras install -y lamp-mariadb10.2-php7.2
+php7.2
+sudo service httpd start
+wget https://wordpress.org/latest.tar.gz
+tar -xzf latest.tar.gz
+cd wordpress
+cp wp-config-sample.php wp-config.php
+sed -i "s|database_name_here|wordpress|g" wp-config.php
+sed -i "s|username_here|wordpress|g" wp-config.php
+sed -i "s|password_here|$DB_PASS|g" wp-config.php
+sed -i "s|localhost|$RDS_ENDPOINT|g" wp-config.php
+sudo cp -r * /var/www/html/
+sudo service httpd restart
+```
+
+4. В настройках БД RDS добавьте разрешающее правило для входящего трафика для протокола MYSQL/Aurora.
+5. Подключитесь к EC2 Instance по SSH.  6. Используя cli mysql, подключитесь к БД RDS и выполните запрос. Подставьте корректное значение $DB_PASS
+
+```
+CREATE DATABASE wordpress;
+CREATE USER 'wordpress' IDENTIFIED BY '$DB_PASS';
+GRANT ALL PRIVILEGES ON wordpress.* TO wordpress;
+FLUSH PRIVILEGES;
+exit
+```
+
+7. Откройте в браузере PublicDNS ссылку на EC2 Instance. Выполните установку Wordpress.
+8. Проверьте работоспособность сайта.
+9. ОПЦИОНАЛЬНО: создайте Autoscale Group с 2 подобными Instance EC2 и балансировкой ELB.
+10. Удалите созданные вами ресурсы.

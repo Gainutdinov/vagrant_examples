@@ -1,14 +1,38 @@
 Задание:
 1. Установите в Wordpress плагин для basic authentication и активируйте его.
+2. С ВМ Jmeter: выполните запрос к Wordpress REST API для получения всех постов (без авторизации).
 
 ```
 #Use the following host:
-http://135.181.85.130/
+http://highload.simpledevops.xyz/
+curl -X GET -i http://highload.simpledevops.xyz/wp-json/wp/v2/posts
 ```
 
-2. С ВМ Jmeter: выполните запрос к Wordpress REST API для получения всех постов (без авторизации).
 3.              выполните запрос к Wordpress REST API для получения всех постов (используя basic authentication).
+
+```
+#Use the following host:
+http://highload.simpledevops.xyz/
+curl -X GET --user username:password -i http://highload.simpledevops.xyz/wp-json/wp/v2/posts
+```
+
 4.              выполните запрос к Wordpress REST API для создания поста.
+
+```
+curl -X POST --user username:password http://highload.simpledevops.xyz/wp-json/wp/v2/posts -H "Accept: application/json" -H "Content-Type: application/json" -d '{"title":"Mytitle","content":"Content","type":"page"}' | jq '.id' #Get PostID
+```
+
 5.              выполните запрос к Wordpress REST API для изменения поста.
+
+```
+PostID=XXXX
+curl -X PUT --user username:password http://highload.simpledevops.xyz/wp-json/wp/v2/posts/${PostID} -H "Accept: application/json" -H "Content-Type: application/json" -d '{"status":"publish"}'
+#PUT http://yoursite.com/wp-json/wp/v2/posts/567
+```
+
 6.              выполните запрос к Wordpress REST API для удаления поста.
 
+```
+PostID=XXXX
+curl -X DELETE --user username:password "http://highload.simpledevops.xyz/wp-json/wp/v2/posts/${PostID}"
+```

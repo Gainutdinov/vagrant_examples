@@ -44,6 +44,7 @@ rabbitmq-plugins enable rabbitmq_federation
 
 #rabbitmqctl add_user federation-user federation
 #rabbitmqctl set_parameter federation-upstream my-upstream '{"uri":"amqp://vm2","expires":3600000}'
+#amqp://<user>:<password>@<IP/DNS_name>/<vhost>
 #rabbitmqctl set_policy queue-federation "hello" '{"federation-upstream-set":"all"}' --apply-to queues
 
 

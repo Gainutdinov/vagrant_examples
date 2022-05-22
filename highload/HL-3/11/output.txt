@@ -64,6 +64,7 @@ Hello World!
 9. На ВМ1 rabbitmq-downstream создайте политику для создания связи (federation link):
 
 ```
+https://jazzteam.org/ru/technical-articles/rabbitmq-federation-plugin/
 rabbitmqctl set_policy queue-federation "hello" '{"federation-upstream-set":"all"}' --apply-to queues
 #amqp://<user>:<password>@<IP/DNS_name>/<vhost>
 ```

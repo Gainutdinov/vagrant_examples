@@ -1,0 +1,73 @@
+Задание:
+1. Создайте виртуальные машины ВМ1 rabbitmq-downstream и ВМ2 rabbitmq-upstream следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+Обновите систему на ВМ1,2.
+Добавьте адреса ВМ1,2 в файл /etc/hosts каждой из ВМ.
+2. На ВМ1,2 установите пакет rabbitmq-server. Убедитесь, что сервис rabbitmq-server запущен и работает.
+3. На ВМ1,2 установите пакет python-pip. С помощью pip установите модуль pika.
+4. На ВМ1,2 создайте Python-скрипт send.py для отправки тестового сообщения в RabbitMQ:
+
+```
+#!/usr/bin/env python3
+import pika
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='hello')
+channel.basic_publish(exchange='',
+routing_key='hello',
+body='Hello World!')
+print(" [x] Sent 'Hello World!'")
+connection.close()
+```
+
+и Python-скрипт receive.py для приема тестового сообщения из RabbitMQ:
+
+```
+#!/usr/bin/env python3
+import pika
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='hello')
+def callback(ch, method, properties, body):
+  print(" [x] Received %r" % body)
+channel.basic_consume(queue='hello',
+                      auto_ack=True,
+                      on_message_callback=callback)
+print(' [*] Waiting for messages. To exit press CTRL+C')
+channel.start_consuming()
+```
+
+Ответьте на контрольные вопросы:
+○ Какой хост будет использоваться для отправки сообщений?
+○ Как называется очередь, куда будут посылаться сообщения?
+
+```
+hello
+```
+○ Каково содержание тестового сообщения?
+
+```
+Hello World!
+```
+
+5. На ВМ1 rabbitmq-downstream:
+○ Пошлите тестовое сообщение с помощью скрипта send.py.
+○ Примите тестовое сообщение с помощью скрипта receive.py.
+6. На ВМ1,2 установите RabbitMQ-плагин rabbitmq_federation.
+7. На ВМ2 rabbitmq-upstream создайте RabbitMQ-пользователя federation-user c паролем federation. Задайте ему полные права.
+8. На ВМ1 rabbitmq-downstream задайте параметр federation-upstream:
+● Имя — origin.
+● Сервер — rabbitmq-upstream.
+● Пользователь — federation-user.
+● Пароль — federation.
+9. На ВМ1 rabbitmq-downstream создайте политику для создания связи (federation link):
+
+```
+https://jazzteam.org/ru/technical-articles/rabbitmq-federation-plugin/
+rabbitmqctl set_policy queue-federation "hello" '{"federation-upstream-set":"all"}' --apply-to queues
+#amqp://<user>:<password>@<IP/DNS_name>/<vhost>
+```
+
+10. Проверьте статус созданной связи.
+11. С ВМ2 rabbitmq-upstream отправьте тестовое сообщение. На ВМ1 rabbitmq-downstream примите его.

@@ -99,8 +99,6 @@ root@host1:~# python3 ./receive.py
 rabbitmq-plugins enable rabbitmq_federation rabbitmq_federation_management
 ```
 
-#6.1 Убедитесь что на всех серверах одинаковый erlang.cookie - /var/lib/rabbitmq/.erlang.cookie <----- не нужно для federation
-
 7. На ВМ2 rabbitmq-upstream создайте RabbitMQ-пользователя federation-user c паролем federation. Задайте ему полные права.
 
 ```

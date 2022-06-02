@@ -1,35 +1,45 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
 Vagrant.configure("2") do |config|
-  config.vm.define "cpu1" do |vm1|
-    vm1.vm.box = "generic/ubuntu2004"
-    vm1.vm.hostname = "vm1"
-    vm1.vm.network "private_network", ip: "192.168.56.100", virtualbox__intnet: true
-    vm1.vm.provision "shell", path: "./script.sh"
-    vm1.vm.provider "virtualbox" do |vb|
-      vb.memory = 1024
-      vb.cpus = 1
+  number_of_machines = 2
+  box_name = "generic/ubuntu2004"
+  
+  base_ip = 100
+  base_ip_addresses = "192.168.53"
+  
+  ip_addresses = (1..number_of_machines).map{ |i| "#{base_ip_addresses}.#{base_ip + i}" }
+  
+  config.vm.provider "virtualbox" do |v|
+    v.memory = 2048
+  end
+  
+  (1..number_of_machines).each do |i|
+    config.vm.define "host#{i}" do |box|
+      box.vm.box = box_name
+      box.vm.network "private_network", ip: "#{ip_addresses[i-1]}"
+  
+      box.vm.hostname = "host#{i}"
+
     end
   end
-  config.vm.define "cpu2" do |vm2|
-    vm2.vm.box = "generic/ubuntu2004"
-    vm2.vm.hostname = "vm2"
-    vm2.vm.network "private_network", ip: "192.168.56.200", virtualbox__intnet: true
-    vm2.vm.provision "shell", path: "./script.sh"
-    vm2.vm.provider "virtualbox" do |vb|
-      vb.memory = 1024
-      vb.cpus = 1
-    end
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "playbook.yml"
   end
 end
+
+
+
+# make sure /etc/hosts have correct entries
+# Run the following rabbitmqctl commands on host2 server to add them to the RabbitMQ cluster (host1).
+
+# Stop RabbitMQ application
+# sudo rabbitmqctl stop_app
+
+# Join the RabbitMQ node01
+#sudo rabbitmqctl join_cluster rabbit@host1
 #
+# Start the RabbitMQ application again
+#sudo rabbitmqctl start_app
 #
-#Vagrant.configure("2") do |config|
-#  config.vm.provision "shell", inline: "echo Hello"
-#
-#  config.vm.define "web" do |web|
-#    web.vm.box = "apache"
-#  end
-#
-#  config.vm.define "db" do |db|
-#    db.vm.box = "mysql"
-#  end
-#end
+#sudo rabbitmqctl cluster_status

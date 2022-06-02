@@ -4,26 +4,45 @@
 ○ 1G memory
 Обновите систему на ВМ1,2.
 Добавьте адреса ВМ1,2 в файл /etc/hosts каждой из ВМ.
+
+```
+echo "192.168.53.101 host1" >> /etc/hosts
+echo "192.168.53.102 host2" >> /etc/hosts
+```
+
 2. На ВМ1,2 установите пакет rabbitmq-server. Убедитесь, что сервис rabbitmq-server запущен и работает.
+
+```
+systemctl status rabbitmq-server.service
+```
+
 3. На ВМ1,2 установите пакет python-pip. С помощью pip установите модуль pika.
+
+```
+apt update 
+apt install python3-pip -y
+pip3 install pika 
+```
+
 4. На ВМ1,2 создайте Python-скрипт send.py для отправки тестового сообщения в RabbitMQ:
 
 ```
+cat << EOF >> /root/send.py
 #!/usr/bin/env python3
 import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
 channel = connection.channel()
 channel.queue_declare(queue='hello')
-channel.basic_publish(exchange='',
-routing_key='hello',
-body='Hello World!')
+channel.basic_publish(exchange='', routing_key='hello', body='Hello World!')
 print(" [x] Sent 'Hello World!'")
 connection.close()
+EOF
 ```
 
 и Python-скрипт receive.py для приема тестового сообщения из RabbitMQ:
 
 ```
+cat << EOF >> /root/receive.py
 #!/usr/bin/env python3
 import pika
 connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
@@ -36,15 +55,22 @@ channel.basic_consume(queue='hello',
                       on_message_callback=callback)
 print(' [*] Waiting for messages. To exit press CTRL+C')
 channel.start_consuming()
+EOF
 ```
 
 Ответьте на контрольные вопросы:
 ○ Какой хост будет использоваться для отправки сообщений?
+
+```
+host2 - upstream host
+```
+
 ○ Как называется очередь, куда будут посылаться сообщения?
 
 ```
 hello
 ```
+
 ○ Каково содержание тестового сообщения?
 
 ```
@@ -54,20 +80,82 @@ Hello World!
 5. На ВМ1 rabbitmq-downstream:
 ○ Пошлите тестовое сообщение с помощью скрипта send.py.
 ○ Примите тестовое сообщение с помощью скрипта receive.py.
+
+```
+root@host1:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host1:~# python3 ./receive.py
+ [*] Waiting for messages. To exit press CTRL+C
+ [x] Received b'Hello World!'
+^CTraceback (most recent call last):
+  File "./receive.py", line 12, in <module>
+    channel.start_consuming()
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/blocking_connection.py", line 1865, in start_consuming
+  ... 
+```
 6. На ВМ1,2 установите RabbitMQ-плагин rabbitmq_federation.
+
+```
+rabbitmq-plugins enable rabbitmq_federation rabbitmq_federation_management
+```
+
+#6.1 Убедитесь что на всех серверах одинаковый erlang.cookie - /var/lib/rabbitmq/.erlang.cookie <----- не нужно для federation
+
 7. На ВМ2 rabbitmq-upstream создайте RabbitMQ-пользователя federation-user c паролем federation. Задайте ему полные права.
+
+```
+rabbitmqctl add_user federation-user federation
+rabbitmqctl set_permissions -p / federation-user ".*" ".*" ".*"
+```
+
 8. На ВМ1 rabbitmq-downstream задайте параметр federation-upstream:
 ● Имя — origin.
-● Сервер — rabbitmq-upstream.
+● Сервер — rabbitmq-upstream or host2
 ● Пользователь — federation-user.
 ● Пароль — federation.
 9. На ВМ1 rabbitmq-downstream создайте политику для создания связи (federation link):
 
 ```
-https://jazzteam.org/ru/technical-articles/rabbitmq-federation-plugin/
-rabbitmqctl set_policy queue-federation "hello" '{"federation-upstream-set":"all"}' --apply-to queues
-#amqp://<user>:<password>@<IP/DNS_name>/<vhost>
+1.png
+2.png
+
+rabbitmqctl set_parameter federation-upstream origin '{"uri":"amqp://federation-user:federation@host2:5672"}'
+rabbitmqctl set_policy --apply-to all federate-link ".*" '{"federation-upstream-set":"all"}'
+
 ```
 
 10. Проверьте статус созданной связи.
+
+```
+3.png
+```
+
 11. С ВМ2 rabbitmq-upstream отправьте тестовое сообщение. На ВМ1 rabbitmq-downstream примите его.
+
+```
+4.png
+
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+
+root@host1:~# ./re^C
+root@host1:~# python3 ./receive.py
+ [*] Waiting for messages. To exit press CTRL+C
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+ [x] Received b'Hello World!'
+
+```
+

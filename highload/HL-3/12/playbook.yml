@@ -1,0 +1,18 @@
+---
+- name: rabbitmq install
+  hosts: all
+  become: yes
+  gather_facts: yes
+  pre_tasks:
+  - name: install packages for rockandska.erlang
+    apt:
+      pkg: 
+      - apt-transport-https
+      - gpg-agent
+      - ca-certificates
+      - python3-pip
+      update_cache: true
+  roles:
+    - role: rockandska.erlang
+    - role: onlyoffice.rabbitmq
+

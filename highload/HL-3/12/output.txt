@@ -5,24 +5,139 @@
 ○ 1G memory
 Обновите систему на ВМ1,2,3.
 Добавьте адреса ВМ1,2,3 в файл /etc/hosts каждой из ВМ.
+
+```
+echo '192.168.53.101 host1' >> /etc/hosts
+echo '192.168.53.102 host2' >> /etc/hosts
+echo '192.168.53.103 host3' >> /etc/hosts
+```
+
 2. На ВМ1,2,3 установите пакет rabbitmq-server. Убедитесь, что сервис rabbitmq-server запущен и работает.
 3. Скопируйте содержимое файла /var/lib/rabbitmq/.erlang.cookie ВМ1 rabbitmq-node1 на ВМ2 rabbitmq-node2 и ВМ3 rabbitmq-node3. Перезапустите сервис rabbitmq-server на ВМ2,3.
-4. Проверьте текущий статус кластера на ВМ1,2.
+4. Проверьте текущий статус кластера на ВМ1,2,3.
+
+```
+1.png
+```
+
 5. Выполните на ВМ2 следующие команды:
 
 ```
 rabbitmqctl stop_app
 rabbitmqctl reset
-rabbitmqctl join_cluster rabbit@rabbitmq-node1
+rabbitmqctl join_cluster rabbit@host1
 rabbitmqctl start_app
+
+...
+
+root@host2:~# rabbitmqctl stop_app
+Stopping rabbit application on node rabbit@host2 ...
+root@host2:~# rabbitmqctl reset
+Resetting node rabbit@host2 ...
+root@host2:~# rabbitmqctl join_cluster rabbit@host1
+Clustering node rabbit@host2 with rabbit@host1
+root@host2:~# rabbitmqctl start_app
+Starting node rabbit@host2 ...
+root@host2:~#
 ```
 
 Проверьте текущий статус кластера на ВМ1,2. Убедитесь, что ВМ2 rabbitmq-node2 вошла в кластер.
+
+```
+2.png
+```
+
 6. Введите в кластер ВМ3 rabbtimq-node3.
+
+```
+3.png
+```
+
 7. Установите имя кластера в rabbitmq-cluster.
-8. Используя Python-скрипт send.py, отправьте тестовое сообщение на ВМ1 rabbitmq-node1 и с помощью скрипта receive.py примите его на ВМ2 rabbitmq-node2.  Имитация выхода из строя одной ноды
+
+```
+root@host1:~# rabbitmqctl set_cluster_name rabbitmq-cluster
+Setting cluster name to rabbitmq-cluster ...
+root@host1:~#
+```
+
+8. Используя Python-скрипт send.py, отправьте тестовое сообщение на ВМ1 rabbitmq-node1 и с помощью скрипта receive.py примите его на ВМ2 rabbitmq-node2.
+
+```
+4.png
+```
+
+Имитация выхода из строя одной ноды
+
 9. Удалите ВМ3 rabbitmq-node3.
 10. Удалите ноду rabbit@rabbitmq-node3 из состава кластера.
+
+```
+root@host1:~# rabbitmqctl forget_cluster_node rabbit@host3
+Removing node rabbit@host3 from the cluster
+root@host1:~# rabbitmqctl cluster_status
+Cluster status of node rabbit@host1 ...
+Basics
+
+Cluster name: rabbitmq-cluster
+
+Disk Nodes
+
+rabbit@host1
+rabbit@host2
+
+Running Nodes
+
+rabbit@host1
+rabbit@host2
+
+Versions
+
+rabbit@host1: RabbitMQ 3.8.8 on Erlang 22.2.7
+rabbit@host2: RabbitMQ 3.8.8 on Erlang 22.2.7
+
+Maintenance status
+
+Node: rabbit@host1, status: not under maintenance
+Node: rabbit@host2, status: not under maintenance
+
+Alarms
+
+(none)
+
+Network Partitions
+
+(none)
+
+Listeners
+
+Node: rabbit@host1, interface: [::], port: 25672, protocol: clustering, purpose: inter-node and CLI tool communication
+Node: rabbit@host1, interface: [::], port: 5672, protocol: amqp, purpose: AMQP 0-9-1 and AMQP 1.0
+Node: rabbit@host2, interface: [::], port: 25672, protocol: clustering, purpose: inter-node and CLI tool communication
+Node: rabbit@host2, interface: [::], port: 5672, protocol: amqp, purpose: AMQP 0-9-1 and AMQP 1.0
+
+Feature flags
+
+Flag: implicit_default_bindings, state: enabled
+Flag: maintenance_mode_status, state: enabled
+Flag: quorum_queue, state: enabled
+Flag: virtual_host_metadata, state: enabled
+root@host1:~#
+
+```
+
 11. Пересоздайте ВМ3 rabbitmq-node3. Обновите на ней систему. Обновите файл /etc/hosts на ВМ1,2,3.
 12. На ВМ3 rabbitmq-node3 обновите файл cookie. Рестартуйте сервис rabbitmq-server.
 13. Добавьте ноду rabbit@rabbitmq-node3 в кластер. Проверьте состояние кластера.
+
+```
+rabbitmqctl stop_app
+rabbitmqctl reset
+rabbitmqctl join_cluster rabbit@host1
+rabbitmqctl start_app
+rabbitmqctl cluster_status
+
+5.png
+```
+
+

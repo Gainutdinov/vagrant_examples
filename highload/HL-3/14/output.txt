@@ -1,0 +1,86 @@
+Резервное копирование настроек RabbitMQ
+1. На ВМ rabbitmq-node1 включите плагин rabbitmq_management.
+
+```
+rabbitmq-plugins enable rabbitmq_management
+```
+
+2. Скачайте утилиту rabbitmqadmin.
+
+```
+wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
+chmod +x rabbitmqadmin
+sudo mv rabbitmqadmin /usr/local/bin
+```
+
+3. Используя утилиту rabbitmqadmin, выполните резервное копирование настроек RabbitMQ.
+
+```
+rabbitmqadmin export rabbitmq-backup-config.json
+```
+
+4. Создайте ВМ rabbitmq-restore следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+5. Обновите систему на ВМ rabbitmq-restore.
+6. На ВМ rabbitmq-restore установите пакет rabbitmq-server. Убедитесь, что сервис rabbitmq-server запущен и работает.
+7. На ВМ rabbitmq-restore включите плагин rabbitmq_management.
+
+```
+rabbitmq-plugins enable rabbitmq_management
+```
+
+8. Восстановите конфигурацию RabbitMQ из резервной копии.
+
+```
+wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
+chmod +x rabbitmqadmin
+sudo mv rabbitmqadmin /usr/local/bin
+rabbitmqadmin import rabbitmq-backup-config.json
+```
+
+9. Выполните резервное копирование RabbitMQ на ВМ rabbitmq-restore. Сравните резервные копии, полученные на ВМ rabbitmq-node1 и rabbitmq-restore.  Резервное копирование сообщений RabbitMQ
+9. На ВМ rabbitmq-node1:
+○ Cоздайте queue rabbitioQueue.
+○ Cоздайте exchange rabbitioExchange.
+○ Cоздайте binding для rabbitioExchange и rabbitioQueue с ключом rabbitio.
+
+```
+$VHOST='/'
+$USER='guest'
+$PWD='guest'
+#rabbitmqctl set_permissions -p $VHOST $USER ".*" ".*" ".*"
+#rabbitmqctl list_permissions -p $VHOST
+
+rabbitmqadmin declare exchange --vhost=$VHOST --user=$USER --password=$PWD name=$INPUT_EX type=direct durable=true
+rabbitmqadmin declare exchange --vhost=$VHOST --user=$USER --password=$PWD name=$FAILED_INPUT_EX type=direct durable=true
+rabbitmqctl list_exchanges -p $VHOST
+```
+
+10. С помощью Python-скрипта send.py отправьте несколько тестовых сообщений в очередь rabbitioQueue.
+11. Скачайте утилиту rabbitio на ВМ rabbitmq-node1.
+
+```
+mkdir data
+rabbitio out -e rabbitio-exchange -q rabbitio-queue -d data/
+```
+
+12. Используя rabbitio, выполните резервное копирование ранее отправленных сообщений.
+
+```
+wget https://github.com/meltwater/rabbitio/releases/download/v0.5.4/rabbitio-v0.5.4-linux-amd64 -O rabbitio
+chmod 755 rabbitio
+sudo mv rabbition /usr/local/bin/
+```
+
+13. Распакуйте получившийся архив резервной копии, убедитесь, что он содержит ранее отправленные сообщения.
+14. Выполните восстановление сообщений из резервной копии.
+
+```
+echo "My first message" > message # write a message into a file
+tar cfz message.tgz message # create a tarball containing this message
+rabbitio in -e rabbitio-exchange -q rabbitio-queue -f message.tgz
+```
+
+15. С помощью Python-скрипта receive.py получите восстановленные сообщения.
+

@@ -1,0 +1,81 @@
+Задание:
+1. Создайте виртуальные машины ВМ1 rabbitmq-source и ВМ2 rabbit-destination следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+Обновите систему на ВМ1,2.
+Добавьте адреса ВМ1,2 в файл /etc/hosts каждой из ВМ.
+2. На ВМ1,2 установите пакет rabbitmq-server. Убедитесь, что сервис rabbitmq-server запущен и работает.
+3. На ВМ1,2 включите RabbitMQ-плагин shovel.
+
+```
+rabbitmq-plugins enable rabbitmq_shovel rabbitmq_shovel_management
+```
+
+4. На ВМ1,2 добавьте пользователя shovel-user с паролем shovel-password. Задайте пользователю shovel-user полные права на корневой vhost.
+
+```
+rabbitmqctl add_user shovel-user shovel-password
+rabbitmqctl set_permissions -p / shovel-user ".*" ".*" ".*"
+```
+
+5. На ВМ1,2 создайте скрипты send.py и receive.py. Пошлите и примите тестовые сообщения.
+
+
+```
+root@host1:~# python3 ./receive.py
+root@host1:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host1:~# python3 ./receive.py
+ [*] Waiting for messages. To exit press CTRL+C
+ [x] Received b'Hello World!'
+ 
+...
+
+root@host2:~# python3 ./send.py
+ [x] Sent 'Hello World!'
+root@host2:~# python3 ./receive.py
+ [*] Waiting for messages. To exit press CTRL+C
+ [x] Received b'Hello World!'
+^C
+
+```
+
+6. На ВМ1 rabbit-source создайте shovel-соединение. Для этого установите параметр
+shovel-test для компонента shovel:
+○ src-uri равно amqp://shovel-user:shovel-password@host1;
+○ src-queue равно hello;
+○ dest-uri равно amqp://shovel-user:shovel-password@host2;
+○ dest-queue равно hello.
+
+```
+rabbitmqctl set_parameter shovel shovel-test \
+'{"src-uri": "amqp://shovel-user:shovel-password@host1/%2F", "src-queue": "hello", "dest-uri": "amqp://shovel-user:shovel-password@host2/%2F", "dest-queue": "hello"}'
+
+...
+root@host1:~# rabbitmqctl set_parameter shovel shovel-test \
+> '{"src-uri": "amqp://shovel-user:shovel-password@host2/%2F", "src-queue": "hello", "dest-uri": "amqp://shovel-user:shovel-password@host2/%2F", "dest-queue": "hello"}'
+Setting runtime parameter "celery-migration" for component "shovel" to "{"src-uri": "amqp://shovel-user:shovel-password@host2/%2F", "src-queue": "hello", "dest-uri": "amqp://shovel-user:shovel-password@host2/%2F", "dest-queue": "hello"}" in vhost "/" ...
+```
+
+7. На ВМ1 проверьте статус shovel-соединения.
+
+```
+root@host1:~# rabbitmqctl shovel_status
+Shovel status on node rabbit@host1
+destination     destination_protocol    destination_queue       last_changed    name    source  source_protocol source_queue    state   termination_reason      type    vhost
+amqp://host2/%2F        amqp091 hello   2022-06-03 15:09:54     shovel-test     amqp://host1/%2F       amqp091  hello   running         dynamic /
+```
+
+8. Измените скрипт receive.py + send.py на обоих серверах. Старое значение:
+channel.queue_declare(queue='hello')
+Новое значение:
+channel.queue_declare(queue='hello', durable=True)
+
+8.1. Удалите старые queue на ВМ1,2.
+
+9. Отправьте тестовое сообщение на ВМ1 rabbit-source и примите тестовое сообщение на ВМ2 rabbit-destination.
+
+```
+1.png
+```
+

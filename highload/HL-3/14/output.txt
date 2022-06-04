@@ -36,7 +36,22 @@ rabbitmq-plugins enable rabbitmq_management
 wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
 chmod +x rabbitmqadmin
 sudo mv rabbitmqadmin /usr/local/bin
-rabbitmqadmin import rabbitmq-backup-config.json
+
+root@host2:~# rabbitmqadmin import rabbitmq-backup-config.json
+Uploaded definitions from "localhost" to rabbitmq-backup-config.json. The import process may take some time. Consult server logs to track progress.
+...
+root@host2:~# tail /var/log/rabbitmq/rabbit@host2.log
+2022-06-04 09:18:41.312 [info] <0.1050.0> Statistics database started.
+2022-06-04 09:18:41.312 [info] <0.1049.0> Starting worker pool 'management_worker_pool' with 3 processes in it
+2022-06-04 09:18:41.313 [info] <0.43.0> Application rabbitmq_management started on node rabbit@host2
+2022-06-04 09:18:41.313 [info] <0.874.0> Plugins changed; enabled [rabbitmq_management_agent,cowlib,cowboy,rabbitmq_web_dispatch,amqp_client,rabbitmq_management]
+2022-06-04 09:20:06.826 [info] <0.1163.0> Importing concurrently 1 users...
+2022-06-04 09:20:06.828 [info] <0.670.0> Successfully set user tags for user 'guest' to [administrator]
+2022-06-04 09:20:06.828 [info] <0.1163.0> Importing concurrently 1 vhosts...
+2022-06-04 09:20:06.829 [info] <0.1163.0> Importing concurrently 1 permissions...
+2022-06-04 09:20:06.830 [info] <0.670.0> Successfully set permissions for 'guest' in virtual host '/' to '.*', '.*', '.*'
+2022-06-04 09:20:06.830 [info] <0.1163.0> Importing sequentially 1 global runtime parameters...
+...
 ```
 
 9. Выполните резервное копирование RabbitMQ на ВМ rabbitmq-restore. Сравните резервные копии, полученные на ВМ rabbitmq-node1 и rabbitmq-restore.  Резервное копирование сообщений RabbitMQ
@@ -46,41 +61,146 @@ rabbitmqadmin import rabbitmq-backup-config.json
 ○ Cоздайте binding для rabbitioExchange и rabbitioQueue с ключом rabbitio.
 
 ```
-$VHOST='/'
-$USER='guest'
-$PWD='guest'
-#rabbitmqctl set_permissions -p $VHOST $USER ".*" ".*" ".*"
-#rabbitmqctl list_permissions -p $VHOST
-
-rabbitmqadmin declare exchange --vhost=$VHOST --user=$USER --password=$PWD name=$INPUT_EX type=direct durable=true
-rabbitmqadmin declare exchange --vhost=$VHOST --user=$USER --password=$PWD name=$FAILED_INPUT_EX type=direct durable=true
-rabbitmqctl list_exchanges -p $VHOST
+rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
+rabbitmqadmin declare exchange --vhost='/' name=rabbitioExchange type=direct
+rabbitmqadmin --vhost=$VHOST declare binding source="rabbitioExchange" destination_type="queue" destination="rabbitioQueue" routing_key="rabbitio"
+...
+root@host1:~# rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
+queue declared
+root@host1:~# rabbitmqadmin declare exchange --vhost='/' name=rabbitioExchange type=direct
+exchange declared
+root@host1:~# rabbitmqadmin --vhost=$VHOST declare binding source="rabbitioExchange" destination_type="q
+ueue" destination="rabbitioQueue" routing_key="rabbitio"
+binding declared
+root@host1:~#
 ```
 
+
 10. С помощью Python-скрипта send.py отправьте несколько тестовых сообщений в очередь rabbitioQueue.
+
+```
+root@host1:~# cat ./send.py
+#!/usr/bin/env python3
+import pika
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+#channel.queue_declare(queue='hello',durable=True)
+channel.queue_declare(queue='rabitioQueue')
+channel.basic_publish(exchange='rabbitioExchange', routing_key='rabbitio', body='Hello rabbitio!')
+print(" [x] Sent 'Hello rabbitio!'")
+connection.close()
+root@host1:~# ./send.py
+ [x] Sent 'Hello rabbitio!'
+root@host1:~# ./send.py
+ [x] Sent 'Hello rabbitio!'
+root@host1:~# ./send.py
+ [x] Sent 'Hello rabbitio!'
+root@host1:~# rabbitmqctl list_queues
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+name    messages
+rabbitioQueue   3
+rabitioQueue    0
+root@host1:~#
+```
+
 11. Скачайте утилиту rabbitio на ВМ rabbitmq-node1.
 
 ```
-mkdir data
-rabbitio out -e rabbitio-exchange -q rabbitio-queue -d data/
+wget https://github.com/meltwater/rabbitio/releases/download/v0.5.4/rabbitio-v0.5.4-linux-amd64 -O rabbitio
+chmod 755 rabbitio
+sudo mv rabbitio /usr/local/bin/
 ```
 
 12. Используя rabbitio, выполните резервное копирование ранее отправленных сообщений.
 
 ```
-wget https://github.com/meltwater/rabbitio/releases/download/v0.5.4/rabbitio-v0.5.4-linux-amd64 -O rabbitio
-chmod 755 rabbitio
-sudo mv rabbition /usr/local/bin/
+root@host1:~# mkdir data
+root@host1:~# rabbitio out -e rabbitioExchange -q rabbitioQueue -d data/
+2022/06/04 09:33:18 RabbitMQ connected: amqp://guest:guest@localhost:5672/
+2022/06/04 09:33:18 Bind to Exchange: "rabbitioExchange" and Queue: "rabbitioQueue", Messaging waiting: 3
+^C Interruption, saving last memory bits..
+2022/06/04 09:33:24 Wrote 315 bytes to data/1_messages_3.tgz
+2022/06/04 09:33:24 tarball writer closing
 ```
 
 13. Распакуйте получившийся архив резервной копии, убедитесь, что он содержит ранее отправленные сообщения.
+
 14. Выполните восстановление сообщений из резервной копии.
 
 ```
-echo "My first message" > message # write a message into a file
-tar cfz message.tgz message # create a tarball containing this message
-rabbitio in -e rabbitio-exchange -q rabbitio-queue -f message.tgz
+root@host2:~# scp root@host1:/root/data/1_messages_3.tgz .
+The authenticity of host 'host1 (192.168.53.101)' can't be established.
+ECDSA key fingerprint is SHA256:3lnKJLYvXA0fADwzSxB2oavt8x9uOakagstG8x9c5oE.
+Are you sure you want to continue connecting (yes/no/[fingerprint])? yers
+Please type 'yes', 'no' or the fingerprint: yes
+Warning: Permanently added 'host1,192.168.53.101' (ECDSA) to the list of known hosts.
+1_messages_3.tgz                                                                 100%  315   190.6KB/s   00:00
+
+```
+
+> Do not forget to import newly created exchange+queues from host1 to host2 in order to be able to restore messages otherwise restore process will output - 2022/06/04 09:40:18 Exchange Declare: Exception (404) Reason: "NOT_FOUND - no exchange 'rabbitioExchange' in vhost '/'"
+
+```
+root@host2:~# rabbitmqctl list_queues
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+name    messages
+rabbitioQueue   0
+rabitioQueue    0
+root@host2:~# rabbitio in -e rabbitioExchange -q rabbitioQueue -f 1_messages_3.tgz
+2022/06/04 09:41:33 RabbitMQ connected: amqp://guest:guest@localhost:5672/
+2022/06/04 09:41:33 Extracted 3 Messages from tarball: 1_messages_3.tgz
+2022/06/04 09:41:33 Total 3 Messages from tarballs
+2022/06/04 09:41:33 RabbitMQ Connection closed with success
+root@host2:~# rabbitmqctl list_queues
+Timeout: 60.0 seconds ...
+Listing queues for vhost / ...
+name    messages
+rabbitioQueue   3
+rabitioQueue    0
+root@host2:~#
+
+
 ```
 
 15. С помощью Python-скрипта receive.py получите восстановленные сообщения.
 
+```
+
+root@host2:~# cat ./receive.py
+#!/usr/bin/env python3
+import pika
+connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='rabbitioQueue', durable=True)
+def callback(ch, method, properties, body):
+  print(" [x] Received %r" % body)
+channel.basic_consume(queue='rabbitioQueue',
+                      auto_ack=True,
+                      on_message_callback=callback)
+print(' [*] Waiting for messages. To exit press CTRL+C')
+channel.start_consuming()
+root@host2:~#
+root@host2:~# ./receive.py
+ [*] Waiting for messages. To exit press CTRL+C
+ [x] Received b'Hello rabbitio!'
+ [x] Received b'Hello rabbitio!'
+ [x] Received b'Hello rabbitio!'
+^CTraceback (most recent call last):
+  File "./receive.py", line 13, in <module>
+    channel.start_consuming()
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/blocking_connection.py", line 1865, in start_consuming
+    self._process_data_events(time_limit=None)
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/blocking_connection.py", line 2026, in _process_data_events
+    self.connection.process_data_events(time_limit=time_limit)
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/blocking_connection.py", line 824, in process_data_events
+    self._flush_output(common_terminator)
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/blocking_connection.py", line 514, in _flush_output
+    self._impl.ioloop.poll()
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/select_connection.py", line 579, in poll
+    self._poller.poll()
+  File "/usr/local/lib/python3.8/dist-packages/pika/adapters/select_connection.py", line 1184, in poll
+    events = self._poll.poll(self._get_max_wait())
+KeyboardInterrupt
+```

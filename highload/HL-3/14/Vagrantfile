@@ -11,7 +11,7 @@ Vagrant.configure("2") do |config|
   ip_addresses = (1..number_of_machines).map{ |i| "#{base_ip_addresses}.#{base_ip + i}" }
   
   config.vm.provider "virtualbox" do |v|
-    v.memory = 2048
+    v.memory = 8048
   end
   
   (1..number_of_machines).each do |i|

@@ -20,5 +20,6 @@ def faces(filename, ratio=1.2, neighbors=4, min_size=(10, 10)):
     img = cv2.imread(filename, 0)
     hc = cv2.CascadeClassifier('ch6/haarcascade_frontalface_alt.xml')
     return _boxes(filename, hc.detectMultiScale(img, ratio, neighbors,
-                                                cv2.cv.CV_HAAR_SCALE_IMAGE,
+                                                cv2.CASCADE_SCALE_IMAGE,
                                                 min_size))
+#                                                cv2.cv.CV_HAAR_SCALE_IMAGE,

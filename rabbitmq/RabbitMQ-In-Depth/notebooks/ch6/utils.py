@@ -36,7 +36,7 @@ def read_image(filename):
     :rtype: str
 
     """
-    with open(filename) as handle:
+    with open(filename,"rb") as handle:
         return handle.read()
 
 
@@ -58,7 +58,7 @@ def write_temp_file(obd, mime_type):
     else:
         raise ValueError('Unsupported mime-type: %s' % mime_type)
     filename = '/tmp/%s' % filename
-    with open(filename, 'w') as handle:
+    with open(filename, 'wb') as handle:
         handle.write(obd)
     return filename
 

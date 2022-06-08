@@ -1,0 +1,167 @@
+Задание
+Подготовка окружения
+1. Создайте виртуальные машины ВМ1 kafka-broker1 и ВМ2 kafka-client1 следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+Обновите систему на ВМ1,2.
+Инсталляция (kafka-broker1)
+2. Создайте пользователя kafka с домашней директорией /home/kafka.
+
+```
+sudo -i
+adduser --disabled-password --shell /bin/bash --gecos "kafka" kafka
+adduser kafka sudo
+echo 'kafka ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/vagrant
+```
+
+3. Переключитесь на пользователя kafka. Скачайте последнюю доступную версию продукта. Распакуйте архив в директорию /home/kafka/kafka.
+
+```
+su -l kafka
+mkdir ~/Downloads
+curl "https://dlcdn.apache.org/kafka/3.0.1/kafka_2.12-3.0.1.tgz" -o ~/Downloads/kafka.tgz
+mkdir ~/kafka && cd ~/kafka
+tar -xvzf ~/Downloads/kafka.tgz --strip 1
+```
+
+4. Установите JRE.
+
+```
+sudo apt update
+sudo apt install openjdk-11-jre-headless -y
+```
+
+5. Переключитесь на пользователя root.
+Cоздайте Systemd unit-файл /etc/systemd/system/zookeeper.service и /etc/systemd/system/kafka.service для Zookeeper и Kafka Restart=on-abnormal
+
+```
+sudo -i
+cat << EOF >> /etc/systemd/system/zookeeper.service
+[Unit]
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
+
+[Service]
+Type=simple
+User=kafka
+ExecStart=/home/kafka/kafka/bin/zookeeper-server-start.sh /home/kafka/kafka/config/zookeeper.properties
+ExecStop=/home/kafka/kafka/bin/zookeeper-server-stop.sh
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+
+cat << EOF >> /etc/systemd/system/kafka.service
+[Unit]
+Requires=zookeeper.service
+After=zookeeper.service
+
+[Service]
+Type=simple
+User=kafka
+ExecStart=/bin/sh -c '/home/kafka/kafka/bin/kafka-server-start.sh /home/kafka/kafka/config/server.properties > /home/kafka/kafka/kafka.log 2>&1'
+ExecStop=/home/kafka/kafka/bin/kafka-server-stop.sh
+Restart=on-abnormal
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+sudo systemctl daemon-reload
+sudo systemctl enable --now zookeeper.service
+sudo systemctl enable --now kafka.service
+sudo systemctl status kafka zookeeper
+```
+
+6. Переключитесь на пользователя kafka. Создайте topic со следующими параметрами:
+○ имя топика — test;
+○ Bootstrap сервер localhost, порт 9092;
+○ репликационный фактор — 1;
+○ количество партиций — 1.
+
+```
+~/kafka/bin/kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic test
+```
+
+7. Убедитесь, что созданный топик виден в перечне всех топиков.
+
+```
+~/kafka/bin/kafka-topics.sh --list --bootstrap-server localhost:9092
+```
+
+8. Используя утилиты из дистрибутива Kafka, отправьте и примите тестовое сообщение.
+
+Клиент (kafka-client1)
+
+8. Установите пакет python3-pip.
+
+```
+sudo apt install python3-pip -y
+```
+
+9. Установите Python-модуль kafka.
+
+```
+sudo pip3 install kafka-python
+```
+
+10. Создайте Python-скрипт send.py следующего содержания:
+
+```
+cat << EOF >> ~/send.py
+#!/usr/bin/python3
+from kafka import KafkaProducer
+broker = 'host1:9092'
+topic = 'test'
+message = 'message2'
+producer = KafkaProducer(bootstrap_servers=[broker])
+producer.send(topic, message.encode('utf-8'))
+producer.flush()
+EOF
+chmod 777 ~/send.py
+```
+
+Что делает этот файл?
+
+```
+отправляет сообщение в topic=test с тексом 'message2'
+```
+
+11. Создайте Python-скрипт receive.py следующего содержания:
+
+```
+cat << EOF >> ~/receive.py
+#!/usr/bin/python3
+from kafka import KafkaConsumer
+broker = 'host1:9092'
+topic = 'test'
+consumer = KafkaConsumer(topic, bootstrap_servers=[broker])
+for msg in consumer:
+  print (msg)
+EOF
+chmod 777 ~/receive.py
+```
+
+Что делает этот файл?
+
+```
+получает сообщения по topic=test
+```
+
+12. Выполните python-скрипты. Что у вас получилось?
+
+```
+./receive.py #Run this script before in other words register client
+./send.py #Run this after receive.py script!
+...
+kafka@host1:~$ ./receive.py
+ConsumerRecord(topic='test', partition=0, offset=3, timestamp=1654714201544, timestamp_type=0, key=None, value=b'message2', headers=[], checksum=None, serialized_key_size=-1, serialized_value_size=8, serialized_header_size=-1)
+ConsumerRecord(topic='test', partition=0, offset=4, timestamp=1654714206061, timestamp_type=0, key=None, value=b'message2', headers=[], checksum=None, serialized_key_size=-1, serialized_value_size=8, serialized_header_size=-1)
+...
+kafka@host1:~$ ./send.py
+kafka@host1:~$ ./send.py
+kafka@host1:~$
+```
+

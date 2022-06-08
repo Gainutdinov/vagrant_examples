@@ -1,4 +1,6 @@
 jinja2
+opencv-contrib-python
+opencv-python
 paho-mqtt
 nose
 pika

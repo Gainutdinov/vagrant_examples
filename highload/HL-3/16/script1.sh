@@ -84,6 +84,22 @@ Restart=on-abnormal
 WantedBy=multi-user.target
 EOF
 
+
+cat << EOF > /home/kafka/kafka/config/server.properties
+# The id of the broker. This must be set to a unique integer for each broker.
+broker.id=${HOSTNAME:9}
+
+# A comma seperated list of directories under which to store log files
+log.dirs=/tmp/kafka-logs
+advertised.host.name=
+log.dirs=/tmp/kafka-logs
+# add all 3 zookeeper instances ip here
+zookeeper.connect=zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+zookeeper.connection.timeout.ms=6000
+EOF
+sudo chown kafka:kafka  /home/kafka/kafka/config/server.properties
+
+
 sudo systemctl daemon-reload
 sudo systemctl enable --now zookeeper.service
 sudo systemctl enable --now kafka.service

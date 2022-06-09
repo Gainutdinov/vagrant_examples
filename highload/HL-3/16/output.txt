@@ -34,7 +34,7 @@ sudo chown -R zookeeper:zookeeper /usr/local/zookeeper
 
 ```
 sudo mkdir /var/lib/zookeeper
-sudo echo ${HOSTNAME:4} >> /var/lib/zookeeper/myid
+sudo echo ${HOSTNAME:9} > /var/lib/zookeeper/myid
 ```
 
 5. Создайте конфигурационный файл /usr/local/zookeeper/conf/zoo.cfg следующего содержания:
@@ -115,23 +115,81 @@ root@zookeeper2:/usr/local/zookeeper# bin/zkServer.sh status
 ZooKeeper JMX enabled by default
 Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
 Client port found: 2181. Client address: localhost. Client SSL: false.
-Mode: follower
+Mode: leader       <--------------------------LEADER
 ...
 root@zookeeper3:/usr/local/zookeeper# bin/zkServer.sh status
 /usr/bin/java
 ZooKeeper JMX enabled by default
 Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
 Client port found: 2181. Client address: localhost. Client SSL: false.
-Mode: leader       <--------------------------LEADER
+Mode: follower
 
 ```
 
 9. Используя ВМ kafka-broker1 из задания HL-3 15 «Очереди. Kafka. Первое знакомство», настройте Kafka на работу со вновь созданным кластером Zookeeper.
 
+```
+cat << EOF > /home/kafka/kafka/config/server.properties
+# The id of the broker. This must be set to a unique integer for each broker.
+broker.id=${HOSTNAME:9}
+ 
+# A comma seperated list of directories under which to store log files
+log.dirs=/tmp/kafka-logs
+advertised.host.name=
+log.dirs=/tmp/kafka-logs
+# add all 3 zookeeper instances ip here
+zookeeper.connect=zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+zookeeper.connection.timeout.ms=6000
+EOF
+sudo chown kafka:kafka /home/kafka/kafka/config/server.properties
+```
+
 Сценарий потери одной ноды
 10. Выключите лидер-ноду кластера.
 11. Убедитесь, что выборы нового лидера состоялись. Какая ноды была выбрана?
+
+```
+#turned off host2 (leader)
+root@zookeeper3:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: leader #<---------------
+root@zookeeper1:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+
+```
+
 12. Удалите и пересоздайте выключенную ноду. Обновите файл /etc/hosts на всех нодах кластера.
 13. Установите на новую ноду Zookeeper. Стартуйте сервис zookeeper.
 14. Убедитесь, что новая нода вошла в кластер.
+
+```
+root@zookeeper1:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+
+root@zookeeper2:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+
+root@zookeeper3:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: leader
+
+```
 

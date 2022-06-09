@@ -1,0 +1,137 @@
+Задание:
+Подготовка окружения
+1. Создайте виртуальные машины ВМ1,2,3 zookeper1,2,3 следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+Обновите систему на ВМ1,2,3.
+Добавьте адреса ВМ1,2,3 в файл /etc/hosts каждой из ВМ.
+2. На ВМ1,2,3 установите JDK.
+
+```
+sudo apt update
+sudo apt install openjdk-11-jre-headless -y
+```
+
+Настройка кластера
+
+3. Скачайте последнюю доступную версию Zookeeper и распакуйте ее в /usr/local/zookeeper.
+
+```
+sudo useradd zookeeper -m
+sudo usermod --shell /bin/bash zookeeper
+sudo usermod -aG sudo zookeeper
+sudo echo 'zookeeper ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/zookeeper
+
+sudo mkdir -p /usr/local/zookeeper
+sudo cd /tmp
+sudo wget https://mirrors.estointernet.in/apache/zookeeper/zookeeper-3.6.3/apache-zookeeper-3.6.3-bin.tar.gz
+sudo tar -xvzf apache-zookeeper-3.6.3-bin.tar.gz
+sudo cp -r apache-zookeeper-3.6.3-bin/* /usr/local/zookeeper
+sudo chown -R zookeeper:zookeeper /usr/local/zookeeper
+```
+
+4. Создайте рабочую директорию Zookeeper /var/lib/zookeeper. В рабочей директории создайте файл myid с номером ноды.
+
+```
+sudo mkdir /var/lib/zookeeper
+sudo echo ${HOSTNAME:4} >> /var/lib/zookeeper/myid
+```
+
+5. Создайте конфигурационный файл /usr/local/zookeeper/conf/zoo.cfg следующего содержания:
+
+```
+cat << EOF >> /usr/local/zookeeper/conf/zoo.cfg
+tickTime=2000
+dataDir=/var/lib/zookeeper
+clientPort=2181
+initLimit=20
+syncLimit=5
+server.1=zookeeper1:2888:3888
+server.2=zookeeper2:2888:3888
+server.3=zookeeper3:2888:3888
+4lw.commands.whitelist=*
+EOF
+```
+
+Ответьте на контрольные вопросы:
+○ По какому TCP-порту клиенты будут обращаться к нодам кластера?
+
+```
+2181
+```
+
+○ По какому TCP-порту ноды кластера будут общаться друг с другом?
+
+```
+2888
+```
+
+○ По какому TCP-порту ноды кластера будут выбирать лидера?
+
+```
+3888
+```
+
+6. Создайте unit-файл сервиса zookeeper /etc/systemd/system/zookeeper.service
+следующего содержания:
+
+```
+cat << EOF >> /etc/systemd/system/zookeeper.service
+[Unit]
+Requires=network.target remote-fs.target
+After=network.target remote-fs.target
+[Service]
+Type=simple
+ExecStart=/usr/local/zookeeper/bin/zkServer.sh start-foreground
+ExecStop=/usr/local/zookeeper/bin/zkServer.sh stop
+Restart=on-abnormal
+[Install]
+WantedBy=multi-user.target
+EOF
+```
+
+7. Стартуйте сервис zookeeper на всех нодах. Убедитесь, что он работает.
+
+```
+sudo systemctl daemon-reload
+sudo systemctl start zookeeper.service
+```
+
+8. Определите, какая из нод была выбрана лидером в кластере.
+
+```
+cd /usr/local/zookeeper/
+bin/zkServer.sh status
+...
+root@zookeeper1:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+...
+root@zookeeper2:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: follower
+...
+root@zookeeper3:/usr/local/zookeeper# bin/zkServer.sh status
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /usr/local/zookeeper/bin/../conf/zoo.cfg
+Client port found: 2181. Client address: localhost. Client SSL: false.
+Mode: leader       <--------------------------LEADER
+
+```
+
+9. Используя ВМ kafka-broker1 из задания HL-3 15 «Очереди. Kafka. Первое знакомство», настройте Kafka на работу со вновь созданным кластером Zookeeper.
+
+Сценарий потери одной ноды
+10. Выключите лидер-ноду кластера.
+11. Убедитесь, что выборы нового лидера состоялись. Какая ноды была выбрана?
+12. Удалите и пересоздайте выключенную ноду. Обновите файл /etc/hosts на всех нодах кластера.
+13. Установите на новую ноду Zookeeper. Стартуйте сервис zookeeper.
+14. Убедитесь, что новая нода вошла в кластер.
+

@@ -22,7 +22,7 @@ sudo echo 'kafka ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/kafka
 sudo mkdir /usr/local/kafka
 sudo mkdir /var/lib/kafka
 sudo curl "https://dlcdn.apache.org/kafka/3.0.1/kafka_2.12-3.0.1.tgz" -o /tmp/kafka.tgz
-sudo mkdir /usr/local/kafka && cd /usr/local/kafka
+cd /usr/local/kafka
 sudo chown -R kafka:kafka /usr/local/kafka
 sudo tar -xvzf /tmp/kafka.tgz --strip 1
 sudo chown -R kafka:kafka /usr/local/kafka
@@ -31,10 +31,8 @@ sudo chown -R kafka:kafka /var/lib/kafka
 sudo apt update
 sudo apt install openjdk-11-jre-headless -y
 
-cat << EOF >> /etc/systemd/system/kafka.service
+cat << EOF > /etc/systemd/system/kafka.service
 [Unit]
-Requires=zookeeper.service
-After=zookeeper.service
 
 [Service]
 Type=simple
@@ -74,8 +72,8 @@ sudo pip3 install kafka-python
 cat << EOF >> /home/kafka/send.py
 #!/usr/bin/python3
 from kafka import KafkaProducer
-broker = 'host1:9092'
-topic = 'test'
+broker = 'broker${HOSTNAME:6}:9092'
+topic = 'my-replicated-topic'
 message = 'message2'
 producer = KafkaProducer(bootstrap_servers=[broker])
 producer.send(topic, message.encode('utf-8'))
@@ -86,8 +84,8 @@ chmod 777 /home/kafka/send.py
 cat << EOF >> /home/kafka/receive.py
 #!/usr/bin/python3
 from kafka import KafkaConsumer
-broker = 'host1:9092'
-topic = 'test'
+broker = 'broker${HOSTNAME:6}:9092'
+topic = 'my-replicated-topic'
 consumer = KafkaConsumer(topic, bootstrap_servers=[broker])
 for msg in consumer:
   print (msg)

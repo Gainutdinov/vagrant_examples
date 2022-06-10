@@ -85,7 +85,23 @@ sudo systemctl status kafka.service
 7. На кластере Zookeeper убедитесь, что все ноды кластера Kafka прошли регистрацию.
 
 ```
+1.png
+
+...
 sudo systemctl status zookeeper.service
+...
+root@zookeeper2:/usr/local/zookeeper# ./bin/zkCli.sh -server localhost:2181
+/usr/bin/java
+Connecting to localhost:2181
+2022-06-10 10:05:01,219 [myid:] - INFO  [main:Environment@98] - Client environment:zookeeper.version=3.6.3--6401e4ad2087061bc6b9f80dec2d69f2e3c8660a, built on 04/08/2021 16:35 GMT
+2022-06-10 10:05:01,222 [myid:] - INFO  [main:Environment@98] - Client environment:host.name=zookeeper2
+2022-06-10 10:05:01,222 [myid:] - INFO  [main:Environment@98] - Client environment:java.version=11.0.15
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.vendor=Private Build
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.home=/usr/lib/jvm/java-11-openjdk-amd64
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.class.path=/usr/local/zookeeper/bin/../zookeeper-server/target/classes:/usr/local/zookeeper/bin/../build/classes:/usr/local/zookeeper/bin/../zookeeper-server/target/lib/*.jar:/usr/local/zookeeper/bin/../build/lib/*.jar:/usr/local/zookeeper/bin/../lib/zookeeper-prometheus-metrics-3.6.3.jar:/usr/local/zookeeper/bin/../lib/zookeeper-jute-3.6.3.jar:/usr/local/zookeeper/bin/../lib/zookeeper-3.6.3.jar:/usr/local/zookeeper/bin/../lib/snappy-java-1.1.7.jar:/usr/local/zookeeper/bin/../lib/slf4j-log4j12-1.7.25.jar:/usr/local/zookeeper/bin/../lib/slf4j-api-1.7.25.jar:/usr/local/zookeeper/bin/../lib/simpleclient_servlet-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient_hotspot-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient_common-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient-0.6.0.jar:/usr/local/zookeeper/bin/../lib/netty-transport-native-unix-common-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-transport-native-epoll-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-transport-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-resolver-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-handler-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-common-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-codec-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-buffer-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib
+[zk: localhost:2181(CONNECTED) 1] ls /brokers/ids
+[1, 2, 3]
+[zk: localhost:2181(CONNECTED) 2]
 ```
 
 8. На ВМ1 kafka-broker1 создайте topic со следующими параметрами:
@@ -97,8 +113,16 @@ sudo systemctl status zookeeper.service
 
 ```
 su - kafka
-~/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
-~/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+/usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+/usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+...
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+Created topic my-replicated-topic.
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+my-replicated-topic
+kafka@broker1:~$
+
+
 ```
 
 9. Модифицируйте Python-скрипты send.py и receive.py для работы с кластером Kafka.
@@ -134,20 +158,72 @@ chmod 777 ~/receive.py
 
 10. Используя Python-скрипты send.py и receive.py, отправьте тестовое сообщение в топик my-replicated-topic. Примите тестовое сообщение.
 
+```
+2.png
+```
+
 Сценарий потери брокера с лидер-репликой
 
 11. Выключите ВМ брокера, содержащего лидер-реплику топика my-replicated-topic.
 12. Проверьте, изменилась ли информация о брокерах в Zookeeper.
 
 ```
-journalctl -u zookeeper.service -xe
+root@broker3:~# shutdown now
+...
+3.png
 ```
 
 13. Убедитесь, что для топика была выбрана новая лидер-реплика. Какие реплики топика my-replicated-topic находятся в состоянии in-sync?
+
+```
+kafka@broker1:/usr/local/kafka$ /usr/local/kafka/bin/kafka-topics.sh --describe --topic 'my-replicated-topic' --bootstrap-server broker1:9092
+Topic: my-replicated-topic      TopicId: ACjoPbnATCqe2d8pYgGj5g PartitionCount: 1       ReplicationFactor: 3    Configs:
+        Topic: my-replicated-topic      Partition: 0    Leader: 2       Replicas: 3,2,1 Isr: 2,1
+kafka@broker1:/usr/local/kafka$
+```
+
 14. Используя Python-скрипты send.py и receive.py, повторите отправку и прием тестового сообщения.
+
+```
+4.png
+```
+
 15. Включите ранее выключенную ВМ.
 16. Стартуйте сервис kafka. Убедитесь, что он работает.
+
+```
+5.png
+```
+
 17. Проверьте, изменилась ли информация о брокерах в Zookeeper.
+
+```
+root@zookeeper2:/usr/local/zookeeper# bin/zkCli.sh -server localhost:2181
+/usr/bin/java
+Connecting to localhost:2181
+2022-06-10 15:38:58,274 [myid:] - INFO  [main:Environment@98] - Client environment:zookeeper.version=3.6.3--6401e4ad2087061bc6b9f80dec2d69f2e3c8660a, built on 04/08/2021 16:35 GMT
+2022-06-10 15:38:58,277 [myid:] - INFO  [main:Environment@98] - Client environment:host.name=zookeeper2
+....
+2022-06-10 15:38:59,483 [myid:localhost:2181] - INFO  [main-SendThread(localhost:2181):ClientCnxn$SendThread@1448] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x200000237e40008, negotiated timeout = 30000
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+
+[zk: localhost:2181(CONNECTED) 0] ls /brokers/ids
+[1, 2, 3]
+[zk: localhost:2181(CONNECTED) 1]
+
+```
+
 18. Убедитесь, что все три реплики топика my-replicated-topic находятся в состоянии "in-sync".
+
+```
+root@broker1:~# su - kafka
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --describe --topic 'my-replicated-topic' --bootstrap-server broker1:9092
+Topic: my-replicated-topic      TopicId: ACjoPbnATCqe2d8pYgGj5g PartitionCount: 1       ReplicationFactor: 3    Configs:
+        Topic: my-replicated-topic      Partition: 0    Leader: 2       Replicas: 3,2,1 Isr: 2,1,3
+kafka@broker1:~$
+```
 
 

@@ -1,0 +1,311 @@
+Задание:
+1. На ВМ брокера Kafka-кластера, используя утилиту kafka-topics.sh, cоздайте топик со следующими параметрами:
+○ Имя — nginx-logs.
+○ Replication factor — 3.
+○ Количество партиций — 1.
+Какой из брокеров был выбран лидером для созданного топика?
+
+```
+su - kafka
+/usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic nginx-logs
+/usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+/usr/local/kafka/bin/kafka-topics.sh --describe --topic 'nginx-logs' --bootstrap-server broker1:9092
+...
+
+
+2. На ВМ клиента Kafka-кластера установите модуль Python faust.
+
+```
+pip3 instal faust
+```
+
+3. На ВМ клиента Kafka-кластера создайте Faust-приложение nginx_logs.py для работы с потоком топика nginx-logs:
+
+```
+cat << EOF > /home/kafka/nginx_logs.py
+import faust
+kafka_broker1 = 'kafka://kafka-broker1:9092'
+kafka_topic   = 'nginx-logs'
+ip            = '80.91.33.133'
+app = faust.App(
+    'nginx_logs',
+    broker = kafka_broker1,
+    value_serializer='raw',
+)
+topic = app.topic(kafka_topic)
+@app.agent(topic)
+    async def rec(records):
+    async for record in records:
+        fields = record.decode("utf-8").split(' ')
+        if fields[0] == ip:
+            print(record.decode("utf-8"))
+EOF
+```
+
+Ответьте на контрольные вопросы:
+○ Какой IP-адрес отслеживается в логе?
+
+```
+ip = '80.91.33.133'
+```
+
+○ Какой брокер используется?
+
+```
+broker = kafka_broker1
+```
+
+○ Какой топик используется?
+
+```
+kafka_topic = 'nginx-logs'
+```
+
+○ По какому символу производится разбивка полей в записи лога?
+
+```
+fields = record.decode("utf-8").split(' ') # space character
+```
+
+○ В каком поле содержится IP-адрес?
+
+```
+fields[0]
+```
+
+Модифицируйте скрипт для поиска одного из IP-адресов, встречающегося в логе вашего веб-сервера.
+4. На ВМ клиента Kafka-кластера запустите worker для вашего Faust-приложения.
+5. На ВМ брокера Kafka-кластера с помощью утилиты kafka-console-producer.sh импортируйте в Kafka содержимое лога вашего веб-сервера.
+6. Убедитесь, что вывод worker содержит записи с нужным IP-адресом.
+
+
+
+Задание:
+Подготовка окружения
+1. Создайте виртуальные машины ВМ1,2,3 kafka-broker1,2,3 следующей конфигурации:
+○ 1 CPU
+○ 1G memory
+Обновите систему на ВМ1,2,3
+На ВМ1,2,3 kafka-broker1,2,3, а также на всех нодах кластера Zookeeper добавьте в файл /etc/hosts следующие записи:
+
+```
+<Kafka_ВМ1_ip_адрес> kafka-broker1
+<Kafka_ВМ2_ip_адрес> kafka-broker2
+<Kafka_ВМ3_ip_адрес> kafka-broker3
+<Zookeeper_ВМ1_ip_адрес> zookeeper1
+<Zookeeper_ВМ2_ip_адрес> zookeeper2
+<Zookeeper_ВМ3_ip_адрес> zookeeper3
+```
+
+2. Установите JRE.
+
+```
+sudo apt update
+sudo apt install openjdk-11-jre-headless -y
+```
+
+Конфигурация Kafka-кластера
+3. Скачайте последнюю доступную версию Kafka. Распакуйте архив в директорию /usr/local/kafka.
+
+```
+sudo -i
+adduser --disabled-password --shell /bin/bash --gecos "kafka" kafka
+adduser kafka sudo
+echo 'kafka ALL=(ALL) NOPASSWD: ALL' >> /etc/sudoers.d/vagrant
+su -l kafka
+mkdir ~/Downloads
+curl "https://dlcdn.apache.org/kafka/3.0.1/kafka_2.12-3.0.1.tgz" -o ~/Downloads/kafka.tgz
+mkdir ~/kafka && cd ~/kafka
+tar -xvzf ~/Downloads/kafka.tgz --strip 1
+```
+
+4. Создайте директорию /var/lib/kafka для хранения оперативной информации.
+
+```
+sudo mkdir -p /var/lib/kafka
+sudo chown kafka:kafka  /home/kafka/kafka/config/server.properties
+```
+
+5. Отредактируйте конфигурационный файл Kafka так, чтобы он содержал:
+○ В директиве broker.id — актуальный номер брокера.
+○ В директиве log.dirs — путь /var/lib/kafka.
+○ В директиве zookeeper.connect — перечень всех нод кластера Zookeeper.
+
+```
+cat << EOF > /home/kafka/kafka/config/server.properties
+broker.id=${HOSTNAME:6}
+log.dirs=/var/lib/kafka
+advertised.host.name=
+log.dirs=/tmp/kafka-logs
+zookeeper.connect=zookeeper1:2181,zookeeper2:2181,zookeeper3:2181
+zookeeper.connection.timeout.ms=6000
+EOF
+sudo chown kafka:kafka  /home/kafka/kafka/config/server.properties
+```
+
+6. Создайте unit-файл /etc/systemd/system/kafka.service следующего содержания:
+
+```
+cat << EOF > /etc/systemd/system/kafka.service
+[Service]
+Type=simple
+ExecStart=/bin/sh -c '/usr/local/kafka/bin/kafka-server-start.sh /usr/local/kafka/config/server.properties > /var/lib/kafka/kafka.log 2>&1'
+ExecStop=/usr/local/kafka/bin/kafka-server-stop.sh
+Restart=on-abnormal
+[Install]
+WantedBy=multi-user.target
+EOF
+
+```
+
+Включите и стартуйте сервис kafka. Убедитесь, что он работает.
+
+```
+sudo systemctl status kafka.service
+```
+
+7. На кластере Zookeeper убедитесь, что все ноды кластера Kafka прошли регистрацию.
+
+```
+1.png
+
+...
+sudo systemctl status zookeeper.service
+...
+root@zookeeper2:/usr/local/zookeeper# ./bin/zkCli.sh -server localhost:2181
+/usr/bin/java
+Connecting to localhost:2181
+2022-06-10 10:05:01,219 [myid:] - INFO  [main:Environment@98] - Client environment:zookeeper.version=3.6.3--6401e4ad2087061bc6b9f80dec2d69f2e3c8660a, built on 04/08/2021 16:35 GMT
+2022-06-10 10:05:01,222 [myid:] - INFO  [main:Environment@98] - Client environment:host.name=zookeeper2
+2022-06-10 10:05:01,222 [myid:] - INFO  [main:Environment@98] - Client environment:java.version=11.0.15
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.vendor=Private Build
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.home=/usr/lib/jvm/java-11-openjdk-amd64
+2022-06-10 10:05:01,224 [myid:] - INFO  [main:Environment@98] - Client environment:java.class.path=/usr/local/zookeeper/bin/../zookeeper-server/target/classes:/usr/local/zookeeper/bin/../build/classes:/usr/local/zookeeper/bin/../zookeeper-server/target/lib/*.jar:/usr/local/zookeeper/bin/../build/lib/*.jar:/usr/local/zookeeper/bin/../lib/zookeeper-prometheus-metrics-3.6.3.jar:/usr/local/zookeeper/bin/../lib/zookeeper-jute-3.6.3.jar:/usr/local/zookeeper/bin/../lib/zookeeper-3.6.3.jar:/usr/local/zookeeper/bin/../lib/snappy-java-1.1.7.jar:/usr/local/zookeeper/bin/../lib/slf4j-log4j12-1.7.25.jar:/usr/local/zookeeper/bin/../lib/slf4j-api-1.7.25.jar:/usr/local/zookeeper/bin/../lib/simpleclient_servlet-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient_hotspot-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient_common-0.6.0.jar:/usr/local/zookeeper/bin/../lib/simpleclient-0.6.0.jar:/usr/local/zookeeper/bin/../lib/netty-transport-native-unix-common-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-transport-native-epoll-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-transport-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-resolver-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-handler-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-common-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-codec-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib/netty-buffer-4.1.63.Final.jar:/usr/local/zookeeper/bin/../lib
+[zk: localhost:2181(CONNECTED) 1] ls /brokers/ids
+[1, 2, 3]
+[zk: localhost:2181(CONNECTED) 2]
+```
+
+8. На ВМ1 kafka-broker1 создайте topic со следующими параметрами:
+○ Имя топика — my-replicated-topic.
+○ Bootstrap сервер broker1, порт 9092.
+○ Репликационный фактор — 3.
+○ Количество партиций — 1.
+Проверьте, что созданный топик имеет 3 реплики. Какая из них является лидером?
+
+```
+su - kafka
+/usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+/usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+...
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic my-replicated-topic
+Created topic my-replicated-topic.
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+my-replicated-topic
+kafka@broker1:~$
+
+
+```
+
+9. Модифицируйте Python-скрипты send.py и receive.py для работы с кластером Kafka.
+
+```
+sudo apt update
+sudo apt install python3-pip -y
+sudo pip3 install kafka-python
+
+cat << EOF >> ~/send.py
+#!/usr/bin/python3
+from kafka import KafkaProducer
+broker = 'broker1:9092'
+topic = 'my-replicated-topic'
+message = 'message2'
+producer = KafkaProducer(bootstrap_servers=[broker])
+producer.send(topic, message.encode('utf-8'))
+producer.flush()
+EOF
+chmod 777 ~/send.py
+
+cat << EOF >> ~/receive.py
+#!/usr/bin/python3
+from kafka import KafkaConsumer
+broker = 'broker1:9092'
+topic = 'my-replicated-topic'
+consumer = KafkaConsumer(topic, bootstrap_servers=[broker])
+for msg in consumer:
+  print (msg)
+EOF
+chmod 777 ~/receive.py
+```
+
+10. Используя Python-скрипты send.py и receive.py, отправьте тестовое сообщение в топик my-replicated-topic. Примите тестовое сообщение.
+
+```
+2.png
+```
+
+Сценарий потери брокера с лидер-репликой
+
+11. Выключите ВМ брокера, содержащего лидер-реплику топика my-replicated-topic.
+12. Проверьте, изменилась ли информация о брокерах в Zookeeper.
+
+```
+root@broker3:~# shutdown now
+...
+3.png
+```
+
+13. Убедитесь, что для топика была выбрана новая лидер-реплика. Какие реплики топика my-replicated-topic находятся в состоянии in-sync?
+
+```
+kafka@broker1:/usr/local/kafka$ /usr/local/kafka/bin/kafka-topics.sh --describe --topic 'my-replicated-topic' --bootstrap-server broker1:9092
+Topic: my-replicated-topic      TopicId: ACjoPbnATCqe2d8pYgGj5g PartitionCount: 1       ReplicationFactor: 3    Configs:
+        Topic: my-replicated-topic      Partition: 0    Leader: 2       Replicas: 3,2,1 Isr: 2,1
+kafka@broker1:/usr/local/kafka$
+```
+
+14. Используя Python-скрипты send.py и receive.py, повторите отправку и прием тестового сообщения.
+
+```
+4.png
+```
+
+15. Включите ранее выключенную ВМ.
+16. Стартуйте сервис kafka. Убедитесь, что он работает.
+
+```
+5.png
+```
+
+17. Проверьте, изменилась ли информация о брокерах в Zookeeper.
+
+```
+root@zookeeper2:/usr/local/zookeeper# bin/zkCli.sh -server localhost:2181
+/usr/bin/java
+Connecting to localhost:2181
+2022-06-10 15:38:58,274 [myid:] - INFO  [main:Environment@98] - Client environment:zookeeper.version=3.6.3--6401e4ad2087061bc6b9f80dec2d69f2e3c8660a, built on 04/08/2021 16:35 GMT
+2022-06-10 15:38:58,277 [myid:] - INFO  [main:Environment@98] - Client environment:host.name=zookeeper2
+....
+2022-06-10 15:38:59,483 [myid:localhost:2181] - INFO  [main-SendThread(localhost:2181):ClientCnxn$SendThread@1448] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x200000237e40008, negotiated timeout = 30000
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+
+[zk: localhost:2181(CONNECTED) 0] ls /brokers/ids
+[1, 2, 3]
+[zk: localhost:2181(CONNECTED) 1]
+
+```
+
+18. Убедитесь, что все три реплики топика my-replicated-topic находятся в состоянии "in-sync".
+
+```
+root@broker1:~# su - kafka
+kafka@broker1:~$ /usr/local/kafka/bin/kafka-topics.sh --describe --topic 'my-replicated-topic' --bootstrap-server broker1:9092
+Topic: my-replicated-topic      TopicId: ACjoPbnATCqe2d8pYgGj5g PartitionCount: 1       ReplicationFactor: 3    Configs:
+        Topic: my-replicated-topic      Partition: 0    Leader: 2       Replicas: 3,2,1 Isr: 2,1,3
+kafka@broker1:~$
+```
+
+

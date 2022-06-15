@@ -1,0 +1,150 @@
+Задание:
+Тестирование Kafka
+1. На ВМ kafka-broker1 создайте topic со следующими параметрами:
+○ Имя топика jmeter
+○ Bootstrap сервер broker1, порт 9092
+○ Репликационный фактор 3
+○ Кол-во партиций 1
+
+```
+su - kafka
+/usr/local/kafka/bin/kafka-topics.sh --create --bootstrap-server broker1:9092 --replication-factor 3 --partitions 1 --topic jmeter
+/usr/local/kafka/bin/kafka-topics.sh --list --bootstrap-server broker1:9092
+/usr/local/kafka/bin/kafka-topics.sh --describe --topic 'jmeter' --bootstrap-server broker1:9092
+```
+
+2. На ВМ kafka-client1:
+○ Установите Apache Jmeter в директорию ~/jmeter
+○ Установите Jmeter Plugin Manager
+○ Установите плагин Kafkameter
+3. Создайте план тестирования Kafka Test Plan.
+Добавьте в план тестирования thread group со следующими параметрами:
+○ Name kafka-producers
+○ Number of threads (users) 1
+○ Loop count 1
+Добавьте в thread group следующие компоненты:
+○ Counter
+○ Load Generator Config #Do not forget to install Kafka Support in jmeter plugin manager 
+○ Java Request
+○ Summary report
+○ View Results Tree
+4. Для Counter установите следующие параметры:
+○ Name Message counter
+○ Starting value 0
+○ Increment 1
+○ Exported variable name msg_count
+5. Для Load Generator Config установите следующие параметры:
+○ Name Load Generator
+○ Class name co.signal.loadgen.example.TagserveLoadGenerator
+○ Filename config1.json
+○ Variable name message
+6. В директории ~/jmeter/bin создайте файл config1.json:
+
+```
+cat << EOF > config1.json
+{
+  "site1": {
+    "weight": 0.6,
+    "pages": {
+      "123": {
+        "weight": 0.7,
+        "tags": [123, 567]
+        },
+        "234": {
+          "weight": 0.1,
+          "tags": [123, 234, 345, 456]
+          }
+        }
+      },
+      "site2": {
+      "weight": 0.4,
+      "pages": {
+      "123": {
+      "weight": 0.7,
+      "tags": [123, 234]
+      }
+    }
+  }
+}
+EOF
+
+```
+
+7. Для Java Request установите следующие параметры:
+○ Name Kafka
+○ Classname co.signal.kafkameterKafkaProducerSampler
+○ kafka_brokers kafka-broker1:9092
+○ kafka_topic jmeter
+○ kafka_key ${msg_count}
+○ kafka_message ${message}
+8. Сохраните план тестирования как ~/jmeter/bin/template/kafka-producers.jmx.
+9. Используя Apache Jmeter GUI, выполните тестировние. Используя View Results Tree убедитесь, что сообщение было отправлено.
+   Используя утилиту kafka-console-consumer.sh, прочтите сообщение из топика jmeter.
+
+```
+kafka@broker2:~$ ./receive.py
+ConsumerRecord(topic='jmeter', partition=0, offset=1, timestamp=-1, timestamp_type=0, key=None, value=b'{"siteId":"site1","timestamp":1655314090762,"pageIds":[234],"tagIds":[123,234,345,456]}', headers=[], checksum=None, serialized_key_size=-1, serialized_value_size=87, serialized_header_size=-1)
+```
+
+10. Используя Apache Jmeter CLI, выполняйте тестирование, последовательно увеличивая параметры thread group:
+● Number of threads (users)
+● Loop count
+до тех пор, пока максимальное время запроса не превысит 1000 мс. Запишите полученные значения.
+
+```
+1.png
+2.png
+
+Results:
+Number of threads (Users): 665
+Loop Count: 665
+```
+
+---
+
+Тестирование RabbitMQ
+11. На ВМ rabbitmq-node1 создайте пользователя jmeter с паролем jmeter. Задайте пользователю jmeter полные права на vhost /.
+12. На ВМ kafka-client1:
+○ Скачайте плагин JMeter-Rabbit-AMQP в директорию ~/jmeter/lib/ext
+○ Скачайте библиотеку amqp-client-303.jar в директорию ~/jmeter/lib
+○ Добавьте в файл /etc/hosts записи для нод кластера RabbitMQ
+13. Создайте план тестирования Rabbitmq Test Plan.
+Добавьте в план тестирования thread group со следующими параметрами:
+● Name rabbitmq-producers
+● Number of threads (users) 1
+● Loop count 1
+Добавьте в thread group следующие компоненты:
+● Random Variable
+● AMQP Publisher
+● Summary report
+● View Results Tree
+14. Для компонента Random Variable укажите следующие параметры:
+○ Variable Name messageId
+○ Output Format 00000000
+○ Minimum Value 0
+○ Maximum Value '99999999`
+○ Seed for Random function 15923493
+Для компонента AMQP Publisher укажите следующие параметры:
+○ Section Connection, Virtual Host /
+○ Section Connection, Host rabbitmq-node1
+○ Section Connection, Port 5672
+○ Section Connection, Username jmeter
+○ Section Connection, Password jmeter
+○ Section Queue, Queue jmeterQueue
+○ Section Queue, Routing key jmeterRoutingKey
+○ Routing key jmeterRoutingKey
+○ Message content {"RequestMessageId": "${messageId}"}
+15. Испоользуя Apache Jmeter GUI, запустите тестирование. Проверьте результат в
+View Results Tree.
+16. Сохраните план тестирования как ~/jmeter/bin/template/rabbitmq-producers.jmx.
+17. На ВМ rabbitmq-node1:
+○ Убедитесь, что очередь jmeterQueue была создана
+○ Убедитесь, что в очереди jmeterQueue содержится ранее отправленное сообщение
+18. Используя Apache Jmeter CLI, выполняйте тестирование последовательно увеличивая параметры thread group:
+○ Number of threads (users)
+○ Loop count
+до тех пор пока максимальное время отклика не превысит 1000 мс. Сравните полученные значения с аналогичными значениями для Kafka.
+
+
+
+

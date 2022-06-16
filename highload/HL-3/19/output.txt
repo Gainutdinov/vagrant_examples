@@ -104,10 +104,28 @@ Loop Count: 665
 
 Тестирование RabbitMQ
 11. На ВМ rabbitmq-node1 создайте пользователя jmeter с паролем jmeter. Задайте пользователю jmeter полные права на vhost /.
+
+```
+rabbitmqctl add_user jmeter jmeter
+rabbitmqctl set_permissions -p / jmeter ".*" ".*" ".*"
+
+3.png
+4.png
+```
+
 12. На ВМ kafka-client1:
 ○ Скачайте плагин JMeter-Rabbit-AMQP в директорию ~/jmeter/lib/ext
 ○ Скачайте библиотеку amqp-client-303.jar в директорию ~/jmeter/lib
 ○ Добавьте в файл /etc/hosts записи для нод кластера RabbitMQ
+
+```
+wget https://martkos-it.co.uk/s/amqp-client-303.jar -O /tmp/amqp-client-303.jar
+cp /tmp/amqp-client-303.jar ~/Downloads/apache-jmeter-5.2.1/lib
+wget https://martkos-it.co.uk/s/JMeterAMQP.jar -O /tmp/JMeterAMQP.jar
+cp /tmp/JMeterAMQP.jar ~/Downloads/apache-jmeter-5.2.1/lib/ext
+
+```
+
 13. Создайте план тестирования Rabbitmq Test Plan.
 Добавьте в план тестирования thread group со следующими параметрами:
 ● Name rabbitmq-producers
@@ -122,7 +140,7 @@ Loop Count: 665
 ○ Variable Name messageId
 ○ Output Format 00000000
 ○ Minimum Value 0
-○ Maximum Value '99999999`
+○ Maximum Value '99999999'
 ○ Seed for Random function 15923493
 Для компонента AMQP Publisher укажите следующие параметры:
 ○ Section Connection, Virtual Host /
@@ -134,17 +152,30 @@ Loop Count: 665
 ○ Section Queue, Routing key jmeterRoutingKey
 ○ Routing key jmeterRoutingKey
 ○ Message content {"RequestMessageId": "${messageId}"}
-15. Испоользуя Apache Jmeter GUI, запустите тестирование. Проверьте результат в
-View Results Tree.
+15. Испоользуя Apache Jmeter GUI, запустите тестирование. Проверьте результат в View Results Tree.
 16. Сохраните план тестирования как ~/jmeter/bin/template/rabbitmq-producers.jmx.
 17. На ВМ rabbitmq-node1:
 ○ Убедитесь, что очередь jmeterQueue была создана
+
+```
+5.png
+6.png
+```
+
 ○ Убедитесь, что в очереди jmeterQueue содержится ранее отправленное сообщение
 18. Используя Apache Jmeter CLI, выполняйте тестирование последовательно увеличивая параметры thread group:
 ○ Number of threads (users)
 ○ Loop count
 до тех пор пока максимальное время отклика не превысит 1000 мс. Сравните полученные значения с аналогичными значениями для Kafka.
 
+```
+7.png
 
+Results:
+Number of threads (Users): 740
+Loop Count: 740
+```
 
-
+```
+Исходя из результатов можно сделать вывод что RabbitMQ более производительный по сравнению с kafka брокер сообщений, но в то же самое время на Summary Report можно увидеть что error rate крайне не стабильный, но он не превышает 0.5% что может являтся допустим, но опять же исходя из бизнес задач. В любом случае для сообщений я бы использовал RabbitMQ т.к. он более проще настраивается в cluster'е.
+```

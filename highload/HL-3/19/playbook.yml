@@ -1,0 +1,52 @@
+---
+- name: rabbitmq install
+  hosts: all
+  become: yes
+  gather_facts: yes
+  pre_tasks:
+  - name: install packages for rockandska.erlang
+    apt:
+      pkg: 
+      - apt-transport-https
+      - gpg-agent
+      - ca-certificates
+      - python3-pip
+      update_cache: true
+  roles:
+    - role: rockandska.erlang
+    - role: onlyoffice.rabbitmq
+  tasks:
+  - name: Copy file with owner and permissions 1
+    ansible.builtin.copy:
+      src: ./receive.py
+      dest: /root/receive.py
+      owner: root
+      group: root
+      mode: '0777'
+  - name: Copy file with owner and permissions 2
+    ansible.builtin.copy:
+      src: ./send.py
+      dest: /root/send.py
+      owner: root
+      group: root
+      mode: '0777'
+
+  post_tasks:
+  - name: Run a command 1
+    ansible.builtin.shell: echo '192.168.53.101 host1' >> /etc/hosts
+    args:
+      executable: /bin/bash
+  - name: Run a command 2
+    ansible.builtin.shell: echo '192.168.53.102 host2' >> /etc/hosts
+    args:
+      executable: /bin/bash
+  - name: Run a command 3
+    ansible.builtin.shell: echo '192.168.53.103 host3' >> /etc/hosts
+    args:
+      executable: /bin/bash
+  - name: Run a command 4
+    ansible.builtin.shell: pip3 install pika
+    args:
+      executable: /bin/bash
+
+

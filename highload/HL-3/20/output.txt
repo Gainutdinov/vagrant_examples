@@ -1,0 +1,177 @@
+Задание:
+Подготовка окружения
+1. Создайте ВМ rabbitmq-docker со следующими параметрами:
+○ 1 CPU
+○ 2 GB memory
+Обновите систему на созданных ВМ.
+Установите пакеты docker и docker-compose.
+2. Создайте файл docker-compose.yml следующего содержания:
+
+```
+mkdir prometheus
+cat << EOF > ./prometheus/prometheus.yml
+global:
+  scrape_interval:     15s # By default, scrape targets every 15 seconds.
+  external_labels:
+    monitor: 'codelab-monitor'
+scrape_configs:
+- job_name: rabbitmq
+  scrape_interval: 60s
+  static_configs:
+  - targets:
+    - 192.168.56.100:15692
+- job_name: kafak
+  scrape_interval: 60s
+  static_configs:
+  - targets:
+    - 192.168.56.100:9308
+EOF
+
+
+
+cat << EOF > docker-compose.yml
+version: '3'
+services:
+  rabbitmq:
+    image: rabbitmq
+    volumes:
+      - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+    ports:
+      - 4369:4369
+      - 5671:5671
+      - 5672:5672
+      - 15672:15672
+      - 15692:15692
+      - 25672:25672
+  prometheus:
+    image: prom/prometheus:v2.1.0
+    volumes:
+      - ./prometheus/:/etc/prometheus/
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+    ports:
+      - 9090:9090
+    restart: always
+  zookeeper:
+    image: wurstmeister/zookeeper
+    container_name: zookeeper
+    ports:
+      - "2181:2181"
+      - "9038:9038"
+  kafka:
+    image: wurstmeister/kafka
+    container_name: kafka
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_ADVERTISED_HOST_NAME: localhost
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+volumes:
+  prometheus_data: {}
+EOF
+```
+
+3. Создайте файл enabled_plugins следующего содержания:
+
+```
+echo '[rabbitmq_management,rabbitmq_prometheus].' > ./enabled_plugins
+```
+
+4. Запустите контейнер RabbitMQ.
+RabbitMQ Managenent UI
+
+```
+docker-compose up -d
+```
+
+5. В контейнере RabbitMQ:
+○ Cоздайте пользователя admin с паролем admin
+○ Дайте пользователю admin полные права на vhost / и тэг administrator
+○ Создайте тестовую очередь
+
+```
+docker exec -ti root_rabbitmq_1 rabbitmqctl add_user admin admin
+docker exec -ti root_rabbitmq_1 rabbitmqctl set_user_tags admin administrator
+docker exec -ti root_rabbitmq_1 rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+
+wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
+chmod +x rabbitmqadmin
+sudo mv rabbitmqadmin /usr/local/bin
+
+rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
+```
+
+6. Откройте в браузере адрес Management UI. Выполните авторизацию пользователем admin.
+
+```
+1.png
+```
+
+###RabbitMQ and Prometheus
+7. Убедитесь, что RabbitMQ возвращает метрики.
+
+```
+root@cpu1:~# curl localhost:15692/metrics  | head
+  % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+                                 Dload  Upload   Total   Spent    Left  Speed
+  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0# TYPE erlang_mnesia_held_locks gauge
+# HELP erlang_mnesia_held_locks Number of held locks.
+erlang_mnesia_held_locks 0
+# TYPE erlang_mnesia_lock_queue gauge
+# HELP erlang_mnesia_lock_queue Number of transactions waiting for a lock.
+erlang_mnesia_lock_queue 0
+# TYPE erlang_mnesia_transaction_participants gauge
+# HELP erlang_mnesia_transaction_participants Number of participant transactions.
+erlang_mnesia_transaction_participants 0
+# TYPE erlang_mnesia_transaction_coordinators gauge
+...
+```
+
+8. Добавьте в конфигурацию Prometheus target rabbitmq.
+9. Используя Prometheus UI:
+○ Проверьте состояние target rabbitmq
+○ Сделайте запрос метрики очередей Kafka and Prometheus
+
+```
+2.png
+```
+
+10. Скачайте Kafka Exporter в директорию /usr/local/kafka/bin ВМ kafka-broker1.
+
+```
+docker exec -ti kafka mkdir -p /usr/local/kafka/bin
+docker exec -ti kafka wget https://github.com/danielqsj/kafka_exporter/releases/download/v1.4.2/kafka_exporter-1.4.2.linux-amd64.tar.gz -O /tmp/kafka_exporter-1.4.2.linux-amd64.tar.gz
+docker exec -ti kafka tar xvf /tmp/kafka_exporter-1.4.2.linux-amd64.tar.gz
+docker exec -ti kafka mv /kafka_exporter-1.4.2.linux-amd64/kafka_exporter /usr/local/kafka/bin/kafka_exporter
+docker exec -ti kafka /usr/local/kafka/bin/kafka_exporter --kafka.server=localhost:9092
+```
+
+11. Создайте unit-файл для запуска Kafka Exporter:
+
+```
+[Service]
+Type=simple
+ExecStart=/usr/local/kafka/bin/kafka_exporter --kafka.server=localhost:9092
+Restart=on-abnormal
+[Install]
+WantedBy=multi-user.target
+```
+Стартуйте сервис kafka-exporter.
+12. Убедитесь, что Kafka Exporter возвращает метрики.
+13. В файл конфигурации Prometheus добавьте target kafka.
+14. Используя Prometheus UI:
+○ Проверьте состояние target kafka
+○ Сделайте запрос колчиества нод в кластере Kafka
+
+```
+3.png
+4.png
+```
+
+### Алерты
+15. Нагрузите очередь сообщениями без потребителя. Выведите в Telegram или Slack оповещение о том, что очередь выросла и не обрабатывается
+16. Факторы наблюдения: более 100 сообщений в очереди, более 5 сообщений в секунду поступает в очередь

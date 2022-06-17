@@ -1,0 +1,320 @@
+Задание:
+Подготовка окружения
+1. Создайте ВМ rabbitmq-docker со следующими параметрами:
+○ 1 CPU
+○ 2 GB memory
+Обновите систему на созданных ВМ.
+Установите пакеты docker и docker-compose.
+2. Создайте файл docker-compose.yml следующего содержания:
+
+```
+cat << EOF > ./10-defaults.conf
+## DEFAULT SETTINGS ARE NOT MEANT TO BE TAKEN STRAIGHT INTO PRODUCTION
+## see https://www.rabbitmq.com/configure.html for further information
+## on configuring RabbitMQ
+
+## allow access to the guest user from anywhere on the network
+## https://www.rabbitmq.com/access-control.html#loopback-users
+## https://www.rabbitmq.com/production-checklist.html#users
+loopback_users.guest = false
+
+## Send all logs to stdout/TTY. Necessary to see logs when running via
+## a container
+log.console = true
+management.rates_mode = detailed
+management_agent.disable_metrics_collector = false
+EOF
+cat << EOF > ./management_agent.disable_metrics_collector.conf
+management_agent.disable_metrics_collector = false
+EOF
+
+
+cat << EOF > docker-compose.yml
+version: '3.5'
+services:
+  rabbitmq:
+    image: rabbitmq
+    volumes:
+      - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./10-defaults.conf:/etc/rabbitmq/conf.d/10-defaults.conf
+      - ./management_agent.disable_metrics_collector.conf:/etc/rabbitmq/conf.d/management_agent.disable_metrics_collector.conf
+    ports:
+      - 4369:4369
+      - 5671:5671
+      - 5672:5672
+      - 15672:15672
+      - 15692:15692
+      - 25672:25672
+   networks:
+    - zbx_net
+  mysql-server:
+   image: mysql:8.0
+   networks:
+    - zbx_net
+   command:
+    - mysqld
+    - --character-set-server=utf8
+    - --collation-server=utf8_bin
+    - --default-authentication-plugin=mysql_native_password
+   environment:
+    - MYSQL_USER=zabbix
+    - MYSQL_DATABASE=zabbixdb
+    - MYSQL_PASSWORD=PasswOrd
+    - MYSQL_ROOT_PASSWORD=StrongPassword
+    - ZBX_JAVAGATEWAY=zabbix-java-gateway
+   volumes:
+    - /zabbix-mysql:/var/lib/mysql:rw
+  zabbix-server-mysql:
+   image: zabbix/zabbix-server-mysql:alpine-latest
+   networks:
+    - zbx_net
+   ports:
+    - 10051:10051
+   volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /etc/timezone:/etc/timezone:ro 
+    - /zabbix-data/alertscripts:/usr/lib/zabbix/alertscripts:ro
+    - /zabbix-data/externalscripts:/usr/lib/zabbix/externalscripts:ro
+    - /zabbix-data/export:/var/lib/zabbix/export:rw
+    - /zabbix-data/modules:/var/lib/zabbix/modules:ro
+    - /zabbix-data/enc:/var/lib/zabbix/enc:ro
+    - /zabbix-data/ssh_keys:/var/lib/zabbix/ssh_keys:ro
+    - /zabbix-data/mibs:/var/lib/zabbix/mibs:ro
+    - /zabbix-data/snmptraps:/var/lib/zabbix/snmptraps:rw
+   environment:
+    - DB_SERVER_HOST=mysql-server
+    - MYSQL_DATABASE=zabbixdb
+    - MYSQL_USER=zabbix
+    - MYSQL_PASSWORD=Passw0rd
+    - MYSQL_ROOT_PASSWORD=StrongPassword
+    - ZBX_JAVAGATEWAY=zabbix-java-gateway
+ 
+   depends_on:
+    - mysql-server
+
+  zabbix-agent:
+    container_name: zabbix-agent
+    image: zabbix/zabbix-agent2:alpine-5.0.1
+    user: root
+    networks:
+      - zbx_net
+    links:
+      - zabbix-server-mysql
+    restart: always
+    privileged: true
+    volumes:
+      - /var/run:/var/run
+    ports:
+      - '10050:10050'
+    environment:
+      - ZBX_HOSTNAME=Zabbix server
+      - ZBX_SERVER_HOST=zabbix-server-mysql
+   depends_on:
+    - zabbix-server-mysql
+ 
+  zabbix-web-nginx-mysql:
+   image: zabbix/zabbix-web-nginx-mysql:alpine-6.0-latest
+   networks:
+    - zbx_net
+   ports:
+    - 80:8080
+    - 443:8443
+   volumes:
+    - /etc/localtime:/etc/localtime:ro
+    - /etc/timezone:/etc/timezone:ro
+    - /zabbix-nginx/nginx:/etc/ssl/nginx:ro
+    - /zabbix-nginx/modules/:/usr/share/zabbix/modules/:ro
+   environment:
+    - ZBX_SERVER_HOST=zabbix-server-mysql
+    - DB_SERVER_HOST=mysql-server
+    - MYSQL_DATABASE=zabbixdb
+    - MYSQL_USER=zabbix
+    - MYSQL_PASSWORD=Passw0rd
+    - MYSQL_ROOT_PASSWORD=StrongPassword
+   depends_on:
+    - mysql-server
+    - zabbix-server-mysql
+  zabbix-java-gateway:
+   image: zabbix/zabbix-java-gateway:alpine-6.0-latest
+   networks:
+    - zbx_net
+   ports:
+    - 10052:10052
+  zookeeper:
+   image: wurstmeister/zookeeper
+   container_name: zookeeper
+   ports:
+     - "2181:2181"
+     - "9038:9038"
+     - "9308:9308"
+   networks:
+    - zbx_net
+  kafka:
+   image: wurstmeister/kafka
+   container_name: kafka
+   ports:
+     - "9092:9092"
+   environment:
+     KAFKA_ADVERTISED_HOST_NAME: localhost
+     KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+   networks:
+    - zbx_net
+networks:
+ zbx_net:
+   driver: bridge
+EOF
+```
+
+3. Создайте файл enabled_plugins следующего содержания:
+
+```
+echo '[rabbitmq_management,rabbitmq_prometheus].' > ./enabled_plugins
+```
+
+4. Запустите контейнер RabbitMQ.
+
+###RabbitMQ and Zabbix
+
+5. На ВМ rabbitmq-docker:
+○ Создайте пользователя zbx_monitor с паролем zabbix
+○ Задайте для пользователя zbx_monitor полные права на vhost /
+○ Задайте для пользователя zbx_monitor user tag monitoring
+
+```
+docker exec -ti root_rabbitmq_1 rabbitmqctl add_user zbx_monitor zabbix
+docker exec -ti root_rabbitmq_1 rabbitmqctl set_user_tags zbx_monitor monitoring
+docker exec -ti root_rabbitmq_1 rabbitmqctl set_permissions --vhost "/" zbx_monitor ".*" ".*" ".*"
+
+wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
+chmod +x rabbitmqadmin
+mv rabbitmqadmin /usr/local/bin
+chmod 777 /usr/local/bin/rabbitmqadmin
+/usr/local/bin/rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
+```
+
+6. На ВМ rabbitmq-docker:
+○ Установите пакет zabbix-agent
+○ Убедитесь, что сервис zabbix-agent запущен и работает
+○ В конфигурационном файле сервиса zabbix-agent укажите IP-адрес сервера Zabbix
+○ Перезапустите сервис zabbix-agent
+
+```
+#installed via docker container
+```
+
+7. Используя Zabbix UI, в разделе Configuration:
+○ Создайте хост-группу RabbitMQ
+○ Добавьте хост rabbitmq-docker
+○ Для хоста rabbitmq-docker укажите шаблон Template OS Linux by Zabbix agent
+○ Для хоста rabbitmq-docker укажите шаблон Template App RabbitMQ node by HTTP
+
+```
+1.png
+```
+
+8. Используя Zabbix WebUI, в разделе Monitoring/Latest data:
+○ Убедитесь, что items для хоста rabbitmq-docker содержат актуальные значения (системные и RabbitMQ) Kafka and Zabbix (custom template)
+
+```
+#Please give attention to macros for RabbitMQ template while configuring host
+#First check rabbitmq docker container accessibility from zabbix-agent container
+curl -u zbx_monitor:zabbix http://rabbitmq:15672/api/overview   | jq
+#Also make sure to check template itself its uses zabbix_agent_host instead of {$RABBITMQ.API.CLUSTER_HOST} so fix this in template first before adding it
+
+2.png
+
+```
+
+9. На ВМ kafka-broker1:
+○ Установите пакет zabbix-agent
+○ Убедитесь, что сервис zabbix-agent запущен и работает
+○ В конфигурационном файле сервиса zabbix-agent укажите IP-адрес сервера Zabbix
+○ Перезапустите сервис zabbix-agent
+
+10. Используя Zabbix UI, в разделе Configuration:
+○ Создайте хост-группу Kafka
+○ Создайте хост kafka-broker1
+○ Для хоста rabbitmq-docker укажите шаблон Template OS Linux by Zabbix agent
+Убедитесь, что Zabbix собирает данные с хоста kafka-broker1
+
+```
+3.png
+```
+
+11. Используя Zabbix UI, в разделе Configuration создайте template со следующими параметрами:
+○ Template name kafka-template
+○ Visible name Template App Kafka broker by HTTP
+○ Groups Kafka
+
+```
+4.png
+```
+
+12. Используя Zabbix UI, в template kafka-template добавьте item:
+○ Name Kafka Master
+○ Type HTTP agent
+○ Key kafka.master
+○ URL http://{HOST.IP}:9308/metrics
+○ Applications Kafka
+
+```
+docker exec -ti kafka mkdir -p /usr/local/kafka/bin
+docker exec -ti kafka wget https://github.com/danielqsj/kafka_exporter/releases/download/v1.4.2/kafka_exporter-1.4.2.linux-amd64.tar.gz -O /tmp/kafka_exporter-1.4.2.linux-amd64.tar.gz
+docker exec -ti kafka tar xvf /tmp/kafka_exporter-1.4.2.linux-amd64.tar.gz
+docker exec -ti kafka mv /kafka_exporter-1.4.2.linux-amd64/kafka_exporter /usr/local/kafka/bin/kafka_exporter
+docker exec -ti kafka /usr/local/kafka/bin/kafka_exporter --kafka.server=localhost:9092
+
+```
+
+13. Используя Zabbix UI, в template kafka-template добавьте item:
+○ Name Kafka Brokers
+○ Type Dependent item
+○ Key kafka.brokers
+○ Master item Template App Kafka broker by HTTP: Kafka Master
+○ Applications Kafka
+
+```
+5.png
+```
+
+14. Используя Zabbix UI, для item Kafka Brokers создайте Prepocessing step:
+○ Name Prometheus pattern
+○ Parameters kafka_brokers
+
+```
+6.png
+```
+
+15. Используя Zabbix UI, в разделе COnfiguration/Hosts добавьте для хоста kafka_broker1 шаблон Template App Kafka broker by HTTP.
+16. Используя Zabbix UI, в разделе Monitoring/Latest data убедитесь, что items Kafka Master и Kafka Brokers содержат актуальные значения.
+
+```
+7.png
+```
+
+###Алерты
+
+17. Нагрузите очередь сообщениями без потребителя. Выведите в Telegram или Slack оповещение о том, что очередь выросла и не обрабатывается
+
+```
+8.png
+
+count=150
+for i in $(seq $count); do
+    python3 ./send.py
+done
+
+9.png
+10.png
+11.png
+```
+
+18. Факторы наблюдения: более 150 сообщений в очереди, более 7 сообщений в секунду поступает в очередь
+
+```
+
+12.png
+13.png
+14.png
+```
+

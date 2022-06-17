@@ -9,6 +9,22 @@
 
 ```
 mkdir prometheus
+cat << EOF > ./10-defaults.conf
+## DEFAULT SETTINGS ARE NOT MEANT TO BE TAKEN STRAIGHT INTO PRODUCTION
+## see https://www.rabbitmq.com/configure.html for further information
+## on configuring RabbitMQ
+
+## allow access to the guest user from anywhere on the network
+## https://www.rabbitmq.com/access-control.html#loopback-users
+## https://www.rabbitmq.com/production-checklist.html#users
+loopback_users.guest = false
+
+## Send all logs to stdout/TTY. Necessary to see logs when running via
+## a container
+log.console = true
+management.rates_mode = detailed
+EOF
+
 cat << EOF > ./prometheus/prometheus.yml
 global:
   scrape_interval:     15s # By default, scrape targets every 15 seconds.
@@ -16,17 +32,38 @@ global:
     monitor: 'codelab-monitor'
 scrape_configs:
 - job_name: rabbitmq
-  scrape_interval: 60s
+  scrape_interval: 1s
   static_configs:
   - targets:
     - 192.168.56.100:15692
 - job_name: kafak
-  scrape_interval: 60s
+  scrape_interval: 1s
   static_configs:
   - targets:
     - 192.168.56.100:9308
 EOF
 
+cat << EOF > ./prometheus/rules.yml
+groups:
+- name: more than 100 messages in queue
+  rules:
+  - alert: HighNumberOfMessagesInQueue
+    expr: rabbitmq_queue_messages{instance="192.168.56.100:15692",job="rabbitmq"} > 100
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: High number of messages in queue
+- name: more than 5 messages per second
+  rules:
+  - alert: HighMessageRate
+    expr: rate(rabbitmq_queue_messages[5s]) > 25
+    for: 1m
+    labels:
+      severity: critical
+    annotations:
+      summary: High message rate
+EOF
 
 
 cat << EOF > docker-compose.yml
@@ -36,6 +73,7 @@ services:
     image: rabbitmq
     volumes:
       - ./enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./10-defaults.conf:/etc/rabbitmq/conf.d/10-defaults.conf
     ports:
       - 4369:4369
       - 5671:5671
@@ -56,6 +94,18 @@ services:
     ports:
       - 9090:9090
     restart: always
+  alertmanager:
+    image: prom/alertmanager:v0.22.0
+    ports:
+      - 9093:9093
+    volumes:
+      - ./alertmanager/:/etc/alertmanager/
+    restart: always
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    deploy:
+      mode: global
   zookeeper:
     image: wurstmeister/zookeeper
     container_name: zookeeper
@@ -96,13 +146,13 @@ docker-compose up -d
 ```
 docker exec -ti root_rabbitmq_1 rabbitmqctl add_user admin admin
 docker exec -ti root_rabbitmq_1 rabbitmqctl set_user_tags admin administrator
-docker exec -ti root_rabbitmq_1 rabbitmqctl set_permissions -p / admin ".*" ".*" ".*"
+docker exec -ti root_rabbitmq_1 rabbitmqctl set_permissions --vhost "/" admin ".*" ".*" ".*"
 
 wget -O rabbitmqadmin https://raw.githubusercontent.com/rabbitmq/rabbitmq-server/v3.10.4/deps/rabbitmq_management/bin/rabbitmqadmin
 chmod +x rabbitmqadmin
-sudo mv rabbitmqadmin /usr/local/bin
-
-rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
+mv rabbitmqadmin /usr/local/bin
+chmod 777 /usr/local/bin/rabbitmqadmin
+/usr/local/bin/rabbitmqadmin declare queue --vhost='/' name=rabbitioQueue durable=true
 ```
 
 6. Откройте в браузере адрес Management UI. Выполните авторизацию пользователем admin.
@@ -174,4 +224,57 @@ WantedBy=multi-user.target
 
 ### Алерты
 15. Нагрузите очередь сообщениями без потребителя. Выведите в Telegram или Slack оповещение о том, что очередь выросла и не обрабатывается
+
+```
+cat << EOF > /root/send.py
+#!/usr/bin/env python3
+import pika
+connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
+channel = connection.channel()
+channel.queue_declare(queue='rabbitioQueue',durable='true')
+channel.basic_publish(exchange='', routing_key='rabbitioQueue', body='Hello World!')
+print(" [x] Sent 'Hello World!'")
+connection.close()
+EOF
+
+count=100
+for i in $(seq $count); do
+    python3 /root/send.py
+done
+```
+
 16. Факторы наблюдения: более 100 сообщений в очереди, более 5 сообщений в секунду поступает в очередь
+
+```
+cat ./prometheus/rules.yml
+mkdir ./alertmanager
+
+cat << EOF > ./alertmanager/alertmanager.yml
+# alertmanager.yml
+
+global:
+  http_config:
+    tls_config:
+      insecure_skip_verify: true
+
+# catch-all route to receive and handle all incoming alerts
+route:
+  group_by: ['alertname']
+  group_wait: 10s       # wait up to 10s for more alerts to group them
+  receiver: 'telepush'  # see below
+
+# telepush configuration here
+receivers:
+- name: 'telepush'
+  webhook_configs:
+  - url: 'https://telepush.dev/api/inlets/alertmanager/acc70f'    # add your Telepush token here
+  http_config:
+    tls_config:
+      insecure_skip_verify: true
+EOF
+docker-compose restart prometheus
+docker-compose restart alertmanager
+
+5.png
+```
+

@@ -1,0 +1,105 @@
+Задание:
+1. Выполните вход в учетную запись aws используя выданный AWS логин $LOGIN
+2. Откройте сервис AWS Lambda. Functions -> Create function. Выберите вариант с использованием образцов кода Use a blueprint. Выберите проект hello-world-python
+3. Настройте создаваемую функцию:
+● Название функции - $LOGIN-hello-lambda, где $LOGIN - имя вашего пользователя в консоли AWS
+● Используйте уже имеющуюся на аккаунте роль IAM c базовыми правами (HL-3-22-serverless-lambda-base-role)
+
+```
+1.png
+```
+
+4. Ознакомьтесь с кодом приложения и запустите создание функции.
+
+```
+import json
+
+print('Loading function')
+
+
+def lambda_handler(event, context):
+    #print("Received event: " + json.dumps(event, indent=2))
+    print("value1 = " + event['key1'])
+    print("value2 = " + event['key2'])
+    print("value3 = " + event['key3'])
+    return event['key1']  # Echo back the first key value
+    #raise Exception('Something went wrong')
+
+```
+
+5. Ознакомьтесь с открывшимся интерфейсом Runtime.
+6. Выполните тестирование созданной функции:
+● Select a test event -> Configure test events -> Create new test event.  Event name = test1
+● Запустите созданный тест
+
+```
+2.png
+...
+START RequestId: 1ab146e9-6805-4d56-8643-5fe4c15434ca Version: $LATEST
+Loading function
+value1 = value1
+value2 = value2
+value3 = value3
+END RequestId: 1ab146e9-6805-4d56-8643-5fe4c15434ca
+REPORT RequestId: 1ab146e9-6805-4d56-8643-5fe4c15434ca	Duration: 1.62 ms	Billed Duration: 2 ms	Memory Size: 128 MB	Max Memory Used: 34 MB	Init Duration: 116.33 ms	
+```
+
+● Ознакомьтесь с результатами. За какое время выполнилась функция? До какого значения округлилась эта величина в "Billed Duration"?
+
+```
+Duration: 1.62ms
+Billed Duration: 2ms #Округлилась до целых единиц в большую сторону
+```
+
+● В настройках функции включите Active tracing, для этого перейдите в Lambda -> Functions -> Function name -> Edit monitoring tools и посмотрите в раздел AWS X-Ray
+
+```
+3.png
+```
+
+● Повторите тестирование. За какое время выполнилась функция с трассированием? Какое время выполнения при следующем запуске с трассировкой?
+
+```
+START RequestId: f29283e7-7330-42da-84bc-96983b201167 Version: $LATEST
+Loading function
+value1 = value1
+value2 = value2
+value3 = value3
+END RequestId: f29283e7-7330-42da-84bc-96983b201167
+REPORT RequestId: f29283e7-7330-42da-84bc-96983b201167	Duration: 2.15 ms	Billed Duration: 3 ms	Memory Size: 128 MB	Max Memory Used: 34 MB	Init Duration: 120.24 ms	
+XRAY TraceId: 1-62adb3bb-65712b8e5ea1fa92148aa7f6	SegmentId: 335ac48846324ab8	Sampled: true	
+
+Durateion 2.15ms
+```
+
+● Повторите тестирование еще несколько раз. Какое значение у метрики Max Memory Used?
+
+```
+START RequestId: 1b4e2318-38fd-4849-b952-5d08352da9f1 Version: $LATEST
+value1 = value1
+value2 = value2
+value3 = value3
+END RequestId: 1b4e2318-38fd-4849-b952-5d08352da9f1
+REPORT RequestId: 1b4e2318-38fd-4849-b952-5d08352da9f1	Duration: 1.65 ms	Billed Duration: 2 ms	Memory Size: 128 MB	Max Memory Used: 35 MB	
+XRAY TraceId: 1-62adb3fe-6cd0da9577e3ae8c323e9558	SegmentId: 68e03df877cc1aef	Sampled: true	
+
+```
+
+
+7. Откройте View traces in X-Ray. Ознакомьтесь с результатами трассировки запросов. Какое среднее время выполнения функции?
+
+```
+4.png
+...
+This table shows the most recent traces with an average response time of 0.05s. It shows as many as 1000 traces. 
+```
+
+8. Из раздела Traces перейдите в раздел Analytics. Ознакомьтесь с предоставляемой информацией.
+
+```
+5.png
+```
+
+9. Используя JMeter проведите нагрузочное тестирование.
+10. Удалите созданную функцию.
+

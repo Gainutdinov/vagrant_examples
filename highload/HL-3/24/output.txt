@@ -71,7 +71,6 @@ require __DIR__ . '/vendor/autoload.php';
 return function ($event) {
     return 'Hello ' . ($event['name'] ?? 'world');
 };
-[root@ip-172-31-87-148 project1]#
 
 ```
 
@@ -135,7 +134,9 @@ functions:
 6. Выполните тестирование с помощью serverless invoke из консоли. В качетве входных данных передайте JSON из предыдущего пункта. Команду и результат отправьте в ответе к заданию. 
 
 ```
-
+START RequestId: 32de4d44-3001-4419-ba7c-e3bda2a1e69a Version: $LATEST
+END RequestId: 32de4d44-3001-4419-ba7c-e3bda2a1e69a
+REPORT RequestId: 32de4d44-3001-4419-ba7c-e3bda2a1e69a	Duration: 16.75 ms	Billed Duration: 230 ms	Memory Size: 1024 MB	Max Memory Used: 44 MB	Init Duration: 213.20 ms	
 ```
 
 7. Через консоль AWS в том же регионе, где создана lambda-функция, создайте EC2 ELB Application load balancer c параметрами:
@@ -144,7 +145,17 @@ functions:
 ● Использовать зоны доступности a и c
 ● Создать Target Group с именем serverless-PHP-Lambda
 ● Использовать функцию, созданную вами в предыдущих пунктах задания
+
+```
+1.png
+```
+
 8. Обратитесь к функции через полученный ELB-WEB-Endpoint (via DNS record), проверьте ее работоспособность.
+
+```
+curl http://elb-rebrain-1240296530.us-east-1.elb.amazonaws.com/lambda/mgainutdinov-app-dev-hello
+```
+
 9. Проведите нагрузоччный тест с помощью JMeter со следующими характиристиками:
 ● Number of Threads (users): 100
 ● Продолжительность (in seconds): 5

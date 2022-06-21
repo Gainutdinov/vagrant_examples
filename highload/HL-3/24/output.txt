@@ -1,0 +1,157 @@
+
+Задание
+1. Выполните вход в учетную запись AWS используя выданный AWS логин $LOGIN
+2. Запустите экземпляр EC2 из образа Amazon Linux AMI 2018.03.0 (HVM). Выберите тип VM t2.micro.
+3. После инициализации VM подключитесь к ней по SSH. Выполните настройку:
+○ Установите Node.js, php73 + mbstring module, composer
+
+```
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.34.0/install.sh | bash
+. ~/.nvm/nvm.sh
+nvm install --lts
+node -e "console.log('Running Node.js ' + process.version)"
+
+sudo amazon-linux-extras enable php7.4
+sudo yum clean metadata
+sudo yum install php php-{pear,cgi,common,curl,mbstring,gd,mysqlnd,gettext,bcmath,json,xml,fpm,intl,zip,imap}
+sudo amazon-linux-extras enable php7.4
+
+cd ~
+sudo curl -sS https://getcomposer.org/installer | sudo php
+sudo mv composer.phar /usr/local/bin/composer
+sudo ln -s /usr/local/bin/composer /usr/bin/composer
+sudo composer install
+```
+
+○ С помощью npm установите пакет serverless
+
+```
+npm install -g serverless --ignore-scripts spawn-sync
+```
+
+○ Создайте директорию project1. Внутри директории через composer установите пакет bref/bref
+
+```
+mkdir project1
+cd ./project1
+composer require bref/bref
+```
+
+○ Выполните инициализацию проекта vendor/bin/bref init. Тип Lambda PHP function. Ознакомьтесь со сгенерированными serverless.yml и index.php
+
+```
+./vendor/bin/bref init #Event-driven function
+[root@ip-172-31-87-148 project1]# cat ./serverless.yml
+service: app
+
+provider:
+    name: aws
+    region: us-east-1
+    runtime: provided.al2
+
+plugins:
+    - ./vendor/bref/bref
+
+functions:
+    hello:
+        handler: index.php
+        description: ''
+        layers:
+            - ${bref:layer.php-74}
+
+# Exclude files from deployment
+package:
+    patterns:
+        - '!tests/**'
+[root@ip-172-31-87-148 project1]# cat ./index.php
+<?php declare(strict_types=1);
+
+require __DIR__ . '/vendor/autoload.php';
+
+return function ($event) {
+    return 'Hello ' . ($event['name'] ?? 'world');
+};
+[root@ip-172-31-87-148 project1]#
+
+```
+
+○ В файле serverless.yml установите название сервиса $LOGIN-app
+
+```
+service: mgainutdinov-app
+
+provider:
+    name: aws
+    region: us-east-1
+    runtime: provided.al2
+
+plugins:
+    - ./vendor/bref/bref
+
+functions:
+    hello:
+        handler: index.php
+        description: ''
+        layers:
+            - ${bref:layer.php-74}
+
+# Exclude files from deployment
+package:
+    patterns:
+        - '!tests/**'
+```
+
+○ Настройте aws CLI для авторизации с вашими учетными данными
+
+```
+aws configure
+```
+
+4. Выполните деплой приложения с помощью serverless. Затем для проверки выполните serverless info, результат отправьте в ответе к заданию.
+
+```
+serverless deploy
+[root@ip-172-31-87-148 project1]# serverless deploy
+Deploying mgainutdinov-app to stage dev (us-east-1)
+
+✔ Service deployed to stack mgainutdinov-app-dev (99s)
+
+functions:
+  hello: mgainutdinov-app-dev-hello (966 kB)
+[root@ip-172-31-87-148 project1]#
+```
+
+
+5. Откройте Lambda service в консоли AWS. Откройте созданную функцию. Создате тест с содержимым:
+
+```
+{
+"name": "$LOGIN"
+}
+```
+
+Запустите тест. Убедитесь, что функция работает корректно. 
+
+6. Выполните тестирование с помощью serverless invoke из консоли. В качетве входных данных передайте JSON из предыдущего пункта. Команду и результат отправьте в ответе к заданию. 
+
+```
+
+```
+
+7. Через консоль AWS в том же регионе, где создана lambda-функция, создайте EC2 ELB Application load balancer c параметрами:
+● имя "ELB-REBRAIN"
+● Listeners: HTTP,80
+● Использовать зоны доступности a и c
+● Создать Target Group с именем serverless-PHP-Lambda
+● Использовать функцию, созданную вами в предыдущих пунктах задания
+8. Обратитесь к функции через полученный ELB-WEB-Endpoint (via DNS record), проверьте ее работоспособность.
+9. Проведите нагрузоччный тест с помощью JMeter со следующими характиристиками:
+● Number of Threads (users): 100
+● Продолжительность (in seconds): 5
+● URL - DNS запись для функцции через ELB-REBRAIN
+10. Проанализируйте полученные данные. Cправилась ли инфраструкура с нагрузочным тестом? Прикрепите к ответу графики из CloudWatch, отфильтрованные по времени относительно начала нагрузочного теста.
+11. Проанализируйте денежные затраты AWS Lambda + ELB(1 час) на проведенный нагрузочный тест. Цифры предоставьте в ответе.
+12. Удалите созданную функцию через serverless cli. Удалите созданные EC2 instance и ELB-REBRAIN.
+
+
+

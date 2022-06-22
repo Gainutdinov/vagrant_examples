@@ -154,6 +154,9 @@ REPORT RequestId: 32de4d44-3001-4419-ba7c-e3bda2a1e69a	Duration: 16.75 ms	Billed
 
 ```
 curl http://elb-rebrain-1240296530.us-east-1.elb.amazonaws.com/lambda/mgainutdinov-app-dev-hello
+
+---
+no permissions to modify lambda functions and attach to them network interfaces
 ```
 
 9. Проведите нагрузоччный тест с помощью JMeter со следующими характиристиками:

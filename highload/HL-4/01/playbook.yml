@@ -11,11 +11,13 @@
       - gpg-agent
       - ca-certificates
       - python3-pip
+      - default-jdk 
+      - default-jre
       update_cache: true
-  roles:
-    - role: geerlingguy.java
-    - role: andrewrothstein.hadoop
-      hadoop_version: 3.3.1
+#  roles:
+#    - role: geerlingguy.java
+#    - role: andrewrothstein.hadoop
+#      hadoop_version: 3.3.1
 #  tasks:
 #  - name: Copy file with owner and permissions 1
 #    ansible.builtin.copy:
@@ -31,7 +33,76 @@
 #      owner: root
 #      group: root
 #      mode: '0777'
- 
+  - name: create user hadoop
+    ansible.builtin.user:
+      name: hadoop
+      shell: /bin/bash
+      groups: sudo
+      append: yes
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_file: .ssh/id_rsa
+      create_home: true
+      state: present
+
+  - name: Allow 'hadoop' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+#  - name: Copy id_rsa.pub to other hosts
+#    lineinfile:
+#      dest: /etc/sudoers
+#      state: present
+#      regexp: '^%wheel'
+#      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
+#      validate: 'visudo -cf %s'
+
+#  - name: Download hadoop distributive 
+#    get_url:
+#      url: https://downloads.apache.org/hadoop/common/hadoop-3.3.1/hadoop-3.3.1.tar.gz
+#      dest: /home/hadoop/hadoop-3.3.1.tar.gz
+#      mode: 0644
+
+  - name: unarchiving hadoop-3.3.1.tar.gz 
+    unarchive:
+      remote_src: yes
+      src: /home/hadoop/hadoop-3.3.1.tar.gz
+      dest: /usr/local
+      owner: hadoop
+
+  - name: rename hadoop directory
+    copy:
+      remote_src: yes
+      src: /usr/local/hadoop-3.3.1
+      dest: /usr/local/hadoop
+      owner: hadoop
+      group: hadoop
+      mode: '0755'
+
+
+  - name: Create a directory /usr/local/hadoop/logs
+    become: yes
+    ansible.builtin.file:
+      path: /usr/local/hadoop/logs
+      state: directory
+      mode: '0755'
+      owner: hadoop
+      group: hadoop
+
+
+
+
+#adduser hadoop
+#usermod -aG sudo hadoop
+#su - hadoop
+#ssh-keygen -t rsa
+#
+
+
   post_tasks:
   - name: Run a command 1
     ansible.builtin.shell: echo '192.168.53.101 host1' >> /etc/hosts

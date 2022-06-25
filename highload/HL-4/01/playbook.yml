@@ -3,11 +3,43 @@
   hosts: all
   become: yes
   gather_facts: yes
+  vars:
+    ssh_authorize_user_target_user: "hadoop"
+    source_user_ssh_private_key: |
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+      NhAAAAAwEAAQAAAQEA72uGNtKpWksjojBR28X8bFcUNYCFjEX91UmywNmYh7OEeFAp4oWr
+      b05HvRYqktiEkYs4eO7CQ+QpTADmbDbKww5EZ5GysjRxOiUnJKs9qqtnfQDfdtVp5s4nkf
+      QghPWUvQSKRPs9pmvFGUX2RDNiUHXiWWtNJflnkGSU27shLosciuEMkW7Xp/a0RBG6PAKc
+      wL0YXDZO8VwHdi7ekfhdBPgznlTYMgb5kCrZdKX2A0gYx5uPoP1XPru5dwaH+X7Laya1BY
+      Dkf+RdqFy0S5MRfOzgvc/9qIYxSEgXh/NirfFOSpJzAFCRQHLp9Ar3chwquKLBvOj2aTQ4
+      LHc9Uvnu6wAAA9AMVFvTDFRb0wAAAAdzc2gtcnNhAAABAQDva4Y20qlaSyOiMFHbxfxsVx
+      Q1gIWMRf3VSbLA2ZiHs4R4UCnihatvTke9FiqS2ISRizh47sJD5ClMAOZsNsrDDkRnkbKy
+      NHE6JSckqz2qq2d9AN921WnmzieR9CCE9ZS9BIpE+z2ma8UZRfZEM2JQdeJZa00l+WeQZJ
+      TbuyEuixyK4QyRbten9rREEbo8ApzAvRhcNk7xXAd2Lt6R+F0E+DOeVNgyBvmQKtl0pfYD
+      SBjHm4+g/Vc+u7l3Bof5fstrJrUFgOR/5F2oXLRLkxF87OC9z/2ohjFISBeH82Kt8U5Kkn
+      MAUJFAcun0CvdyHCq4osG86PZpNDgsdz1S+e7rAAAAAwEAAQAAAQAIY0P4d7jnKOq+q+Ky
+      SGVnhkV2+mGzYGBcMJDKoNTvLCLf9C8DeJtg8uUggr5LFrrOPopj8jlsF3o6520rLWA9JS
+      rQVhJkm+G7n8GXT0iByi99+aHaj+993osUWfEpt1DWrmoJsKOgSPZGxGS0TviKyRZ8+31g
+      bzRpopx0dkHbV4L22hxGMraDcmwIV15ZH1Il+zoW+WIi8E6SISer0PWE5pBlY7bqXnwbd0
+      GvWg2a8ErNIfZly/1WlH6TpBJFl2o+T6uext5baciozHJQjI2vktyacQ8fRZ213G0KggVG
+      YAYF2Xtj/uwf4A3uJEndfbnT1aoItAkfgTb20a5f2MxBAAAAgAZVQCj2Eby5TQWeNKWDig
+      axrJRN4LCGSFVBXk6PlNNSO7mwgv0YyoscS++CCUMl72OxJUA8JCguvMlFq9JNHep1rDhq
+      zL/teEgruo/jmrMslYqYANXE7Kt+0Nu0w3Sz4ZrC4/usveRNYrOY5VgxO+FMvYjxdyxF2G
+      bXbyegWPDCAAAAgQD8XihZq6sX9qqKUBRtWeW9bEomgg93XkVhoClAwGyjj68yrYn+85qf
+      OJAh/sjyFk4n3CJ4yDgk2yrzKmYJ52/hygAUh4ZAozpUV9vkVWyhhbm1TQ3ZGYkfnV1+aN
+      NmVtja/7EMs+mPC8nycPkIbWgvHyUjdTKqIk78Kry9oHS6ZQAAAIEA8t2pL728+sTRILmh
+      kmdHUrJmcvHZHY8/gsbjhS49+QcdmQeGk+HyUhjKT0DRwkEOtXGhuhtnMFGFfuzjn8fV2A
+      sVdr3ssBhpW/sx+G+WIecVRLd8ZL6go5DPg9Ux2YI2SZs25FmGNveJ/fT/M4C8Fi9mqg7X
+      GQn60BKas0MdRw8AAAAaYW5zaWJsZS1nZW5lcmF0ZWQgb24gaG9zdDEB
+      -----END OPENSSH PRIVATE KEY-----
+    source_user_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDva4Y20qlaSyOiMFHbxfxsVxQ1gIWMRf3VSbLA2ZiHs4R4UCnihatvTke9FiqS2ISRizh47sJD5ClMAOZsNsrDDkRnkbKyNHE6JSckqz2qq2d9AN921WnmzieR9CCE9ZS9BIpE+z2ma8UZRfZEM2JQdeJZa00l+WeQZJTbuyEuixyK4QyRbten9rREEbo8ApzAvRhcNk7xXAd2Lt6R+F0E+DOeVNgyBvmQKtl0pfYDSBjHm4+g/Vc+u7l3Bof5fstrJrUFgOR/5F2oXLRLkxF87OC9z/2ohjFISBeH82Kt8U5KknMAUJFAcun0CvdyHCq4osG86PZpNDgsdz1S+e7r ansible-generated on host1"
   pre_tasks:
   - name: install packages for hadoop
     apt:
       pkg: 
       - pdsh
+      - acl
       - gpg-agent
       - ca-certificates
       - python3-pip
@@ -61,11 +93,11 @@
 #      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
 #      validate: 'visudo -cf %s'
 
-#  - name: Download hadoop distributive 
-#    get_url:
-#      url: https://downloads.apache.org/hadoop/common/hadoop-3.3.1/hadoop-3.3.1.tar.gz
-#      dest: /home/hadoop/hadoop-3.3.1.tar.gz
-#      mode: 0644
+  - name: Download hadoop distributive 
+    get_url:
+      url: https://downloads.apache.org/hadoop/common/hadoop-3.3.1/hadoop-3.3.1.tar.gz
+      dest: /home/hadoop/hadoop-3.3.1.tar.gz
+      mode: 0644
 
   - name: unarchiving hadoop-3.3.1.tar.gz 
     unarchive:
@@ -77,7 +109,7 @@
   - name: rename hadoop directory
     copy:
       remote_src: yes
-      src: /usr/local/hadoop-3.3.1
+      src: /usr/local/hadoop-3.3.1/
       dest: /usr/local/hadoop
       owner: hadoop
       group: hadoop
@@ -93,27 +125,74 @@
       owner: hadoop
       group: hadoop
 
+  - name: Add a line to a file if the file does not exist, without passing regexp
+    become: yes
+    become_user: hadoop
+    ansible.builtin.lineinfile:
+      path: /home/hadoop/.bashrc
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - export HADOOP_HOME=/usr/local/hadoop
+       - export HADOOP_INSTALL=$HADOOP_HOME
+       - export HADOOP_MAPRED_HOME=$HADOOP_HOME
+       - export HADOOP_COMMON_HOME=$HADOOP_HOME
+       - export HADOOP_HDFS_HOME=$HADOOP_HOME
+       - export YARN_HOME=$HADOOP_HOME
+       - export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+       - export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+       - export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+
+  - name: Add a line to a file if the file does not exist, without passing regexp JAVA_HOME
+    become_user: hadoop
+    ansible.builtin.lineinfile:
+      path: /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 
+       - export HADOOP_CLASSPATH+=" $HADOOP_HOME/lib/*.jar"
 
 
 
-#adduser hadoop
-#usermod -aG sudo hadoop
-#su - hadoop
-#ssh-keygen -t rsa
-#
+  - name: Download hadoop distributive 
+    get_url:
+      url: https://jcenter.bintray.com/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar
+      dest: /usr/local/hadoop/lib/javax.activation-api-1.2.0.jar
+      mode: 0755
+      owner: hadoop
+      group: hadoop
 
+  - name: Copy SSH Public Key in Target
+    authorized_key:
+      user: "{{ ssh_authorize_user_target_user }}"
+      key: "{{ source_user_ssh_public_key }}"
+
+  - name: Install SSH Private Key in Target
+    ansible.builtin.copy:
+      content: "{{ source_user_ssh_private_key }}"
+      dest: /home/hadoop/.ssh/id_rsa
+      owner: hadoop
+      group: hadoop
+      mode: '0600' 
+    when: ansible_facts['hostname'] == "host1"
+
+  - name: Install SSH Public Key in Target
+    ansible.builtin.copy:
+      content: "{{ source_user_ssh_public_key }}"
+      dest: /home/hadoop/.ssh/id_rsa.pub
+      owner: hadoop
+      group: hadoop
+      mode: '0644' 
+    when: ansible_facts['hostname'] == "host1"
 
   post_tasks:
-  - name: Run a command 1
-    ansible.builtin.shell: echo '192.168.53.101 host1' >> /etc/hosts
-    args:
-      executable: /bin/bash
-  - name: Run a command 2
-    ansible.builtin.shell: echo '192.168.53.102 host2' >> /etc/hosts
-    args:
-      executable: /bin/bash
-  - name: Run a command 3
-    ansible.builtin.shell: echo '192.168.53.103 host3' >> /etc/hosts
-    args:
-      executable: /bin/bash
-
+  - name: Edit /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - ansible.builtin.shell: echo '192.168.53.103 host3' >> /etc/hosts
+       - ansible.builtin.shell: echo '192.168.53.102 host2' >> /etc/hosts
+       - ansible.builtin.shell: echo '192.168.53.101 host1' >> /etc/hosts

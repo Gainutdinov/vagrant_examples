@@ -1,0 +1,132 @@
+Задание:
+Подготовка окружения
+Используйте 3 виртуальных машины, созданных в первой задаче. Убедитесь, что Hadoop работает на всех ВМ.
+Работа с веб интефейсом узла данных
+
+```
+hadoop@host1:~$ hdfs namenode -format
+hadoop@host1:~$ start-all.sh
+WARNING: Attempting to start all Apache Hadoop daemons as hadoop in 10 seconds.
+WARNING: This is not a recommended production deployment configuration.
+WARNING: Use CTRL-C to abort.
+Starting namenodes on [host1]
+host1: Warning: Permanently added 'host1,192.168.53.101' (ECDSA) to the list of known hosts.
+Starting datanodes
+host2: Warning: Permanently added 'host2,192.168.53.102' (ECDSA) to the list of known hosts.
+host3: Warning: Permanently added 'host3,192.168.53.103' (ECDSA) to the list of known hosts.
+Starting secondary namenodes [host1]
+Starting resourcemanager
+Starting nodemanagers
+hadoop@host1:~$
+```
+
+1. Откройте главную страницу веб интерфейса мастер-ноды (Master Node).
+
+```
+#Visit the main web-interface on master node - host:9870
+1.png
+```
+
+2. Просмотрите файловую систему HDFS, перемещаясь по всему дереву.
+
+```
+2.png
+```
+
+3. Проверьте количество, состояние, конфигурацию и возможности каждого узла данных.
+
+```
+3.png
+```
+
+Статистика дискового ввода-вывода
+1. Включите статистику дискового ввода-вывода.
+
+```
+#https://docs.cloudera.com/HDPDocuments/HDP3/HDP-3.0.0/data-storage/content/enable_disk_io_statistics.html
+
+#edit file on all nodes /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+<property>
+  <name>dfs.datanode.fileio.profiling.sampling.fraction</name>
+  <value>25</value>
+</property>
+
+...
+cat << EOF > /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+<configuration>
+    <property>
+            <name>dfs.namenode.name.dir</name>
+            <value>/home/hadoop/data/nameNode</value>
+    </property>
+
+    <property>
+            <name>dfs.datanode.data.dir</name>
+            <value>/home/hadoop/data/dataNode</value>
+    </property>
+
+    <property>
+            <name>dfs.replication</name>
+            <value>1</value>
+    </property>
+    <property>
+            <name>dfs.datanode.fileio.profiling.sampling.fraction</name>
+            <value>25</value>
+    </property>
+</configuration>
+EOF
+hadoop@host1:~$ stop-all.sh
+hadoop@host1:~$ start-all.sh
+```
+
+2. Просмотрите статистику дискового ввода-вывода через страницу NameNode JMX.
+
+```
+curl http://host1:9870/jmx
+```
+
+Обнаружение медленного узла данных DataNode
+1. Включите обнаружение медленного узла данных DataNode.
+
+```
+#On all nodes
+cat << EOF > /usr/local/hadoop/etc/hadoop/hdfs-site.xml
+<property>
+  <name>dfs.datanode.peer.stats.enabled</name>
+  <value>true</value>
+</property>
+
+
+```
+
+2. Просмотрите статистику медленных узлов DataNode через страницу NameNode JMX.
+
+```
+4.png
+```
+
+Проверка состояния рабочих нод (Worker Nodes)
+1. Откройте главную страницу веб интерфейса мастер-ноды (Master Node).
+2. Просмотрите состояния рабочих нод (Worker Nodes).
+
+```
+5.png
+```
+
+3. Умышленно "уроните" вторую рабочую ноду.
+
+```
+...
+    <property>
+            <name>dfs.namenode.heartbeat.recheck-interval</name>
+            <value>15</value>
+    </property>
+...
+#On host3 run - shutdown now
+```
+
+4. Просмотрите состояния рабочих нод (Worker Nodes). Убедитесь, что состояние второй рабочей ноды изменилось. Необходимо учесть, что по умолчанию отображение нового состояния произойдет через N милисекунд, где N определяется параметром heartbeat.recheck-interval.
+
+```
+6.png
+```
+

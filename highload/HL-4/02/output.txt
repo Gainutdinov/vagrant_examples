@@ -50,7 +50,6 @@ hadoop@host1:~$
   <name>dfs.datanode.fileio.profiling.sampling.fraction</name>
   <value>25</value>
 </property>
-
 ...
 cat << EOF > /usr/local/hadoop/etc/hadoop/hdfs-site.xml
 <configuration>

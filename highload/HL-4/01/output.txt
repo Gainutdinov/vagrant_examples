@@ -33,12 +33,129 @@ https://www.linode.com/docs/guides/how-to-install-and-set-up-hadoop-cluster/
 3. Скопируйте конфигурацию из папки etc/hadoop на все рабочие ноды.
 4. Выполните запуск Hadoop:
 ○ выполните форматирование файловой системы HDFS с помощью команды hdfs и ее параметров выполнения.
-○ запустите сервисы Hadoop при помощи скрипта start-all.sh.
+
+```
+#On master node - host1
+hdfs namenode -format
+```
+○ запустите сервисы Hadoop при помощи скрипта start-dfs.sh.
+
+```
+#On master node - host1
+start-dfs.sh
+hadoop@host1:~$ start-dfs.sh
+Starting namenodes on [host1]
+Starting datanodes
+Starting secondary namenodes [host1]
+hadoop@host1:~$ jps
+16706 SecondaryNameNode
+16438 NameNode
+16856 Jps
+hadoop@host2:~$ jps
+14242 Jps
+14056 DataNode
+```
+
 Примечание: "маленький" слоник записывает логистику выполнения по умолчанию в директорию $HADOOP_HOME/logs, которая может быть изменена установкой переменной окружения $HADOOP_LOG_DIR. Еще
 Примечание: иногда команда start-all.sh выдает ошибку. Полезные ссылки помогут.
 ○ попробуйте просмотреть веб интерфейс сервиса NameNode, по умолчанию он находится здесь: http://localhost:9870/
+
+```
+1.png
+```
+
 ○ создайте директории /user и /user/<username> файловой системы HDFS, необходимые для выполнения работ MapReduce, используя команду hdfs и ее параметров выполнения.
+
+```
+hadoop@host1:~$ hdfs dfs -mkdir -p /user
+hadoop@host1:~$ hdfs dfs -mkdir -p /user/mgainutdinov
+hadoop@host1:~$ hdfs dfs -ls /
+Found 1 items
+drwxr-xr-x   - hadoop supergroup          0 2022-06-26 09:11 /user
+hadoop@host1:~$ hdfs dfs -ls /user/
+Found 1 items
+drwxr-xr-x   - hadoop supergroup          0 2022-06-26 09:11 /user/mgainutdinov
+hadoop@host1:~$
+```
+
 ○ скопируйте исходные файлы etc/hadoop/*.xml на HDFS в директорий input, предварительно создав его.
+
+```
+hadoop@host1:~$ hdfs dfs -mkdir -p /user/mgainutdinov/input
+hadoop@host1:~$ hdfs dfs -put /usr/local/hadoop/etc/hadoop/*.xml /user/mgainutdinov/input
+hadoop@host1:~$ hdfs dfs -ls  /user/mgainutdinov/input
+hadoop@host1:~$ hdfs dfs -ls  /user/mgainutdinov/input
+Found 10 items
+-rw-r--r--   1 hadoop supergroup       9213 2022-06-26 09:33 /user/mgainutdinov/input/capacity-scheduler.xml
+-rw-r--r--   1 hadoop supergroup        265 2022-06-26 09:33 /user/mgainutdinov/input/core-site.xml
+-rw-r--r--   1 hadoop supergroup      11765 2022-06-26 09:33 /user/mgainutdinov/input/hadoop-policy.xml
+-rw-r--r--   1 hadoop supergroup        683 2022-06-26 09:33 /user/mgainutdinov/input/hdfs-rbf-site.xml
+-rw-r--r--   1 hadoop supergroup        400 2022-06-26 09:33 /user/mgainutdinov/input/hdfs-site.xml
+-rw-r--r--   1 hadoop supergroup        620 2022-06-26 09:33 /user/mgainutdinov/input/httpfs-site.xml
+-rw-r--r--   1 hadoop supergroup       3518 2022-06-26 09:33 /user/mgainutdinov/input/kms-acls.xml
+-rw-r--r--   1 hadoop supergroup        682 2022-06-26 09:33 /user/mgainutdinov/input/kms-site.xml
+-rw-r--r--   1 hadoop supergroup        912 2022-06-26 09:33 /user/mgainutdinov/input/mapred-site.xml
+-rw-r--r--   1 hadoop supergroup        899 2022-06-26 09:33 /user/mgainutdinov/input/yarn-site.xml
+```
+
 ○ попробуйте выполнить файлы примеров share/hadoop/mapreduce/hadoop-mapreduce-examples-3.2.1.jar при помощи команды hadoop и ее параметров.
+
+```
+hadoop@host1:/usr/local/hadoop$ start-yarn.sh
+Starting resourcemanager
+Starting nodemanagers
+hadoop@host1:/usr/local/hadoop$
+hadoop@host1:/usr/local/hadoop$ yarn node -list
+2022-06-26 09:36:45,942 INFO client.DefaultNoHARMFailoverProxyProvider: Connecting to ResourceManager at host1/192.168.53.101:8032
+Total Nodes:2
+         Node-Id             Node-State Node-Http-Address       Number-of-Running-Containers
+     host2:35035                RUNNING        host2:8042                                  0
+     host3:46189                RUNNING        host3:8042                                  0
+hadoop@host1:/usr/local/hadoop$
+hadoop@host1:/usr/local/hadoop$ yarn jar /usr/local/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.1.jar  --help
+Unknown program '--help' chosen.
+Valid program names are:
+  aggregatewordcount: An Aggregate based map/reduce program that counts the words in the input files.
+  aggregatewordhist: An Aggregate based map/reduce program that computes the histogram of the words in the input files.
+  bbp: A map/reduce program that uses Bailey-Borwein-Plouffe to compute exact digits of Pi.
+  dbcount: An example job that count the pageview counts from a database.
+  distbbp: A map/reduce program that uses a BBP-type formula to compute exact bits of Pi.
+  grep: A map/reduce program that counts the matches of a regex in the input.
+  join: A job that effects a join over sorted, equally partitioned datasets
+  multifilewc: A job that counts words from several files.
+  pentomino: A map/reduce tile laying program to find solutions to pentomino problems.
+  pi: A map/reduce program that estimates Pi using a quasi-Monte Carlo method.
+  randomtextwriter: A map/reduce program that writes 10GB of random textual data per node.
+  randomwriter: A map/reduce program that writes 10GB of random data per node.
+  secondarysort: An example defining a secondary sort to the reduce.
+  sort: A map/reduce program that sorts the data written by the random writer.
+  sudoku: A sudoku solver.
+  teragen: Generate data for the terasort
+  terasort: Run the terasort
+  teravalidate: Checking results of terasort
+  wordcount: A map/reduce program that counts the words in the input files.
+  wordmean: A map/reduce program that counts the average length of the words in the input files.
+  wordmedian: A map/reduce program that counts the median length of the words in the input files.
+  wordstandarddeviation: A map/reduce program that counts the standard deviation of the length of the words in the input files.
+hadoop@host1:/usr/local/hadoop$
+hadoop@host1:/usr/local/hadoop$ yarn jar /usr/local/hadoop/share/hadoop/mapreduce/hadoop-mapreduce-examples-3.3.1.jar  wordcount "/user/mgainutdinov/input/capacity-scheduler.xml" output
+...
+```
+
 ○ исследуйте файлы на выходе выполнения примеров, предварительно скопировав их на локальную систему при помощи команды hdfs.
+
+```
+hadoop@host1:/usr/local/hadoop$ hdfs dfs -cat  /user/hadoop/output/part-r-00000
+"AS     1
+"
+...
+hadoop@host1:/usr/local/hadoop$ hdfs dfs -get  /user/hadoop/output/part-r-00000
+
+```
 ○ по окончании исследований остановите сервисы Hadoop при помощи скрипта stop-all.sh.
+
+```
+#On master node - host1
+stop-all.sh
+```
+

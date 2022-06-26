@@ -2,7 +2,7 @@
 # vi: set ft=ruby :
 
 Vagrant.configure("2") do |config|
-  number_of_machines = 1
+  number_of_machines = 3
   box_name = "generic/ubuntu2004"
   
   base_ip = 100

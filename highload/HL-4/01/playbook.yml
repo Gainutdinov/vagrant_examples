@@ -38,7 +38,7 @@
   - name: install packages for hadoop
     apt:
       pkg: 
-      - pdsh
+#      - pdsh
       - acl
       - gpg-agent
       - ca-certificates
@@ -186,6 +186,20 @@
       mode: '0644' 
     when: ansible_facts['hostname'] == "host1"
 
+  - name: Template a files to /usr/local/hadoop/etc/hadoop/...
+    ansible.builtin.template:
+      src: "templates/{{ item.template }}"
+      dest: "/usr/local/hadoop/etc/hadoop/{{ item.name }}"
+      owner: hadoop
+      group: hadoop
+      mode: '0755'
+    with_items:
+       - { template: 'core-site.xml.j2',   name: 'core-site.xml' }
+       - { template: 'hdfs-site.xml.j2',   name: 'hdfs-site.xml' }
+       - { template: 'mapred-site.xml.j2', name: 'mapred-site.xml' }
+       - { template: 'yarn-site.xml.j2',   name: 'yarn-site.xml' }
+       - { template: 'workers.j2',   name: 'workers' }
+
   post_tasks:
   - name: Edit /etc/hosts
     lineinfile:
@@ -193,6 +207,27 @@
       line: "{{ item }}"
       create: yes
     with_items:
-       - ansible.builtin.shell: echo '192.168.53.103 host3' >> /etc/hosts
-       - ansible.builtin.shell: echo '192.168.53.102 host2' >> /etc/hosts
-       - ansible.builtin.shell: echo '192.168.53.101 host1' >> /etc/hosts
+       - 192.168.53.103 host3
+       - 192.168.53.102 host2
+       - 192.168.53.101 host1
+
+  - name: Edit /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - 192.168.53.103 host3
+       - 192.168.53.102 host2
+       - 192.168.53.101 host1
+
+  - name: comment out hosts entries for localhost
+    replace:
+      path: /etc/hosts
+      regexp: "{{ item }}"
+      replace: "# {{ item }}"
+    with_items:
+       - 127.0.2.1 host1 host1
+       - 127.0.2.1 host2 host2
+       - 127.0.2.1 host3 host3
+

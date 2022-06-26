@@ -1,17 +1,16 @@
 <configuration>
-   <property>
-      <name>dfs.replication</name>
-      <value>1</value>
-   </property>
+    <property>
+            <name>dfs.namenode.name.dir</name>
+            <value>/home/hadoop/data/nameNode</value>
+    </property>
 
-   <property>
-      <name>dfs.name.dir</name>
-      <value>file:///home/hadoop/hdfs/namenode</value>
-   </property>
+    <property>
+            <name>dfs.datanode.data.dir</name>
+            <value>/home/hadoop/data/dataNode</value>
+    </property>
 
-   <property>
-      <name>dfs.data.dir</name>
-      <value>file:///home/hadoop/hdfs/datanode</value>
-   </property>
+    <property>
+            <name>dfs.replication</name>
+            <value>1</value>
+    </property>
 </configuration>
-

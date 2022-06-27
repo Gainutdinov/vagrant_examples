@@ -65,55 +65,100 @@
 #      owner: root
 #      group: root
 #      mode: '0777'
-#  - name: create user hadoop
-#    ansible.builtin.user:
-#      name: hadoop
-#      shell: /bin/bash
-#      groups: sudo
-#      append: yes
-#      generate_ssh_key: yes
-#      ssh_key_bits: 2048
-#      ssh_key_file: .ssh/id_rsa
-#      create_home: true
-#      state: present
-#
-#  - name: Allow 'hadoop' group to have passwordless sudo
-#    lineinfile:
-#      dest: /etc/sudoers
-#      state: present
-#      regexp: '^%wheel'
-#      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
-#      validate: 'visudo -cf %s'
-#
-#  - name: Copy id_rsa.pub to other hosts
-#    lineinfile:
-#      dest: /etc/sudoers
-#      state: present
-#      regexp: '^%wheel'
-#      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
-#      validate: 'visudo -cf %s'
+  - name: create user hadoop
+    ansible.builtin.user:
+      name: hadoop
+      shell: /bin/bash
+      groups: sudo
+      append: yes
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_file: .ssh/id_rsa
+      create_home: true
+      state: present
 
-  - name: Download hadoop distributive 
+  - name: Allow 'hadoop' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Copy id_rsa.pub to other hosts
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Copy file with owner and permissions
+    ansible.builtin.copy:
+      remote_src: yes
+      src: /root/apache-ignite-2.13.0-bin.zip
+      dest: /home/hadoop/apache-ignite-2.13.0-bin.zip
+      owner: hadoop
+      group: hadoop
+      mode: '0777'
+
+  - name: Download ignite distributive 
     get_url:
-      url: https://downloads.apache.org/hadoop/common/hadoop-3.3.1/hadoop-3.3.1.tar.gz
-      dest: /home/hadoop/hadoop-3.3.1.tar.gz
+      url: https://dlcdn.apache.org/ignite/2.13.0/apache-ignite-2.13.0-bin.zip
+      dest: /home/hadoop/apache-ignite-2.13.0-bin.zip
       mode: 0644
 
-  - name: unarchiving hadoop-3.3.1.tar.gz 
+  - name: unarchiving apache-ignite-2.13.0-bin.zip
     unarchive:
       remote_src: yes
-      src: /home/hadoop/hadoop-3.3.1.tar.gz
+      src: /home/hadoop/apache-ignite-2.13.0-bin.zip
       dest: /usr/local
       owner: hadoop
 
-  - name: rename hadoop directory
+  - name: rename ignite directory
     copy:
       remote_src: yes
-      src: /usr/local/hadoop-3.3.1/
-      dest: /usr/local/hadoop
+      src: /usr/local/apache-ignite-2.13.0-bin/
+      dest: /usr/local/ignite
       owner: hadoop
       group: hadoop
       mode: '0755'
+
+  - name: Add a line to a file if the file does not exist, without passing regexp
+    become: yes
+    become_user: hadoop
+    ansible.builtin.lineinfile:
+      path: /home/hadoop/.bashrc
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - export IGNITE_HOME=/usr/local/ignite
+       - export PATH=$PATH:$IGNITE_HOME/sbin:$IGNITE_HOME/bin
+
+  - name: Enable ignite-zookeeper module
+    ansible.builtin.copy:
+      remote_src: yes
+      src: /usr/local/ignite/libs/optional/ignite-zookeeper
+      dest: /usr/local/ignite/libs/
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0777'
+
+  - name: Copy hello.py
+    ansible.builtin.copy:
+      src: ./templates/hello.py.j2
+      dest: /home/hadoop/hello.py
+      owner: hadoop
+      group: hadoop
+      mode: '0777'
+
+  - name: Copy default-config-client.xml
+    ansible.builtin.copy:
+      src: ./templates/default-config-client.xml.j2
+      dest: /usr/local/ignite/config/default-config-client.xml
+      owner: hadoop
+      group: hadoop
+      mode: '0777'
 
 
 #  - name: Create a directory /usr/local/hadoop/logs

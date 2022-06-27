@@ -9,6 +9,46 @@
 4. Скачайте и распакуйте Apache Ignite ZIP-архив.
 5. Включите модуль Zookeeper.
 6. Настройте переменную окружения IGNITE_HOME.
+
+```
+Add libraries from lib/optional/{module-dir} to the classpath of your application.
+mv /usr/local/ignite/libs/optional/ignite-zookeeper /usr/local/ignite/libs/
+```
+
 7. Запустите серверную ноду Apache Ignite.
+
+```
+ignite.sh /usr/local/ignite/config/default-config.xml
+```
+
 8. Запустите клиентскую ноду Apache Ignite.
+
+```
+ignite.sh /usr/local/ignite/config/default-config-client.xml
+```
+
 9. Создайте и запустите приложение пример HelloWorld на языке Python
+
+```
+pip3 install pyignite
+cat << hello.py > /home/hadoop/hello.py
+from pyignite import Client
+client = Client()
+client.connect('127.0.0.1', 10800)
+#Create cache
+my_cache = client.create_cache('my cache')
+#Put value in cache
+my_cache.put(1, 'Hello World')
+#Get value from cache
+result = my_cache.get(1)
+print(result)
+EOF
+
+#Чтобы выполнить это приложение сохраните код в файл hello.py и запустите команду:
+python3 /home/hadoop/hello.py
+
+hadoop@host1:~$ python3 ./hello.py
+Hello World
+hadoop@host1:~$
+```
+

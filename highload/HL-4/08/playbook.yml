@@ -65,26 +65,26 @@
 #      owner: root
 #      group: root
 #      mode: '0777'
-  - name: create user hadoop
-    ansible.builtin.user:
-      name: hadoop
-      shell: /bin/bash
-      groups: sudo
-      append: yes
-      generate_ssh_key: yes
-      ssh_key_bits: 2048
-      ssh_key_file: .ssh/id_rsa
-      create_home: true
-      state: present
-
-  - name: Allow 'hadoop' group to have passwordless sudo
-    lineinfile:
-      dest: /etc/sudoers
-      state: present
-      regexp: '^%wheel'
-      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
-      validate: 'visudo -cf %s'
-
+#  - name: create user hadoop
+#    ansible.builtin.user:
+#      name: hadoop
+#      shell: /bin/bash
+#      groups: sudo
+#      append: yes
+#      generate_ssh_key: yes
+#      ssh_key_bits: 2048
+#      ssh_key_file: .ssh/id_rsa
+#      create_home: true
+#      state: present
+#
+#  - name: Allow 'hadoop' group to have passwordless sudo
+#    lineinfile:
+#      dest: /etc/sudoers
+#      state: present
+#      regexp: '^%wheel'
+#      line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
+#      validate: 'visudo -cf %s'
+#
 #  - name: Copy id_rsa.pub to other hosts
 #    lineinfile:
 #      dest: /etc/sudoers
@@ -116,229 +116,229 @@
       mode: '0755'
 
 
-  - name: Create a directory /usr/local/hadoop/logs
-    become: yes
-    ansible.builtin.file:
-      path: /usr/local/hadoop/logs
-      state: directory
-      mode: '0755'
-      owner: hadoop
-      group: hadoop
-
-  - name: Add a line to a file if the file does not exist, without passing regexp
-    become: yes
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /home/hadoop/.bashrc
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export HADOOP_HOME=/usr/local/hadoop
-       - export HADOOP_INSTALL=$HADOOP_HOME
-       - export HADOOP_MAPRED_HOME=$HADOOP_HOME
-       - export HADOOP_COMMON_HOME=$HADOOP_HOME
-       - export HADOOP_HDFS_HOME=$HADOOP_HOME
-       - export YARN_HOME=$HADOOP_HOME
-       - export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
-       - export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
-       - export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
-       - export DERBY_HOME=/usr/local/derby
-       - export PATH=$PATH:$DERBY_HOME/bin
-       - export CLASSPATH=$CLASSPATH:$DERBY_HOME/lib/derby.jar:$DERBY_HOME/lib/derbytools.jar
-
-  - name: Add a line to a file if the file does not exist, without passing regexp JAVA_HOME
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /usr/local/hadoop/etc/hadoop/hadoop-env.sh
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 
-       - export HADOOP_CLASSPATH+=" $HADOOP_HOME/lib/*.jar"
-
-
-
-  - name: Download hadoop distributive 
-    get_url:
-      url: https://jcenter.bintray.com/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar
-      dest: /usr/local/hadoop/lib/javax.activation-api-1.2.0.jar
-      mode: 0755
-      owner: hadoop
-      group: hadoop
-
-  - name: Copy SSH Public Key in Target
-    authorized_key:
-      user: "{{ ssh_authorize_user_target_user }}"
-      key: "{{ source_user_ssh_public_key }}"
-
-  - name: Install SSH Private Key in Target
-    ansible.builtin.copy:
-      content: "{{ source_user_ssh_private_key }}"
-      dest: /home/hadoop/.ssh/id_rsa
-      owner: hadoop
-      group: hadoop
-      mode: '0600' 
-    when: ansible_facts['hostname'] == "host1"
-
-  - name: Install SSH Public Key in Target
-    ansible.builtin.copy:
-      content: "{{ source_user_ssh_public_key }}"
-      dest: /home/hadoop/.ssh/id_rsa.pub
-      owner: hadoop
-      group: hadoop
-      mode: '0644' 
-    when: ansible_facts['hostname'] == "host1"
-
-  - name: Template a files to /usr/local/hadoop/etc/hadoop/...
-    ansible.builtin.template:
-      src: "templates/{{ item.template }}"
-      dest: "/usr/local/hadoop/etc/hadoop/{{ item.name }}"
-      owner: hadoop
-      group: hadoop
-      mode: '0755'
-    with_items:
-       - { template: 'core-site.xml.j2',   name: 'core-site.xml' }
-       - { template: 'hdfs-site.xml.j2',   name: 'hdfs-site.xml' }
-       - { template: 'mapred-site.xml.j2', name: 'mapred-site.xml' }
-       - { template: 'yarn-site.xml.j2',   name: 'yarn-site.xml' }
-#       - { template: 'workers.j2',   name: 'workers' }
-
-
-  - name: Download hive distributive 
-    get_url:
-      url: https://downloads.apache.org/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
-      dest: /home/hadoop/apache-hive-3.1.2.tar.gz
-      mode: 0644
-
-  - name: Add a line to a file for hive
-    become: yes
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /home/hadoop/.bashrc
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export HIVE_HOME="/usr/local/hive"
-       - export PATH=$PATH:$HIVE_HOME/bin
-
-  - name: Add a line to a file for hive
-    become: yes
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /home/hadoop/.bashrc
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export HIVE_HOME= "/usr/local/hive"
-       - export PATH=$PATH:$HIVE_HOME/bin
-
-  - name: Create a directory /usr/local/hive
-    become: yes
-    ansible.builtin.file:
-      path: /usr/local/hive
-      state: directory
-      mode: '0755'
-      owner: hadoop
-      group: hadoop
-
-  - name: unarchiving hive-3.1.2.tar.gz 
-    unarchive:
-      remote_src: yes
-      src: /home/hadoop/apache-hive-3.1.2.tar.gz
-      dest: /usr/local
-      owner: hadoop
-
-  - name: rename hive directory
-    copy:
-      remote_src: yes
-      src: /usr/local/apache-hive-3.1.2-bin/
-      dest: /usr/local/hive
-      owner: hadoop
-      group: hadoop
-      mode: '0755'
-
-  - name: Add a line to a file for hive $HIVE_HOME/bin/hive-config.sh
-    become: yes
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /usr/local/hive/bin/hive-config.sh
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export HADOOP_HOME=/usr/local/hadoop/
-
-  - name: Download derby distributive 
-    get_url:
-      url: https://dlcdn.apache.org//db/derby/db-derby-10.15.2.0/db-derby-10.15.2.0-bin.tar.gz
-      dest: /home/hadoop/db-derby-10.15.2.0-bin.tar.gz
-      mode: 0644
-
-  - name: unarchiving db-derby-10.15.2.0-bin.tar.gz
-    unarchive:
-      remote_src: yes
-      src: /home/hadoop/db-derby-10.15.2.0-bin.tar.gz
-      dest: /usr/local
-      owner: hadoop
-
-  - name: rename derby directory
-    copy:
-      remote_src: yes
-      src: /usr/local/db-derby-10.15.2.0-bin/
-      dest: /usr/local/derby
-      owner: hadoop
-      group: hadoop
-      mode: '0755'
-
-  - name: Template a files to /usr/local/hive/conf/...
-    ansible.builtin.template:
-      src: "templates/{{ item.template }}"
-      dest: "/usr/local/hive/conf/{{ item.name }}"
-      owner: hadoop
-      group: hadoop
-      mode: '0755'
-    with_items:
-       - { template: 'hive-default.xml.template.j2',   name: 'hive-default.xml' }
-       - { template: 'jpox.properties.j2',   name: 'jpox.properties' }
-
-
-
-####
-####hdfs dfs -mkdir /tmp
-####hdfs dfs -chmod g+w /tmp
-####
-####hdfs dfs -mkdir -p /user/hive/warehouse
-####hdfs dfs -chmod g+w /user/hive/warehouse
-####hdfs dfs -ls /user/hive
-####
-####
-####
-####$HIVE_HOME/bin/schematool -dbType derby -initSchema
-
-  - name: unarchiving hadoop-3.3.1.tar.gz 
-    unarchive:
-      remote_src: yes
-      src: /home/hadoop/hadoop-3.3.1.tar.gz
-      dest: /usr/local
-      owner: hadoop
-
-  - name: rename hadoop directory
-    copy:
-      remote_src: yes
-      src: /usr/local/apache-hive-3.1.2-bin/
-      dest: /usr/local/hadoop
-      owner: hadoop
-      group: hadoop
-      mode: '0755'
-
-
-  - name: Create a directory /usr/local/hadoop/logs
-    become: yes
-    ansible.builtin.file:
-      path: /usr/local/hadoop/logs
-      state: directory
-      mode: '0755'
-      owner: hadoop
-      group: hadoop
+#  - name: Create a directory /usr/local/hadoop/logs
+#    become: yes
+#    ansible.builtin.file:
+#      path: /usr/local/hadoop/logs
+#      state: directory
+#      mode: '0755'
+#      owner: hadoop
+#      group: hadoop
+#
+#  - name: Add a line to a file if the file does not exist, without passing regexp
+#    become: yes
+#    become_user: hadoop
+#    ansible.builtin.lineinfile:
+#      path: /home/hadoop/.bashrc
+#      line: "{{ item }}"
+#      create: yes
+#    with_items:
+#       - export HADOOP_HOME=/usr/local/hadoop
+#       - export HADOOP_INSTALL=$HADOOP_HOME
+#       - export HADOOP_MAPRED_HOME=$HADOOP_HOME
+#       - export HADOOP_COMMON_HOME=$HADOOP_HOME
+#       - export HADOOP_HDFS_HOME=$HADOOP_HOME
+#       - export YARN_HOME=$HADOOP_HOME
+#       - export HADOOP_COMMON_LIB_NATIVE_DIR=$HADOOP_HOME/lib/native
+#       - export PATH=$PATH:$HADOOP_HOME/sbin:$HADOOP_HOME/bin
+#       - export HADOOP_OPTS="-Djava.library.path=$HADOOP_HOME/lib/native"
+#       - export DERBY_HOME=/usr/local/derby
+#       - export PATH=$PATH:$DERBY_HOME/bin
+#       - export CLASSPATH=$CLASSPATH:$DERBY_HOME/lib/derby.jar:$DERBY_HOME/lib/derbytools.jar
+#
+#  - name: Add a line to a file if the file does not exist, without passing regexp JAVA_HOME
+#    become_user: hadoop
+#    ansible.builtin.lineinfile:
+#      path: /usr/local/hadoop/etc/hadoop/hadoop-env.sh
+#      line: "{{ item }}"
+#      create: yes
+#    with_items:
+#       - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 
+#       - export HADOOP_CLASSPATH+=" $HADOOP_HOME/lib/*.jar"
+#
+#
+#
+#  - name: Download hadoop distributive 
+#    get_url:
+#      url: https://jcenter.bintray.com/javax/activation/javax.activation-api/1.2.0/javax.activation-api-1.2.0.jar
+#      dest: /usr/local/hadoop/lib/javax.activation-api-1.2.0.jar
+#      mode: 0755
+#      owner: hadoop
+#      group: hadoop
+#
+#  - name: Copy SSH Public Key in Target
+#    authorized_key:
+#      user: "{{ ssh_authorize_user_target_user }}"
+#      key: "{{ source_user_ssh_public_key }}"
+#
+#  - name: Install SSH Private Key in Target
+#    ansible.builtin.copy:
+#      content: "{{ source_user_ssh_private_key }}"
+#      dest: /home/hadoop/.ssh/id_rsa
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0600' 
+#    when: ansible_facts['hostname'] == "host1"
+#
+#  - name: Install SSH Public Key in Target
+#    ansible.builtin.copy:
+#      content: "{{ source_user_ssh_public_key }}"
+#      dest: /home/hadoop/.ssh/id_rsa.pub
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0644' 
+#    when: ansible_facts['hostname'] == "host1"
+#
+#  - name: Template a files to /usr/local/hadoop/etc/hadoop/...
+#    ansible.builtin.template:
+#      src: "templates/{{ item.template }}"
+#      dest: "/usr/local/hadoop/etc/hadoop/{{ item.name }}"
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0755'
+#    with_items:
+#       - { template: 'core-site.xml.j2',   name: 'core-site.xml' }
+#       - { template: 'hdfs-site.xml.j2',   name: 'hdfs-site.xml' }
+#       - { template: 'mapred-site.xml.j2', name: 'mapred-site.xml' }
+#       - { template: 'yarn-site.xml.j2',   name: 'yarn-site.xml' }
+##       - { template: 'workers.j2',   name: 'workers' }
+#
+#
+#  - name: Download hive distributive 
+#    get_url:
+#      url: https://downloads.apache.org/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
+#      dest: /home/hadoop/apache-hive-3.1.2.tar.gz
+#      mode: 0644
+#
+#  - name: Add a line to a file for hive
+#    become: yes
+#    become_user: hadoop
+#    ansible.builtin.lineinfile:
+#      path: /home/hadoop/.bashrc
+#      line: "{{ item }}"
+#      create: yes
+#    with_items:
+#       - export HIVE_HOME="/usr/local/hive"
+#       - export PATH=$PATH:$HIVE_HOME/bin
+#
+#  - name: Add a line to a file for hive
+#    become: yes
+#    become_user: hadoop
+#    ansible.builtin.lineinfile:
+#      path: /home/hadoop/.bashrc
+#      line: "{{ item }}"
+#      create: yes
+#    with_items:
+#       - export HIVE_HOME= "/usr/local/hive"
+#       - export PATH=$PATH:$HIVE_HOME/bin
+#
+#  - name: Create a directory /usr/local/hive
+#    become: yes
+#    ansible.builtin.file:
+#      path: /usr/local/hive
+#      state: directory
+#      mode: '0755'
+#      owner: hadoop
+#      group: hadoop
+#
+#  - name: unarchiving hive-3.1.2.tar.gz 
+#    unarchive:
+#      remote_src: yes
+#      src: /home/hadoop/apache-hive-3.1.2.tar.gz
+#      dest: /usr/local
+#      owner: hadoop
+#
+#  - name: rename hive directory
+#    copy:
+#      remote_src: yes
+#      src: /usr/local/apache-hive-3.1.2-bin/
+#      dest: /usr/local/hive
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0755'
+#
+#  - name: Add a line to a file for hive $HIVE_HOME/bin/hive-config.sh
+#    become: yes
+#    become_user: hadoop
+#    ansible.builtin.lineinfile:
+#      path: /usr/local/hive/bin/hive-config.sh
+#      line: "{{ item }}"
+#      create: yes
+#    with_items:
+#       - export HADOOP_HOME=/usr/local/hadoop/
+#
+#  - name: Download derby distributive 
+#    get_url:
+#      url: https://dlcdn.apache.org//db/derby/db-derby-10.15.2.0/db-derby-10.15.2.0-bin.tar.gz
+#      dest: /home/hadoop/db-derby-10.15.2.0-bin.tar.gz
+#      mode: 0644
+#
+#  - name: unarchiving db-derby-10.15.2.0-bin.tar.gz
+#    unarchive:
+#      remote_src: yes
+#      src: /home/hadoop/db-derby-10.15.2.0-bin.tar.gz
+#      dest: /usr/local
+#      owner: hadoop
+#
+#  - name: rename derby directory
+#    copy:
+#      remote_src: yes
+#      src: /usr/local/db-derby-10.15.2.0-bin/
+#      dest: /usr/local/derby
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0755'
+#
+#  - name: Template a files to /usr/local/hive/conf/...
+#    ansible.builtin.template:
+#      src: "templates/{{ item.template }}"
+#      dest: "/usr/local/hive/conf/{{ item.name }}"
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0755'
+#    with_items:
+#       - { template: 'hive-default.xml.template.j2',   name: 'hive-default.xml' }
+#       - { template: 'jpox.properties.j2',   name: 'jpox.properties' }
+#
+#
+#
+#####
+#####hdfs dfs -mkdir /tmp
+#####hdfs dfs -chmod g+w /tmp
+#####
+#####hdfs dfs -mkdir -p /user/hive/warehouse
+#####hdfs dfs -chmod g+w /user/hive/warehouse
+#####hdfs dfs -ls /user/hive
+#####
+#####
+#####
+#####$HIVE_HOME/bin/schematool -dbType derby -initSchema
+#
+#  - name: unarchiving hadoop-3.3.1.tar.gz 
+#    unarchive:
+#      remote_src: yes
+#      src: /home/hadoop/hadoop-3.3.1.tar.gz
+#      dest: /usr/local
+#      owner: hadoop
+#
+#  - name: rename hadoop directory
+#    copy:
+#      remote_src: yes
+#      src: /usr/local/apache-hive-3.1.2-bin/
+#      dest: /usr/local/hadoop
+#      owner: hadoop
+#      group: hadoop
+#      mode: '0755'
+#
+#
+#  - name: Create a directory /usr/local/hadoop/logs
+#    become: yes
+#    ansible.builtin.file:
+#      path: /usr/local/hadoop/logs
+#      state: directory
+#      mode: '0755'
+#      owner: hadoop
+#      group: hadoop
 
 
 

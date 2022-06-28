@@ -1,0 +1,95 @@
+Задание:
+1. Что такое распределённое приложение?
+
+```
+Это не что иное, как программа, состоящая из нескольких взаимодействующих частей, каждая из которых, как правило, выполняется на отдельном компьютере или другом устройстве сети.
+```
+
+2. Содержит ли данные thin client?
+
+```
+нет, не содержит
+```
+
+3. Какие механизмы обнаружения существуют для выявления узлов в кластере Apache Ignite?
+
+```
+- TCP/IP Discovery
+- ZooKeeper Discovery
+```
+
+4. Кто первый использовал Zookeeper?
+
+```
+yahoo - для легкого и надежного доступа к приложениям системы Yahoo!.
+```
+
+5. Назовите компоненты архитектуры Zookeeper.
+
+```
+- Клиент
+- Сервер
+- Ансамбль
+- Лидер
+- Последователь
+```
+
+6. Как выбирается лидер в кластере серверов Zookeeper?
+
+```
+I will explain it at a high level, more information can be found in the paper (links at the end)
+
+Before getting into the details of leader election, it's important to know what happens when a write occurs. Let's assume there are 3 servers, 1 one which is a leader and the remaining 2 followers. Every write goes through the leader and the leader generates a transaction id (zxid) and assigns it to this write request. The id represents the order in which the writes are applied to all replicas. A write is considered successful if the leader receives the ack from the majority (in this case 1 of the two followers need to ack). This is pretty much the flow for all the writes. The requirement of zxid is that it increases monotonically and is never re-used.
+
+Now let's see what happens when the leader fails, each follower tries to become the leader by broadcasting the last zxid they have seen. Others reply OK if the zxid they have seen is less than or equal and NO if they have a higher zxid. You assume you are the leader if you get OK from the majority and broadcast the same to the followers.
+
+---
+т.е. в момент выбора лидера происходит сравнение самых последних транзакций и если id транзакции у одного из нод больше чем у другой значит этот сервер и станет лидером
+```
+
+7. Установите и проверьте Zookeeper.
+
+```
+zookeeper@host1:/opt/zookeeper$ sudo bin/zkServer.sh start
+/usr/bin/java
+ZooKeeper JMX enabled by default
+Using config: /opt/zookeeper/bin/../conf/zoo.cfg
+Starting zookeeper ... STARTED
+zookeeper@host1:/opt/zookeeper$ sudo bin/zkCli.sh -server 127.0.0.1:2181
+/usr/bin/java
+Connecting to 127.0.0.1:2181
+2022-06-28 07:17:20,935 [myid:] - INFO  [main:Environment@98] - Client environment:zookeeper.version=3.7.1-a2fb57c55f8e59cdd76c34b357ad5181df1258d5, built on 2022-05-07 06:45 UTC
+2022-06-28 07:17:20,937 [myid:] - INFO  [main:Environment@98] - Client environment:host.name=host1
+2022-06-28 07:17:20,937 [myid:] - INFO  [main:Environment@98] - Client environment:java.version=1.8.0_312
+2022-06-28 07:17:20,938 [myid:] - INFO  [main:Environment@98] - Client environment:java.vendor=Private Build
+2022-06-28 07:17:20,938 [myid:] - INFO  [main:Environment@98] - Client environment:java.home=/usr/lib/jvm/java-8-openjdk-amd64/jre
+2022-06-28 07:17:20,938 [myid:] - INFO  [main:Environment@98] - Client environment:java.class.path=/opt/zookeeper/bin/../zookeeper-server/target/classes:/opt/zookeeper/bin/../build/classes:/opt/zookeeper/bin/../zookeeper-server/target/lib/*.jar:/opt/zookeeper/bin/../build/lib/*.jar:/opt/zookeeper/bin/../lib/zookeeper-prometheus-metrics-3.7.1.jar:/opt/zookeeper/bin/../lib/zookeeper-jute-3.7.1.jar:/opt/zookeeper/bin/../lib/zookeeper-3.7.1.jar:/opt/zookeeper/bin/../lib/snappy-java-1.1.7.7.jar:/opt/zookeeper/bin/../lib/slf4j-reload4j-1.7.35.jar:/opt/zookeeper/bin/../lib/slf4j-api-1.7.35.jar:/opt/zookeeper/bin/../lib/simpleclient_servlet-0.9.0.jar:/opt/zookeeper/bin/../lib/simpleclient_hotspot-0.9.0.jar:/opt/zookeeper/bin/../lib/simpleclient_common-0.9.0.jar:/opt/zookeeper/bin/../lib/simpleclient-0.9.0.jar:/opt/zookeeper/bin/../lib/reload4j-1.2.19.jar:/opt/zookeeper/bin/../lib/netty-transport-native-unix-common-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-transport-native-epoll-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-transport-classes-epoll-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-transport-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-resolver-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-handler-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-common-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-codec-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/netty-buffer-4.1.76.Final.jar:/opt/zookeeper/bin/../lib/metrics-core-4.1.12.1.jar:/opt/zookeeper/bin/../lib/jline-2.14.6.jar:/opt/zookeeper/bin/../lib/jetty-util-ajax-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-util-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-servlet-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-server-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-security-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-io-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/jetty-http-9.4.43.v20210629.jar:/opt/zookeeper/bin/../lib/javax.servlet-api-3.1.0.jar:/opt/zookeeper/bin/../lib/jackson-databind-2.13.2.1.jar:/opt/zookeeper/bin/../lib/jackson-core-2.13.2.jar:/opt/zookeeper/bin/../lib/jackson-annotations-2.13.2.jar:/opt/zookeeper/bin/../lib/commons-cli-1.4.jar:/opt/zookeeper/bin/../lib/audience-annotations-0.12.0.jar:/opt/zookeeper/bin/../zookeeper-*.jar:/opt/zookeeper/bin/../zookeeper-server/src/main/resources/lib/*.jar:/opt/zookeeper/bin/../conf:
+2022-06-28 07:17:20,938 [myid:] - INFO  [main:Environment@98] - Client environment:java.library.path=/usr/java/packages/lib/amd64:/usr/lib/x86_64-linux-gnu/jni:/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu:/usr/lib/jni:/lib:/usr/lib
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:java.io.tmpdir=/tmp
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:java.compiler=<NA>
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:os.name=Linux
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:os.arch=amd64
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:os.version=5.4.0-104-generic
+2022-06-28 07:17:20,939 [myid:] - INFO  [main:Environment@98] - Client environment:user.name=root
+2022-06-28 07:17:20,940 [myid:] - INFO  [main:Environment@98] - Client environment:user.home=/root
+2022-06-28 07:17:20,940 [myid:] - INFO  [main:Environment@98] - Client environment:user.dir=/opt/zookeeper
+2022-06-28 07:17:20,940 [myid:] - INFO  [main:Environment@98] - Client environment:os.memory.free=23MB
+2022-06-28 07:17:20,940 [myid:] - INFO  [main:Environment@98] - Client environment:os.memory.max=228MB
+2022-06-28 07:17:20,940 [myid:] - INFO  [main:Environment@98] - Client environment:os.memory.total=31MB
+2022-06-28 07:17:20,944 [myid:] - INFO  [main:ZooKeeper@657] - Initiating client connection, connectString=127.0.0.1:2181 sessionTimeout=30000 watcher=org.apache.zookeeper.ZooKeeperMain$MyWatcher@490d6c15
+2022-06-28 07:17:20,947 [myid:] - INFO  [main:X509Util@77] - Setting -D jdk.tls.rejectClientInitiatedRenegotiation=true to disable client-initiated TLS renegotiation
+2022-06-28 07:17:20,955 [myid:] - INFO  [main:ClientCnxnSocket@239] - jute.maxbuffer value is 1048575 Bytes
+2022-06-28 07:17:20,964 [myid:] - INFO  [main:ClientCnxn@1735] - zookeeper.request.timeout value is 0. feature enabled=false
+Welcome to ZooKeeper!
+2022-06-28 07:17:20,978 [myid:127.0.0.1:2181] - INFO  [main-SendThread(127.0.0.1:2181):ClientCnxn$SendThread@1171] - Opening socket connection to server localhost/127.0.0.1:2181.
+2022-06-28 07:17:20,982 [myid:127.0.0.1:2181] - INFO  [main-SendThread(127.0.0.1:2181):ClientCnxn$SendThread@1173] - SASL config status: Will not attempt to authenticate using SASL (unknown error)
+JLine support is enabled
+2022-06-28 07:17:20,998 [myid:127.0.0.1:2181] - INFO  [main-SendThread(127.0.0.1:2181):ClientCnxn$SendThread@1005] - Socket connection established, initiating session, client: /127.0.0.1:52192, server: localhost/127.0.0.1:2181
+2022-06-28 07:17:21,021 [myid:127.0.0.1:2181] - INFO  [main-SendThread(127.0.0.1:2181):ClientCnxn$SendThread@1446] - Session establishment complete on server localhost/127.0.0.1:2181, session id = 0x100001504d70000, negotiated timeout = 30000
+
+WATCHER::
+
+WatchedEvent state:SyncConnected type:None path:null
+[zk: 127.0.0.1:2181(CONNECTED) 0]
+```
+

@@ -1,0 +1,166 @@
+---
+- name: zookeeper install
+  hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    ssh_authorize_user_target_user: "zookeeper"
+    source_user_ssh_private_key: |
+      -----BEGIN OPENSSH PRIVATE KEY-----
+      b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAABFwAAAAdzc2gtcn
+      NhAAAAAwEAAQAAAQEA72uGNtKpWksjojBR28X8bFcUNYCFjEX91UmywNmYh7OEeFAp4oWr
+      b05HvRYqktiEkYs4eO7CQ+QpTADmbDbKww5EZ5GysjRxOiUnJKs9qqtnfQDfdtVp5s4nkf
+      QghPWUvQSKRPs9pmvFGUX2RDNiUHXiWWtNJflnkGSU27shLosciuEMkW7Xp/a0RBG6PAKc
+      wL0YXDZO8VwHdi7ekfhdBPgznlTYMgb5kCrZdKX2A0gYx5uPoP1XPru5dwaH+X7Laya1BY
+      Dkf+RdqFy0S5MRfOzgvc/9qIYxSEgXh/NirfFOSpJzAFCRQHLp9Ar3chwquKLBvOj2aTQ4
+      LHc9Uvnu6wAAA9AMVFvTDFRb0wAAAAdzc2gtcnNhAAABAQDva4Y20qlaSyOiMFHbxfxsVx
+      Q1gIWMRf3VSbLA2ZiHs4R4UCnihatvTke9FiqS2ISRizh47sJD5ClMAOZsNsrDDkRnkbKy
+      NHE6JSckqz2qq2d9AN921WnmzieR9CCE9ZS9BIpE+z2ma8UZRfZEM2JQdeJZa00l+WeQZJ
+      TbuyEuixyK4QyRbten9rREEbo8ApzAvRhcNk7xXAd2Lt6R+F0E+DOeVNgyBvmQKtl0pfYD
+      SBjHm4+g/Vc+u7l3Bof5fstrJrUFgOR/5F2oXLRLkxF87OC9z/2ohjFISBeH82Kt8U5Kkn
+      MAUJFAcun0CvdyHCq4osG86PZpNDgsdz1S+e7rAAAAAwEAAQAAAQAIY0P4d7jnKOq+q+Ky
+      SGVnhkV2+mGzYGBcMJDKoNTvLCLf9C8DeJtg8uUggr5LFrrOPopj8jlsF3o6520rLWA9JS
+      rQVhJkm+G7n8GXT0iByi99+aHaj+993osUWfEpt1DWrmoJsKOgSPZGxGS0TviKyRZ8+31g
+      bzRpopx0dkHbV4L22hxGMraDcmwIV15ZH1Il+zoW+WIi8E6SISer0PWE5pBlY7bqXnwbd0
+      GvWg2a8ErNIfZly/1WlH6TpBJFl2o+T6uext5baciozHJQjI2vktyacQ8fRZ213G0KggVG
+      YAYF2Xtj/uwf4A3uJEndfbnT1aoItAkfgTb20a5f2MxBAAAAgAZVQCj2Eby5TQWeNKWDig
+      axrJRN4LCGSFVBXk6PlNNSO7mwgv0YyoscS++CCUMl72OxJUA8JCguvMlFq9JNHep1rDhq
+      zL/teEgruo/jmrMslYqYANXE7Kt+0Nu0w3Sz4ZrC4/usveRNYrOY5VgxO+FMvYjxdyxF2G
+      bXbyegWPDCAAAAgQD8XihZq6sX9qqKUBRtWeW9bEomgg93XkVhoClAwGyjj68yrYn+85qf
+      OJAh/sjyFk4n3CJ4yDgk2yrzKmYJ52/hygAUh4ZAozpUV9vkVWyhhbm1TQ3ZGYkfnV1+aN
+      NmVtja/7EMs+mPC8nycPkIbWgvHyUjdTKqIk78Kry9oHS6ZQAAAIEA8t2pL728+sTRILmh
+      kmdHUrJmcvHZHY8/gsbjhS49+QcdmQeGk+HyUhjKT0DRwkEOtXGhuhtnMFGFfuzjn8fV2A
+      sVdr3ssBhpW/sx+G+WIecVRLd8ZL6go5DPg9Ux2YI2SZs25FmGNveJ/fT/M4C8Fi9mqg7X
+      GQn60BKas0MdRw8AAAAaYW5zaWJsZS1nZW5lcmF0ZWQgb24gaG9zdDEB
+      -----END OPENSSH PRIVATE KEY-----
+    source_user_ssh_public_key: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDva4Y20qlaSyOiMFHbxfxsVxQ1gIWMRf3VSbLA2ZiHs4R4UCnihatvTke9FiqS2ISRizh47sJD5ClMAOZsNsrDDkRnkbKyNHE6JSckqz2qq2d9AN921WnmzieR9CCE9ZS9BIpE+z2ma8UZRfZEM2JQdeJZa00l+WeQZJTbuyEuixyK4QyRbten9rREEbo8ApzAvRhcNk7xXAd2Lt6R+F0E+DOeVNgyBvmQKtl0pfYDSBjHm4+g/Vc+u7l3Bof5fstrJrUFgOR/5F2oXLRLkxF87OC9z/2ohjFISBeH82Kt8U5KknMAUJFAcun0CvdyHCq4osG86PZpNDgsdz1S+e7r ansible-generated on host1"
+  pre_tasks:
+  - name: install packages for zookeeper
+    apt:
+      pkg: 
+#      - pdsh
+      - acl
+      - gpg-agent
+      - ca-certificates
+      - python3-pip
+      - openjdk-8-jdk 
+      - openjdk-8-jre
+      update_cache: true
+#  roles:
+#    - role: geerlingguy.java
+#    - role: andrewrothstein.zookeeper
+#      zookeeper_version: 3.3.1
+#  tasks:
+#  - name: Copy file with owner and permissions 1
+#    ansible.builtin.copy:
+#      src: ./receive.py
+#      dest: /root/receive.py
+#      owner: root
+#      group: root
+#      mode: '0777'
+#  - name: Copy file with owner and permissions 2
+#    ansible.builtin.copy:
+#      src: ./send.py
+#      dest: /root/send.py
+#      owner: root
+#      group: root
+#      mode: '0777'
+  - name: create user zookeeper
+    ansible.builtin.user:
+      name: zookeeper
+      shell: /bin/bash
+      groups: sudo
+      append: yes
+      generate_ssh_key: yes
+      ssh_key_bits: 2048
+      ssh_key_file: .ssh/id_rsa
+      create_home: true
+      state: present
+
+  - name: Allow 'zookeeper' group to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: 'zookeeper ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Copy id_rsa.pub to other hosts
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: 'zookeeper ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Create a directory /data/zookeeper
+    become: yes
+    ansible.builtin.file:
+      path: /data/zookeeper
+      state: directory
+      mode: '0755'
+      owner: zookeeper
+      group: zookeeper
+
+  - name: Create a directory /opt
+    become: yes
+    ansible.builtin.file:
+      path: /opt
+      state: directory
+      mode: '0755'
+      owner: zookeeper
+      group: zookeeper
+
+  - name: Download zookeeper distributive 
+    get_url:
+      url: https://dlcdn.apache.org/zookeeper/zookeeper-3.7.1/apache-zookeeper-3.7.1-bin.tar.gz
+      dest: /home/zookeeper/apache-zookeeper-3.7.1-bin.tar.gz
+      mode: 0644
+
+  - name: unarchiving apache-zookeeper-3.7.1-bin.tar.gz
+    unarchive:
+      remote_src: yes
+      src: /home/zookeeper/apache-zookeeper-3.7.1-bin.tar.gz
+      dest: /opt
+      owner: zookeeper
+
+  - name: rename zookeeper directory
+    copy:
+      remote_src: yes
+      src: /opt/apache-zookeeper-3.7.1-bin/
+      dest: /opt/zookeeper
+      owner: zookeeper
+      group: zookeeper
+      mode: '0755'
+
+  - name: Copy zoo.cfg
+    ansible.builtin.copy:
+      src: ./templates/zoo.cfg.j2
+      dest: /opt/zookeeper/conf/zoo.cfg
+      owner: zookeeper
+      group: zookeeper
+      mode: '0777'
+
+#sudo bin/zkServer.sh start
+#sudo bin/zkCli.sh -server 127.0.0.1:2181
+  post_tasks:
+  - name: Edit /etc/hosts
+    lineinfile:
+      path: /etc/hosts
+      line: "{{ item }}"
+      create: yes
+    with_items:
+       - 192.168.53.103 host3
+       - 192.168.53.102 host2
+       - 192.168.53.101 host1
+
+  - name: comment out hosts entries for localhost
+    replace:
+      path: /etc/hosts
+      regexp: "{{ item }}"
+      replace: "# {{ item }}"
+    with_items:
+       - 127.0.2.1 host1 host1
+       - 127.0.2.1 host2 host2
+       - 127.0.2.1 host3 host3
+

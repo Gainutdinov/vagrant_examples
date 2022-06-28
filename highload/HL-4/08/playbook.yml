@@ -93,15 +93,6 @@
       line: 'hadoop ALL=(ALL) NOPASSWD: ALL'
       validate: 'visudo -cf %s'
 
-  - name: Copy file with owner and permissions
-    ansible.builtin.copy:
-      remote_src: yes
-      src: /root/apache-ignite-2.13.0-bin.zip
-      dest: /home/hadoop/apache-ignite-2.13.0-bin.zip
-      owner: hadoop
-      group: hadoop
-      mode: '0777'
-
   - name: Download ignite distributive 
     get_url:
       url: https://dlcdn.apache.org/ignite/2.13.0/apache-ignite-2.13.0-bin.zip

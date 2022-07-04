@@ -64,6 +64,11 @@ org.apache: group = SPI, name = TcpDiscoverySpi
 
 8. Установите и настройте Apache Ignite на одном узле.
 9. Запустите узел Apache Ignite с предварительно настроенными кешами.
+
+```
+./ignite.sh $IGNITE_HOME/examples/config/example-cache.xml
+```
+
 10. Подключите SQLLINE к узлу Apache Ignite.
 11. Создайте две таблицы City и Person, с ключами PRIMARY KEY id, city_id и affinityKey как city_id. Также создайте индексы : idx_city_name ON City, idx_person_name ON Person по name.
 12. Заполните таблицы произвольными данными.

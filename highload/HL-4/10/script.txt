@@ -1,0 +1,82 @@
+sudo -i
+apt update 
+apt install acl gpg-agent ca-certificates python3-pip openjdk-8-jdk openjdk-8-jre -y
+
+wget https://dlcdn.apache.org/ignite/2.13.0/apache-ignite-2.13.0-bin.zip
+
+unzip /root/apache-ignite-2.13.0-bin.zip
+
+echo 'export IGNITE_HOME="/root/apache-ignite-2.13.0-bin"' >> /root/.bashrc
+echo 'export IGNITE_JMX_PORT=55555' >> /root/.bashrc
+
+source /root/.bashrc
+
+cd {IGNITE_HOME}/bin/
+
+
+cat << EOF > /root/apache-ignite-2.13.0-bin/config/default-config.xml
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+       http://www.springframework.org/schema/beans
+       http://www.springframework.org/schema/beans/spring-beans.xsd">
+    <bean id="grid.cfg" class="org.apache.ignite.configuration.IgniteConfiguration">
+        <property name="cacheConfiguration">
+            <bean class="org.apache.ignite.configuration.CacheConfiguration">
+                <property name="name" value="myCache"/>
+                <property name="cacheMode" value="PARTITIONED"/>
+                <property name="backups" value="2"/>
+                <property name="rebalanceMode" value="SYNC"/>
+                <property name="writeSynchronizationMode" value="FULL_SYNC"/>
+                <property name="partitionLossPolicy" value="READ_ONLY_SAFE"/>
+                <!-- Other parameters -->
+            </bean>
+        </property>
+    </bean>
+</beans>
+EOF
+
+#./ignite.sh ../examples/config/example-ignite.xml
+./ignite.sh ../config/default-config.xml
+
+
+#In a new terminal
+./sqlline.sh --verbose=true -u "jdbc:ignite:thin://127.0.0.1:10800;user=ignite;password=ignite"
+
+
+
+0: jdbc:ignite:thin://127.0.0.1/> CREATE TABLE City (id LONG PRIMARY KEY, name VARCHAR) WITH "template=replicated";
+
+0: jdbc:ignite:thin://127.0.0.1/> CREATE TABLE Person (id LONG, name VARCHAR, city_id LONG, PRIMARY KEY (id, city_id))WITH "backups=1, affinityKey=city_id";
+
+0: jdbc:ignite:thin://127.0.0.1/> !tables
+
+0: jdbc:ignite:thin://127.0.0.1/> CREATE INDEX idx_city_name ON City (name);
+
+0: jdbc:ignite:thin://127.0.0.1/> CREATE INDEX idx_person_name ON Person (name);
+
+0: jdbc:ignite:thin://127.0.0.1/> !indexes
+
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO City (id, name) VALUES (1, 'Forest Hill');
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO City (id, name) VALUES (2, 'Denver');
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO City (id, name) VALUES (3, 'St. Petersburg');
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO Person (id, name, city_id) VALUES (1, 'John Doe', 3);
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO Person (id, name, city_id) VALUES (2, 'Rob Chen', 2);
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO Person (id, name, city_id) VALUES (3, 'Mary Davis', 1);
+0: jdbc:ignite:thin://127.0.0.1/> INSERT INTO Person (id, name, city_id) VALUES (4, 'Richard Miles', 2);
+
+
+0: jdbc:ignite:thin://127.0.0.1/> select * from City;
+0: jdbc:ignite:thin://127.0.0.1/> select * from Person;
+
+
+sudo apt update
+sudo apt install visualvm -y
+
+visualvm #Do not forget to install mbeans plugin via Tools->Plugins...
+
+
+0: jdbc:ignite:thin://127.0.0.1/> select name, schema, description from SYS.VIEWS;
+0: jdbc:ignite:thin://127.0.0.1/> select * from SYS.SQL_QUERIES_HISTORY;
+

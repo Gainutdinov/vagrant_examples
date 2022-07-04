@@ -68,3 +68,9 @@ org.apache: group = SPI, name = TcpDiscoverySpi
 11. Создайте две таблицы City и Person, с ключами PRIMARY KEY id, city_id и affinityKey как city_id. Также создайте индексы : idx_city_name ON City, idx_person_name ON Person по name.
 12. Заполните таблицы произвольными данными.
 13. Запустите VisualVM и проверьте представления VIEWS, CACHES, а также просмотрите историю SQL транзакции.
+
+```
+1.png
+```
+
+

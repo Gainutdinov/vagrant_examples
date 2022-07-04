@@ -154,9 +154,7 @@
       create: yes
     with_items:
        - export JAVA_HOME=/usr/lib/jvm/java-11-openjdk-amd64 
-       - export HADOOP_CLASSPATH+=" $HADOOP_HOME/lib/*.jar"
-
-
+       - export HADOOP_CLASSPATH+="$HADOOP_HOME/lib/*.jar"
 
   - name: Download hadoop distributive 
     get_url:
@@ -203,7 +201,6 @@
        - { template: 'yarn-site.xml.j2',   name: 'yarn-site.xml' }
 #       - { template: 'workers.j2',   name: 'workers' }
 
-
   - name: Download hive distributive 
     get_url:
       url: https://downloads.apache.org/hive/hive-3.1.2/apache-hive-3.1.2-bin.tar.gz
@@ -219,17 +216,6 @@
       create: yes
     with_items:
        - export HIVE_HOME="/usr/local/hive"
-       - export PATH=$PATH:$HIVE_HOME/bin
-
-  - name: Add a line to a file for hive
-    become: yes
-    become_user: hadoop
-    ansible.builtin.lineinfile:
-      path: /home/hadoop/.bashrc
-      line: "{{ item }}"
-      create: yes
-    with_items:
-       - export HIVE_HOME= "/usr/local/hive"
        - export PATH=$PATH:$HIVE_HOME/bin
 
   - name: Create a directory /usr/local/hive
@@ -299,8 +285,6 @@
     with_items:
        - { template: 'hive-default.xml.template.j2',   name: 'hive-default.xml' }
        - { template: 'jpox.properties.j2',   name: 'jpox.properties' }
-
-
 
 ####
 ####hdfs dfs -mkdir /tmp
@@ -375,7 +359,9 @@
        - 127.0.2.1 host3 host3
 
 #As hadoop user
-#hdfs namenode -format
+#mv /usr/local/hadoop/share/hadoop/common/lib/slf4j-log4j12-1.7.30.jar /tmp/
+#mv /usr/local/hive/lib/jersey-guava-2.25.1.jar /tmp/
+#hdfs namenode -format #<--- Important step
 #start-dfs.sh
 #start-yarn.sh
 #

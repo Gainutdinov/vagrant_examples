@@ -7,9 +7,31 @@
 
 Возможность выполнения действий над СУБД:
 1. Создайте БД (CREATE DATABASE).
+
+```
+create database if not exists simplelearn;
+```
+
 2. Создайте таблицу (CREATE TABLE).
+
+```
+create table simplelearn (id INT, class STRING, fees INT, posted TIMESTAMP) ROW FORMAT DELIMITED FIELD terminated by ',';
+```
+
 3. Создайте и уничтожте раздел (ADD PARTITION).
+
+```
+create table Transaction(Id Int,Name String, Amount Int) Partitioned by (Day date);
+Alter Table Transaction Add Partition (Day=date '2019-11-20') Partition(Day=date '2019-11-21');
+ALTER TABLE Transaction DROP IF EXISTS PARTITION (Day= '2019-11-22');
+```
+
 4. Уничтожте таблицу и БД (DROP ...).
+
+```
+drop database simplelearn;
+drop table simplelearn;
+```
 
 Свободное место для логов и скрэтч:
 1. Проверьте наличие свободного места для лог-файлов, а также временного места (.../tmp) для выполнения промежуточных операций.

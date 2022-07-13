@@ -1,5 +1,24 @@
 Задание:
 1. Укажите местоположение каталога HDFS, в котором будет искать строки запрос, которые удовлетворяют предикату T.ds='2020-03-01'.
+
+```
+<место нахождения таблицы>/ds=2020-03-01/
+```
+
 2. Имеется таблица laptop с полями brand, yearofmnf, vendor. создайте кластер на основе разделения по yearofmnf для года 2015.
+
+```
+ALTER TABLE laptop ADD PARTITION (yearofmnf=’2015’) location '/2015/part2015';
+```
+
 3. Переименуйте раздел yearofmnf в yom.
+
+```
+ALTER TABLE laptop PARTITION (yearofmnf=’2015’) RENAME TO PARTITION (yom=’2015’);
+```
+
 4. Удалите созданный раздел yearofmnf
+
+```
+ALTER TABLE laptop DROP PARTITION (yom=’2015’);
+```

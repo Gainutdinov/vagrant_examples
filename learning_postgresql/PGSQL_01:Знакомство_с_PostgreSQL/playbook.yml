@@ -1,0 +1,108 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    max_clients: 200
+  tasks:
+  - name: All tasks for CentOS
+    block:
+      - name: quick fix CentOS
+        shell:
+          dnf -y --disablerepo '*' --enablerepo=extras swap centos-linux-repos centos-stream-repos && \
+          dnf -y distro-sync && \
+          dnf module disable -y postgresql && \
+          dnf -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm && \
+          dnf -y install postgresql11-server postgresql11 && \
+          /usr/pgsql-11/bin/postgresql-11-setup initdb && \
+          systemctl enable --now postgresql-11  && \
+          su postgres -c 'createuser pgsqlcentos --superuser'
+        args:
+          executable: /usr/bin/bash
+  
+    when: 
+      -  ansible_distribution == "CentOS"
+      -  ansible_distribution_major_version == "8"
+
+  - name: All tasks for Ubuntu 18.04
+    block:
+      - name: install 1_ubuntu
+        ansible.builtin.apt:
+          pkg:
+          - wget 
+          - ca-certificates
+          state: latest
+      - name: 2_ubuntu
+        ansible.builtin.apt_key:
+          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          state: present
+      - name: 3_ubuntu
+        ansible.builtin.apt_repository:
+          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+          filename: pgdg
+          state: present
+      - name: install 4_ubuntu
+        become: yes
+        ansible.builtin.apt:
+          pkg:
+          - postgresql-12
+          - postgresql-client-12
+          update_cache: yes
+          state: latest
+      - name: 5_ubuntu
+        become_user: postgres
+        shell:
+          /usr/bin/createuser pgsqlubuntu18 --superuser
+    when: 
+      -  ansible_distribution == "Ubuntu"
+      -  ansible_distribution_major_version == "18"
+  
+  - name: All tasks for Ubuntu 20.04
+    block:
+      - name: install 6_ubuntu
+        become: yes
+        ansible.builtin.apt:
+          pkg:
+          - git
+          - build-essential
+          - libreadline-dev
+          - zlib1g-dev
+          - wget
+          update_cache: yes
+          state: latest
+      - name: 20_ubuntu
+        become: yes
+        shell:
+          sudo -i
+          wget https://ftp.postgresql.org/pub/source/v13.1/postgresql-13.1.tar.gz && \
+          gunzip /root/postgresql-13.1.tar.gz && \
+          cd /root && tar xf /root/postgresql-13.1.tar && \
+          cd /root/postgresql-13.1 && \
+          ./configure && \
+          make && \
+          make install && \
+          adduser postgres  --shell /usr/bin/bash --disabled-password  --gecos ""  
+        args:
+          executable: /usr/bin/bash
+ #Perform all actions as postgres on target host
+ #     - name: 21_ubuntu
+ #       become: yes
+ #       shell:
+ #         mkdir -p /var/lib/postgresql/13.1 && \
+ #         chown postgres:postgres /var/lib/postgresql/13.1 
+ #         su postgres -c '/usr/local/pgsql/bin/initdb -D /var/lib/postgresql/13.1' && \
+ #         su postgres -c '/usr/local/pgsql/bin/pg_ctl -D /var/lib/postgresql/13.1 -l logfile start' && \
+ #         su postgres -c '/usr/local/pgsql/bin/createdb test' && \
+ #         su postgres -c '/usr/local/pgsql/bin/psql test'
+ #       args:
+ #         executable: /usr/bin/bash
+ #     - name: 22_ubuntu
+ #       become_user: postgres
+ #       shell:
+ #         /usr/local/pgsql/bin/createuser pgsqlubuntu20 --superuser
+ #       args:
+ #         executable: /usr/bin/bash
+    when: 
+      -  ansible_distribution == "Ubuntu"
+      -  ansible_distribution_major_version == "20"
+  

@@ -13,6 +13,7 @@ sudo apt-get install postgresql-12 postgresql-contrib-12 -y
 2. Добавьте в PostgreSQL пользователя root c правами SUPERUSER.
 
 ```
+su - postgres
 createuser --superuser root 
 #psql -U root -w -d postgres
 ```
@@ -34,26 +35,40 @@ sudo apt-get -y install postgresql-12-cron
 5. Настройте очистку (VACUUM) ежедневно в 2 часа ночи для БД rebrain с запуском от имени пользователя extuser.
 
 ```
+sudo -i
 #https://github.com/citusdata/pg_cron#setting-up-pg_cron
 # add to postgresql.conf
 #/etc/postgresql/12/main/postgresql.conf
 ...
 # required to load pg_cron background worker on start-up
-shared_preload_libraries = 'pg_cron'
+shared_preload_libraries = 'pg_cron' #Change on specific line NOT in the end of file.
 ...
 
 # add to postgresql.conf
 # optionally, specify the database in which the pg_cron background worker should run (defaults to postgres) 
 cron.database_name = 'rebrain'
 
+systemctl restart postgresql@12-main.service
+
+su - postgres
 After restarting PostgreSQL, you can create the pg_cron functions and metadata tables using CREATE EXTENSION pg_cron.
 
+psql --dbname=rebrain
 -- run as superuser:
 CREATE EXTENSION pg_cron;
 -- optionally, grant usage to regular users:
 GRANT USAGE ON SCHEMA cron TO extuser;
-
+ALTER DATABASE rebrain OWNER TO extuser;
+#SELECT cron.schedule('0 2 * * *', 'VACUUM', 'localhost', 5432, 'rebrain', 'extuser');
+insert into cron.job (schedule, command, nodename, nodeport, database, username) values ('1 2 * * *', 'VACUUM', 'localhost', 5432, 'rebrain', 'extuser')
 ```
 
 6. Если уверены, что все сделали правильно, сдавайте задание на проверку.
 
+```
+create user extuser with password 'extpass';
+alter role extuser set client_encoding to 'UTF8';
+alter role extuser set timezone to 'UTC';
+alter role extuser set default_transaction_isolation to 'read_committed';
+create database rebrain owner extuser;
+```

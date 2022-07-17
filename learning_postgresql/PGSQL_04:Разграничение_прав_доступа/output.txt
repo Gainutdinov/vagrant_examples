@@ -1,0 +1,47 @@
+адание:
+
+1. Установите postgresql v13 на предоставленной VM c OS Ubuntu 20.04.
+2. Добавьте в PostgreSQL пользователя root c правами SUPERUSER.
+3. Подключитесь к PostgreSQL пользователем root с помощью команды: psql -U root -d postgres
+4. Cоздайте базу данных rebrain_courses_db так, чтобы владелцем базы данных был root.
+5. Для работы с базой данных создайте пользователя rebrain_admin.
+6. Переместите файл бэкапа базы данных rebrain_courses_db из предыдущего задания на сервер и положите в директорию /tmp/ с именем rebrain_courses_db.sql.bqp.
+7. Восстановите данные из бэкапа базы данных из предыдущего задания командой: psql -U root -d rebrain_courses_db -f /tmp/rebrain_courses_db.sql.bqp
+8. Выдайте все права пользователю rebrain_admin на базу данных rebrain_courses_db.
+9. Создайте роль backup.
+10. Подключитесь пользователем root к базе данных rebrain_courses_db.
+11. С помощью команды GRANT USAGE выдайте права на использование схемы public пользователю rebrain_admin. Затем, с помощью команды ALTER DEFAULT PRIVILEGES выдайте для роли backup права SELECT на вновь создаваемые таблицы пользователем rebrain_admin в схеме public.
+12. Зайдите под пользователем rebrain_admin в базу данных rebrain_courses_db: psql -U rebrain_admin -h 127.0.0.1 -p 5432 rebrain_courses_db;
+13. Cоздайте таблицу blog в базе данных rebrain_courses_db:
+
+```
+CREATE TABLE blog(
+    id SERIAL PRIMARY KEY NOT NULL,     -- Primary Key
+    user_id INT NOT NULL,               -- Foreign Key to table users 
+    blog_text TEXT NOT NULL,
+    CONSTRAINT fk_user_id
+        FOREIGN KEY (user_id) 
+            REFERENCES users(user_id)
+    );
+
+    Занесите следующие данные в таблицу blog:
+
+INSERT INTO blog(user_id,blog_text)
+VALUES (1,'We are studying at the REBRAIN PostgreSQL Workshop');
+```
+
+14. Снова подключитесь пользователем root к базе данных rebrain_courses_db.
+15. Создайте роль rebrain_group_select_access.
+16. С помощью команды GRANT USAGE выдайте права на использование схемы public пользователю rebrain_group_select_access.
+17. Выдайте права для rebrain_group_select_access только на SELECT из всех таблиц в схеме public.
+18. Создайте роль rebrain_user.
+19. Выдайте для роли rebrain_user права роли rebrain_group_select_access.
+20. Убедитесь, что роль rebrain_user может получать все данные из любых таблиц базы данных rebrain_courses_db в схеме public.
+21. Создайте роль rebrain_portal.
+22. Убедитесь, что вы подключены к базе данных rebrain_courses_db. Для базы данных rebrain_courses_db создайте новую схему rebrain_portal.
+23. С помощью команды GRANT USAGE выдайте права на использование схемы rebrain_portal пользователю rebrain_portal.
+24. Выдайте все права на схему rebrain_portal для роли rebrain_portal.
+25. Сделайте бекап базы данных rebrain_courses_db с помощью команды: pg_dump -U root rebrain_courses_db > /tmp/rebrain_courses_db_task04.sql.bqp
+26. Если уверены, что все выполнили правильно, оправляйте задание на проверку.
+
+

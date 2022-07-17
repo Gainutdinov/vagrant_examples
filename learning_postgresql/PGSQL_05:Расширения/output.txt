@@ -1,0 +1,59 @@
+Задание:
+
+1. На сервер Postgresql-Ubuntu18 из официальных репозиториев Ubuntu установите СУБД Postgresql версии 12.
+
+```
+sudo apt-get install wget ca-certificates -y
+wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+sudo sh -c 'echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list'
+sudo apt-get update
+sudo apt-get install postgresql-12 postgresql-contrib-12 -y
+```
+
+2. Добавьте в PostgreSQL пользователя root c правами SUPERUSER.
+
+```
+createuser --superuser root 
+#psql -U root -w -d postgres
+```
+
+3. Создайте БД rebrain и пользователя с именем extuser.
+
+```
+CREATE DATABASE rebrain;
+createuser extuser
+
+```
+
+4. Установите расширение pg_cron для Postgresql-12 c помощью пакетного менеджера apt.
+
+```
+sudo apt-get -y install postgresql-12-cron
+```
+
+5. Настройте очистку (VACUUM) ежедневно в 2 часа ночи для БД rebrain с запуском от имени пользователя extuser.
+
+```
+#https://github.com/citusdata/pg_cron#setting-up-pg_cron
+# add to postgresql.conf
+#/etc/postgresql/12/main/postgresql.conf
+...
+# required to load pg_cron background worker on start-up
+shared_preload_libraries = 'pg_cron'
+...
+
+# add to postgresql.conf
+# optionally, specify the database in which the pg_cron background worker should run (defaults to postgres) 
+cron.database_name = 'rebrain'
+
+After restarting PostgreSQL, you can create the pg_cron functions and metadata tables using CREATE EXTENSION pg_cron.
+
+-- run as superuser:
+CREATE EXTENSION pg_cron;
+-- optionally, grant usage to regular users:
+GRANT USAGE ON SCHEMA cron TO extuser;
+
+```
+
+6. Если уверены, что все сделали правильно, сдавайте задание на проверку.
+

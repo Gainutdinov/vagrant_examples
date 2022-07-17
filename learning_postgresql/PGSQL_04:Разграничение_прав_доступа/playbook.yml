@@ -145,7 +145,7 @@
     shell: |
       psql -U root --dbname=rebrain_courses_db --command 'GRANT USAGE ON SCHEMA public TO rebrain_admin;'
       #psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE backup IN SCHEMA public GRANT SELECT ON TABLES TO rebrain_admin;'
-      psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE backup IN SCHEMA public GRANT SELECT ON TABLES TO backup;'
+      psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE rebrain_admin IN SCHEMA public GRANT SELECT ON TABLES TO backup;'
     args:
       executable: /usr/bin/bash
     ignore_errors: yes

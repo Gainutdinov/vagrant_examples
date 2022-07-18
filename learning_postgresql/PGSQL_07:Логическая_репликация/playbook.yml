@@ -3,55 +3,152 @@
   gather_facts: yes
   vars:
     max_clients: 200
-    master_IP: "{{ hostvars['master'].ansible_host }}"
-    slave_IP:  "{{ hostvars['slave'].ansible_host }}"
+    publisher_IP: "{{ hostvars['publisher'].ansible_host }}"
+    subscriber_IP:  "{{ hostvars['subscriber'].ansible_host }}"
   tasks:
   - name: Apply tags to tasks within included file
     include_tasks:
       file: include/ssh_append.yml
-  - name: Install Postgres CentOS 7
+  - name: Install Postgres Ubuntu 18_04
     block:
-      - name: Disable SELinux
-        selinux:
-          state: disabled
-      - name: install postgres
-        shell: |
-          yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-          yum -y install postgresql13 postgresql13-server vim
-          /usr/pgsql-13/bin/postgresql-13-setup initdb
-          systemctl start postgresql-13
-          touch /var/log/postgresql.log
-          chmod a-r,u+r /var/log/postgresql.log
-          chown postgres:postgres /var/log/postgresql.log
-#      - name: 2_ubuntu
-#        ansible.builtin.apt_key:
-#          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
-#          state: present
-#      - name: 3_ubuntu
-#        ansible.builtin.apt_repository:
-#          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
-#          filename: pgdg
-#          state: present
-#      - name: install 4_ubuntu
-#        become: yes
-#        ansible.builtin.apt:
-#          pkg:
-#
-#          - postgresql-13
-#          - postgresql-client-13
-#          - postgresql-contrib-13
-#          update_cache: yes
-#          state: latest
+      - name: 2_ubuntu
+        ansible.builtin.apt_key:
+          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          state: present
+      - name: 3_ubuntu
+        ansible.builtin.apt_repository:
+          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+          filename: pgdg
+          state: present
+      - name: install 4_ubuntu
+        become: yes
+        ansible.builtin.apt:
+          pkg:
+          - postgresql-11
+          - postgresql-client-11
+          - postgresql-contrib-11
+          update_cache: yes
+          state: latest
+      - name: add hosts file entry
+        lineinfile:
+          path: "/etc/hosts"
+          line:  "{{ item }}"
+          state: present
+        loop:
+           - "{{publisher_IP}} publisher"
+           - "{{subscriber_IP}}  subscriber"
+    
+  - name: create role car_portal_app
+    become: yes
+    become_user: postgres
+    shell: |
+      psql -U root --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
+      psql -U root --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
+    when: inventory_hostname == 'publisher'
 
-#Задать hostname серверов master и slave соответственно;
-  - name: add hosts file entry
+  - name: add entry for pg_hba.conf
     lineinfile:
-      path: "/etc/hosts"
+      path: "/etc/postgresql/11/data/pg_hba.conf"
       line:  "{{ item }}"
       state: present
     loop:
-       - "{{master_IP}} master"
-       - "{{slave_IP}}  slave"
+      - "### publisher"
+      - "host    replication     car_portal_app        0.0.0.0/0        trust"
+    when: inventory_hostname == 'publisher'
+
+  - name: allow all interfaces configure postgresql.conf
+    ansible.builtin.lineinfile:
+      path: "/etc/postgresql/11/data/postgresql.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
+      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
+    when: inventory_hostname == 'publisher'
+              
+  - name: install postgres
+    shell: |
+      systemctl restart postgresql-11
+    when: inventory_hostname == 'publisher'
+
+  - name: install postgres
+    shell: |
+      psql --username postgres -f /opt/schema.sql
+      psql --username car_portal_app -f /opt/data.sql
+    when: inventory_hostname == 'publisher'
+
+  - name: create publication
+    shell: |
+      psql --username postgres -f /opt/schema.sql
+      #task07=> CREATE PUBLICATION task07 FOR ALL TABLES; CREATE PUBLICATION
+    when: inventory_hostname == 'publisher'
+
+  - name: Subscriber starts
+    ansible.builtin.debug:
+      msg:
+      - "Provisioning subscriber host"
+
+  - name: create role car_portal_app
+    become: yes
+    become_user: postgres
+    shell: |
+      psql -U root --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
+      psql -U root --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
+    when: inventory_hostname == 'subscriber'
+
+  - name: add entry for pg_hba.conf
+    lineinfile:
+      path: "/etc/postgresql/11/data/pg_hba.conf"
+      line:  "{{ item }}"
+      state: present
+    loop:
+      - "### subscriber"
+      - "host    replication     car_portal_app        0.0.0.0/0        trust"
+    when: inventory_hostname == 'subscriber'
+
+  - name: allow all interfaces configure postgresql.conf
+    ansible.builtin.lineinfile:
+      path: "/etc/postgresql/11/data/postgresql.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
+      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
+    when: inventory_hostname == 'subscriber'
+              
+  - name: install postgres
+    shell: |
+      systemctl restart postgresql-11
+    when: inventory_hostname == 'subscriber'
+              
+  - name: Transfer file from publisher to subscriber
+    synchronize:
+      src: /opt/schema.sql
+      dest: /opt/schema.sql
+    delegate_to: publisher
+    when: inventory_hostname == 'subscriber'
+
+  - name: install postgres
+    shell: |
+      psql --username postgres -f /opt/schema.sql
+    when: inventory_hostname == 'subscriber'
+
+
+#На стороне подписчика следует создать подписку. Это специальный объект, описывающий подключение к существующей публикации издателя. Подписка создается командой CREATE SUBSCRIPTION, как показано в примере ниже:
+#task07=# CREATE SUBSCRIPTION task07 CONNECTION 'dbname=task07 host=publisher user=db_role' PUBLICATION task07;
+#CREATE SUBSCRIPTION
+
+
+---
+
+  - name: use pg_basebackup
+    become: yes
+    become_user: postgres
+    shell: |
+      pg_basebackup -h master -U postgres -p 5432 -D /var/lib/pgsql/13/backups/ -Fp -Xs -P -R
+    when: inventory_hostname == 'slave'
+
+
 
 #Разрешить безусловную аутентификацию клиентов в файле pg_hba.conf для пользователя репликации (postgres) с подключением для любых адресов (0.0.0.0/0);
 
@@ -64,28 +161,6 @@
       - "### slavedb"
       - "### masterdb"
       - "host    replication     postgres        0.0.0.0/0        trust"
-
-#Вынести логи (master, slave) в файл postgresql.log по пути /var/log/;
-#Сконфигурировать на slave postgresql.auto.conf с указанием мастер ноды (с этим Вам поможет pg_basebackup);
-  - name: allow all interfaces configure postgresql.conf
-    ansible.builtin.lineinfile:
-      path: "/var/lib/pgsql/13/data/postgresql.conf"
-      regexp: "{{ item.regexp }}"
-      line: "{{ item.line }}"
-    loop:
-      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-      - { regexp: "^log_filename = 'postgresql-%a.log'", line: "log_filename = 'postgresql.log'          # log file name pattern,"}
-              
-  - name: install postgres
-    shell: |
-      systemctl restart postgresql-13
-
-  - name: use pg_basebackup
-    become: yes
-    become_user: postgres
-    shell: |
-      pg_basebackup -h master -U postgres -p 5432 -D /var/lib/pgsql/13/backups/ -Fp -Xs -P -R
-    when: inventory_hostname == 'slave'
 
   - name: stop postgresql
     shell: |

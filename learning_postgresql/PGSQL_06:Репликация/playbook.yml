@@ -3,460 +3,114 @@
   gather_facts: yes
   vars:
     max_clients: 200
+    master_IP: "{{ hostvars['master'].ansible_host }}"
+    slave_IP:  "{{ hostvars['slave'].ansible_host }}"
   tasks:
   - name: Apply tags to tasks within included file
     include_tasks:
       file: include/ssh_append.yml
-  - name: Install Postgres Ubuntu 20.04
+  - name: Install Postgres CentOS 7
     block:
-      - name: install 1_ubuntu
-        ansible.builtin.apt:
-          pkg:
-          - wget 
-          - ca-certificates
-          - vim-nox
-          update_cache: yes
-          state: latest
-      - name: 2_ubuntu
-        ansible.builtin.apt_key:
-          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
-          state: present
-      - name: 3_ubuntu
-        ansible.builtin.apt_repository:
-          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
-          filename: pgdg
-          state: present
-      - name: install 4_ubuntu
-        become: yes
-        ansible.builtin.apt:
-          pkg:
-          - postgresql-13
-          - postgresql-client-13
-          - postgresql-contrib-13
-          update_cache: yes
-          state: latest
-  
-  - name: add superuser root
+      - name: Disable SELinux
+        selinux:
+          state: disabled
+      - name: install postgres
+        shell: |
+          yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+          yum -y install postgresql13 postgresql13-server vim
+          /usr/pgsql-13/bin/postgresql-13-setup initdb
+          systemctl start postgresql-13
+          touch /var/log/postgresql.log
+          chmod a-r,u+r /var/log/postgresql.log
+          chown postgres:postgres /var/log/postgresql.log
+#      - name: 2_ubuntu
+#        ansible.builtin.apt_key:
+#          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+#          state: present
+#      - name: 3_ubuntu
+#        ansible.builtin.apt_repository:
+#          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+#          filename: pgdg
+#          state: present
+#      - name: install 4_ubuntu
+#        become: yes
+#        ansible.builtin.apt:
+#          pkg:
+#
+#          - postgresql-13
+#          - postgresql-client-13
+#          - postgresql-contrib-13
+#          update_cache: yes
+#          state: latest
+
+#Задать hostname серверов master и slave соответственно;
+  - name: add hosts file entry
+    lineinfile:
+      path: "/etc/hosts"
+      line:  "{{ item }}"
+      state: present
+    loop:
+       - "{{master_IP}} master"
+       - "{{slave_IP}}  slave"
+
+#Разрешить безусловную аутентификацию клиентов в файле pg_hba.conf для пользователя репликации (postgres) с подключением для любых адресов (0.0.0.0/0);
+
+  - name: add entry for pg_hba.conf
+    lineinfile:
+      path: "/var/lib/pgsql/13/data/pg_hba.conf"
+      line:  "{{ item }}"
+      state: present
+    loop:
+      - "### slavedb"
+      - "### masterdb"
+      - "host    replication     postgres        0.0.0.0/0        trust"
+
+#Вынести логи (master, slave) в файл postgresql.log по пути /var/log/;
+#Сконфигурировать на slave postgresql.auto.conf с указанием мастер ноды (с этим Вам поможет pg_basebackup);
+  - name: allow all interfaces configure postgresql.conf
+    ansible.builtin.lineinfile:
+      path: "/var/lib/pgsql/13/data/postgresql.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
+      - { regexp: "^log_filename = 'postgresql-%a.log'", line: "log_filename = 'postgresql.log'          # log file name pattern,"}
+              
+  - name: install postgres
+    shell: |
+      systemctl restart postgresql-13
+
+  - name: use pg_basebackup
+    become: yes
     become_user: postgres
     shell: |
-      createuser --superuser root
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
+      pg_basebackup -h master -U postgres -p 5432 -D /var/lib/pgsql/13/backups/ -Fp -Xs -P -R
+    when: inventory_hostname == 'slave'
 
-  - name: list databases
+  - name: stop postgresql
     shell: |
-      psql -U root --dbname=postgres  --list
-      psql -U root --dbname=postgres --command 'CREATE DATABASE rebrain_courses_db;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
+      systemctl stop postgresql-13
+      mv /var/lib/pgsql/13/data /var/lib/pgsql/13/data_orig
+      mv /var/lib/pgsql/13/backups /var/lib/pgsql/13/data
+    when: inventory_hostname == 'slave'
 
-  - name: create user plus add privileges
+  - name: start postgres on slave
     shell: |
-      psql -U root --dbname=postgres --command 'CREATE ROLE rebrain_courses_db WITH LOGIN;' 
-      psql -U root --dbname=postgres --command 'ALTER DATABASE rebrain_courses_db OWNER TO root;'
-      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
-      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO rebrain_admin;' 
-      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO root;' 
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
+      systemctl start postgresql-13
+    when: inventory_hostname == 'slave'
 
-  - name: add user rebrain_admin
+  - name: restore data on master server 
+    become: yes
     become_user: postgres
     shell: |
-      createuser --superuser rebrain_admin
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
+      psql --username postgres -f /opt/schema.sql
+      psql --username postgres -f /opt/data.sql
+    when: inventory_hostname == 'master'
 
-  - name: set password for rebrain_admin
-    become_user: postgres
-    shell: |
-      psql -U postgres --dbname=postgres --command "ALTER USER rebrain_admin WITH PASSWORD 'password';"
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: create user plus add privileges
-    shell: |
-      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
-      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO rebrain_admin;' 
-      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO root;' 
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-
-  - name: Copy file with owner and permissions
-    ansible.builtin.copy:
-      src: files/rebrain_courses_db.sql.bqp
-      dest: /tmp/rebrain_courses_db.sql.bqp
-      owner: root
-      group: root
-      mode: '0644'
-
-  - name: Восстановите данные из бэкапа базы данных из предыдущего задания командой
-    shell: |
-      psql -U root -d rebrain_courses_db -f /tmp/rebrain_courses_db.sql.bqp
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: Выдайте все права пользователю rebrain_admin на базу данных rebrain_courses_db
-    shell: |
-      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: Создайте роль backup
-    shell: |
-      psql -U root --dbname=postgres --command 'CREATE ROLE backup;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: Create table blog and insert data into it
-    shell: |
-      PGPASSWORD=password psql -U rebrain_admin -h 127.0.0.1 -p 5432 --dbname=rebrain_courses_db --command '
-        CREATE TABLE blog(
-          id SERIAL PRIMARY KEY NOT NULL,     -- Primary Key
-          user_id INT NOT NULL,               -- Foreign Key to table users 
-          blog_text TEXT NOT NULL,
-          CONSTRAINT fk_user_id
-            FOREIGN KEY (user_id) 
-              REFERENCES users(user_id)
-          );'
-      PGPASSWORD=password psql -U rebrain_admin -h 127.0.0.1 -p 5432 --dbname=rebrain_courses_db --command '
-        ALTER TABLE rebrain_courses_db.blog OWNER TO rebrain_admin;
-        '
-      PGPASSWORD=password psql -U rebrain_admin -h 127.0.0.1 -p 5432 --dbname=rebrain_courses_db --command "
-        INSERT INTO blog(user_id,blog_text)
-        VALUES (1,'We are studying at the REBRAIN PostgreSQL Workshop');
-        "
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-#Подключитесь пользователем root к базе данных rebrain_courses_db.
-#С помощью команды GRANT USAGE выдайте права на использование схемы public пользователю rebrain_admin. Затем, с помощью команды ALTER DEFAULT PRIVILEGES выдайте для роли backup права SELECT на вновь создаваемые таблицы пользователем rebrain_admin в схеме public.
-  - name: GRANT USAGE for schema public
-    shell: |
-      psql -U root --dbname=rebrain_courses_db --command 'GRANT USAGE ON SCHEMA public TO rebrain_admin;'
-      #psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE backup IN SCHEMA public GRANT SELECT ON TABLES TO rebrain_admin;'
-      psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE rebrain_admin IN SCHEMA public GRANT SELECT ON TABLES TO backup;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-#PGPASSWORD=password  psql -U rebrain_admin -h 127.0.0.1 -p 5432 rebrain_courses_db --command 
-#Снова подключитесь пользователем root к базе данных rebrain_courses_db.
-#С помощью команды GRANT USAGE выдайте права на использование схемы public пользователю rebrain_group_select_access
-#Выдайте права для rebrain_group_select_access только на SELECT из всех таблиц в схеме public.
-  - name: commands for role rebrain_group_select_access
-    shell: |
-      psql -U root --dbname=rebrain_courses_db --command 'CREATE ROLE rebrain_group_select_access;'
-      psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE rebrain_group_select_access IN SCHEMA public GRANT SELECT ON TABLES TO rebrain_group_select_access;'
-      psql -U root --dbname=rebrain_courses_db --command 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO rebrain_group_select_access;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-#
-#Создайте роль rebrain_user.
-#Выдайте для роли rebrain_user права роли rebrain_group_select_access.
-#Убедитесь, что роль rebrain_user может получать все данные из любых таблиц базы данных rebrain_courses_db в схеме public.
-#
-  - name: commands for role rebrain_user
-    shell: |
-      psql -U root --dbname=rebrain_courses_db --command 'CREATE ROLE rebrain_user;'
-      psql -U root --dbname=rebrain_courses_db --command 'GRANT SELECT ON ALL TABLES IN SCHEMA public TO rebrain_user;'
-      psql -U root --dbname=rebrain_courses_db --command 'ALTER DEFAULT PRIVILEGES FOR ROLE backup IN SCHEMA public GRANT SELECT ON TABLES TO rebrain_group_select_access;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-    #
-    #
-    #Создайте роль rebrain_portal.
-    #Убедитесь, что вы подключены к базе данных rebrain_courses_db. Для базы данных rebrain_courses_db создайте новую схему rebrain_portal.
-    #С помощью команды GRANT USAGE выдайте права на использование схемы rebrain_portal пользователю rebrain_portal.
-    #Выдайте все права на схему rebrain_portal для роли rebrain_portal.
-  - name: commands for role rebrain_portal and rebrain_portal schema
-    shell: |
-      psql -U root --dbname=rebrain_courses_db --command 'CREATE ROLE rebrain_portal;'
-      psql -U root --dbname rebrain_courses_db --command 'CREATE SCHEMA rebrain_portal;'
-      psql -U root --dbname rebrain_courses_db --command 'GRANT USAGE ON SCHEMA rebrain_portal TO rebrain_portal;'
-      psql -U root --dbname rebrain_courses_db --command 'GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA rebrain_portal TO rebrain_portal;'
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: backup rebrain_courses_db DB
-    shell: |
-      pg_dump -U root rebrain_courses_db > /tmp/rebrain_courses_db_task04.sql.bqp
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-
-####  - name: create user plus add privileges
-####    shell: |
-####      psql -U root -d rebrain_courses_db -f /tmp/rebrain_courses_db.sql.bqp
-####
-####      mkdir /tmp/answers
-####      touch /tmp/answers/devops_old_price
-####      chmod 777 /tmp/answers/devops_old_price
-####      psql -U root --dbname=rebrain_courses_db --command "
-####      COPY (SELECT course_id, coursename, price, tasks_count, sum(price) OVER () FROM courses) TO '/tmp/answers/devops_old_price';"
-####
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        UPDATE courses SET price='100000' WHERE coursename='Devops';"
-####      touch /tmp/answers/devops_new_price
-####      chmod 777 /tmp/answers/devops_new_price
-####      psql -U root --dbname=rebrain_courses_db --command "
-####      COPY (SELECT course_id, coursename, price, tasks_count, sum(price) OVER (ORDER BY price) FROM courses) TO '/tmp/answers/devops_new_price';"
-####
-####
-####      psql -U root --dbname=rebrain_courses_db --command '
-####        CREATE TABLE auditlog( 
-####            id SERIAL PRIMARY KEY NOT NULL,                 -- Primary Key
-####            user_id varchar(50) NOT NULL,                   -- Id пользователя
-####            creation_time timestamp NOT NULL DEFAULT now(), -- Время создания записи о пользователе
-####            creator TEXT NOT NULL                           -- имя пользователя базы данных, с помощью которого производился insert
-####            );'
-####
-####
-####      psql -U root --dbname=rebrain_courses_db --command '
-####        CREATE OR REPLACE FUNCTION fnc_auditlog_users_insert()
-####        RETURNS TRIGGER AS
-####        $BODY$
-####        BEGIN
-####        INSERT INTO auditlog (user_id, creator)
-####        VALUES (NEW.user_id, (SELECT current_user));
-####        return null;
-####        END; 
-####        $BODY$ LANGUAGE plpgsql;'
-####
-####      psql -U root --dbname=rebrain_courses_db --command '
-####        CREATE TRIGGER insert_into_users_trigger
-####        AFTER INSERT ON users
-####        FOR EACH ROW
-####        EXECUTE FUNCTION fnc_auditlog_users_insert();'
-####
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('13', '13', '13', '+79112425813', '13', '13', '13', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('14', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('15', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('15', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('16', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('17', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('18', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('19', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('20', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('21', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('22', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('23', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('24', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('25', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('26', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator) VALUES 
-####          ('27', '14', '14', '+79112425814', '14', '14', '14', 'false');"
-####
-####      psql -U root --dbname=rebrain_courses_db --command "
-####        CREATE VIEW get_last_10_records_from_auditlog AS SELECT * FROM auditlog ORDER BY creation_time LIMIT 10 ;"
-####
-####      pg_dump -U root rebrain_courses_db > /tmp/rebrain_courses_db_task03.sql.bqp
-####
-####
-####    args:
-####      executable: /usr/bin/bash
-####    ignore_errors: yes
-####  
-####  
-####  - name: Storing in a path relative to the playbook
-####    ansible.builtin.fetch:
-####      src: /tmp/rebrain_courses_db_task03.sql.bqp
-####      dest: files/rebrain_courses_db_task03.sql.bqp
-####      flat: yes
-
-
-
-#  - name: create tables
-#    shell: |
-#      psql -U root --dbname=rebrain_courses_db --command '
-#        CREATE TABLE users( 
-#            user_id SERIAL PRIMARY KEY NOT NULL,             -- Primary Key
-#            username varchar(50) NOT NULL,                   -- Имя пользователя
-#            email varchar(50) NOT NULL,                      -- Электронная почта
-#            mobile_phone varchar(12) NOT NULL,               -- Номер телефона
-#            firstname TEXT NOT NULL,                         -- Имя
-#            lastname TEXT NOT NULL,                          -- Фамилия
-#            city  TEXT,                                      -- Название города
-#            is_curator boolean NOT NULL,                     -- Является ли пользователь куратором
-#            record_date timestamp NOT NULL DEFAULT now()     -- Время создания записи о пользователе
-#            );'
-#      psql -U root --dbname=rebrain_courses_db --command '
-#        CREATE TABLE courses(
-#            course_id SERIAL PRIMARY KEY NOT NULL,  -- Primary Key
-#            coursename varchar(50) NOT NULL,        -- Название практикума
-#            tasks_count INT NOT NULL,               -- Количество заданий в практикуме
-#            price INT NOT NULL                      -- Цена практикума
-#            );'
-#      psql -U root --dbname=rebrain_courses_db --command '
-#        CREATE TABLE users__courses(
-#            id SERIAL PRIMARY KEY NOT NULL,     -- Primary Key
-#            user_id INT NOT NULL,               -- Foreign Key to table users 
-#            course_id INT NOT NULL,             -- Foreign Key to table courses 
-#            CONSTRAINT fk_user_id
-#                FOREIGN KEY (user_id) 
-#                    REFERENCES users(user_id),
-#            CONSTRAINT fk_course_id
-#                FOREIGN KEY (course_id) 
-#                    REFERENCES courses(course_id)
-#            );'
-#    args:
-#      executable: /usr/bin/bash
-#    ignore_errors: yes
-#
-#  - name: insert data
-#    shell: |
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator)
-#        VALUES ('1', 'admin', 'vasiliy_ozerov@mail.com', '+79111937483', 'Vasiliy', 'Ozerov', 'Moscow', 'true'),                
-#        ('2', 'pricex', 'SimonWels@mail.com', '+79111974384', 'Simon', 'Wels', 'London', 'false'),
-#        ('3', 'MaytheForcebewithyou', 'Leya.Organa@newrepublic.com', '+79991916526', 'Leya', 'Organa', 'Alderaan', 'false'),
-#        ('4', 'yodajedi', 'magistr_yoda@oldrepublic.com', '+79114326786', 'Yoda', 'Yodin', 'Dagoba', 'false'),
-#        ('5', 'herion1', 'Sabur03@yandex.ru', '+79110983475', 'Sabur', 'Gagiev', 'Kazan', 'false'),
-#        ('6', 'pusha', 'Liliana_Sal@yandex.ru', '+79115897438', 'Liliana', 'Salohina', 'SPB', 'false'),
-#        ('7', 'vierjohn', 'xen_power@mail.com', '+79112232134', 'John', 'Seltic', 'NULL', 'false'),
-#        ('8', 'trakstars', 'Pronina@mail.ru', '+79811987483', 'Varya', 'Pronina', 'Moscow', 'false'),
-#        ('9', 'vozilla', 'Maxxx@mail.ru', '+79111047854', 'Max', 'Visikov', 'NULL', 'false'),
-#        ('10', 'Kisa007', 'Kisa007@mail.ru', '+79112405972', 'Raya', 'Simonova', 'Tver', 'false'),
-#        ('11', 'greenball', 'maike.greenball.vazovsky@corp.com', '+79112425872', 'Mike', 'Vazovsky', 'Monstertown', 'false');"
-#
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO courses(course_id, coursename, tasks_count, price) VALUES
-#        ('1', 'Kubernetes', '70', '35000'),
-#        ('2', 'Highload', '130', '75000'),
-#        ('3', 'Bash', '15', '6900'),
-#        ('4', 'Golang', '117', '55000'),
-#        ('5', 'Linux', '102', '65000'),
-#        ('6', 'Devops', '212', '75000'),
-#        ('7', 'Docker', '45', '30000'),
-#        ('8', 'Logs', '14', '7900');"
-# 
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO users__courses(id, user_id, course_id) VALUES
-#        ('1', '1', '1'),
-#        ('2', '1', '4'),
-#        ('3', '3', '2'),
-#        ('4', '3', '4'),
-#        ('5', '2', '6'),
-#        ('6', '2', '1'),
-#        ('7', '2', '2'),
-#        ('8', '2', '4'),
-#        ('9', '5', '6'),
-#        ('10', '6', '6');"
-# 
-#      psql -U root --dbname=rebrain_courses_db --command "
-#       INSERT INTO users(user_id, username, email, mobile_phone, firstname, lastname, city, is_curator)  VALUES 
-#       (12, 'vladon', 'Vladislav.Pirushin@gmail.com', '+79817937545', 'Vladislav',	'Pirushin', 'NULL', false);"
-# 
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO courses(course_id, coursename, tasks_count, price) VALUES
-#        ('9', 'Postgresql', '14', '7900');" 
-#
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO users__courses(id, user_id, course_id) VALUES
-#        ('11', '3', '6');"
-#      mkdir /tmp/answers/
-#      touch /tmp/answers/table2_courses_data
-#      chmod 777 /tmp/answers/table2_courses_data
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        COPY (SELECT * from courses) TO '/tmp/answers/table2_courses_data' CSV HEADER;"
-#
-#      touch /tmp/answers/table1_usernames_and_phones
-#      chmod 777 /tmp/answers/table1_usernames_and_phones
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        COPY (SELECT username, mobile_phone from users) TO '/tmp/answers/table1_usernames_and_phones'  CSV HEADER;"
-#
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        INSERT INTO users__courses(id, user_id, course_id) VALUES
-#        ('11', '3', '6');"
-#      psql -U root --dbname=rebrain_courses_db --command "
-#       DELETE FROM users WHERE username='yodajedi';"
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        UPDATE courses SET price='10000' WHERE coursename='Postgresql';"
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        UPDATE users SET is_curator='true' WHERE firstname='Vladislav' and lastname='Pirushin';"
-#
-#      touch /tmp/answers/LEFT_OUTER_JOIN
-#      chmod 777 /tmp/answers/LEFT_OUTER_JOIN
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        COPY (
-#          SELECT * 
-#          FROM courses AS c
-#          LEFT OUTER JOIN users__courses AS u
-#          ON c.course_id = u.course_id)
-#          TO '/tmp/answers/LEFT_OUTER_JOIN' CSV HEADER; "
-#
-#      touch /tmp/answers/RIGHT_OUTER_JOIN
-#      chmod 777 /tmp/answers/RIGHT_OUTER_JOIN
-#      psql -U root --dbname=rebrain_courses_db --command "
-#        COPY (
-#          SELECT * 
-#          FROM users AS u
-#          RIGHT OUTER JOIN users__courses AS c
-#          ON u.user_id = c.user_id)
-#          TO '/tmp/answers/RIGHT_OUTER_JOIN' CSV HEADER;"
-#      pg_dump -U root rebrain_courses_db > rebrain_courses_db.sql.bqp
-#    args:
-#      executable: /usr/bin/bash
-#    ignore_errors: yes
-#
-#  - name: Storing in a path relative to the playbook
-#    ansible.builtin.fetch:
-#      src: /home/user/rebrain_courses_db.sql.bqp
-#      dest: files/rebrain_courses_db.sql.bqp
-#      flat: yes
-#
-#
-#
-#
-#--18. Используя LEFT OUTER JOIN получите всю информацию (SELECT *) из таблицы №2 и таблицы №3, результат сохраните в файл `/tmp/answers/LEFT_OUTER_JOIN` в формате CSV с заголовками. 
-#
-#
-#
-
+#Tips to check results
+#Check this on both hosts 
+#-bash-4.2$ psql
+#postgres=# SET ROLE car_portal_app ;
+#postgres=> \c car_portal
+#car_portal=# \dt+ car_portal_app.*;
 

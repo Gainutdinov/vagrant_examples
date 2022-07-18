@@ -1,2 +1,3 @@
-server1 ansible_user=user ansible_host=104.248.84.203   ansible_password=jpzkvjujdgxx
+master ansible_user=user ansible_host=146.190.224.121   ansible_password=hrbohwmigqvj
+slave  ansible_user=user ansible_host=164.92.150.119    ansible_password=yfnjsujqmtpq
 

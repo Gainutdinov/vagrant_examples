@@ -1,3 +1,5 @@
-publisher   ansible_user=user ansible_host=159.65.203.255   ansible_password=qgllmxnihnee
-subscriber  ansible_user=user ansible_host=164.92.153.27    ansible_password=xrdrxmhvxerh
+publisher   ansible_user=user ansible_host=178.62.204.41                   ansible_password=jzyulqheyqqo
+subscriber  ansible_user=user ansible_host=159.65.205.118                   ansible_password=gitpzksnuana
+
+
 

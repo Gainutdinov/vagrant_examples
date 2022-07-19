@@ -20,6 +20,9 @@
           repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
           filename: pgdg
           state: present
+      - name: Wait for automatic system updates
+        become: yes
+        shell:  while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 1; done;
       - name: install 4_ubuntu
         become: yes
         ansible.builtin.apt:
@@ -42,45 +45,48 @@
     become: yes
     become_user: postgres
     shell: |
-      psql -U root --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
-      psql -U root --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
+      psql -U postgres --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
+      psql -U postgres --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
     when: inventory_hostname == 'publisher'
 
   - name: add entry for pg_hba.conf
     lineinfile:
-      path: "/etc/postgresql/11/data/pg_hba.conf"
+      path: "/etc/postgresql/11/main/pg_hba.conf"
       line:  "{{ item }}"
       state: present
     loop:
       - "### publisher"
-      - "host    replication     car_portal_app        0.0.0.0/0        trust"
+      - "host    all             car_portal_app        0.0.0.0/0        trust"
     when: inventory_hostname == 'publisher'
 
   - name: allow all interfaces configure postgresql.conf
     ansible.builtin.lineinfile:
-      path: "/etc/postgresql/11/data/postgresql.conf"
+      path: "/etc/postgresql/11/main/postgresql.conf"
       regexp: "{{ item.regexp }}"
       line: "{{ item.line }}"
     loop:
       - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
+      - { regexp: "^#wal_level = replica", line: "wal_level = logical      # minimal, replica, or logical"}
     when: inventory_hostname == 'publisher'
               
-  - name: install postgres
+  - name: restart postgres
     shell: |
-      systemctl restart postgresql-11
+      systemctl restart postgresql@11-main.service
     when: inventory_hostname == 'publisher'
 
-  - name: install postgres
+  - name: import postgres
+    become: yes
+    become_user: postgres
     shell: |
       psql --username postgres -f /opt/schema.sql
-      psql --username car_portal_app -f /opt/data.sql
+      psql --username postgres -f /opt/data.sql
     when: inventory_hostname == 'publisher'
 
   - name: create publication
+    become: yes
+    become_user: postgres
     shell: |
-      psql --username postgres -f /opt/schema.sql
-      #task07=> CREATE PUBLICATION task07 FOR ALL TABLES; CREATE PUBLICATION
+      psql --username postgres --dbname=car_portal --command='CREATE PUBLICATION car_portal FOR ALL TABLES;'
     when: inventory_hostname == 'publisher'
 
   - name: Subscriber starts
@@ -92,100 +98,85 @@
     become: yes
     become_user: postgres
     shell: |
-      psql -U root --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
-      psql -U root --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
+      psql -U postgres --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
+      psql -U postgres --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
     when: inventory_hostname == 'subscriber'
 
   - name: add entry for pg_hba.conf
     lineinfile:
-      path: "/etc/postgresql/11/data/pg_hba.conf"
+      path: "/etc/postgresql/11/main/pg_hba.conf"
       line:  "{{ item }}"
       state: present
     loop:
       - "### subscriber"
-      - "host    replication     car_portal_app        0.0.0.0/0        trust"
+      - "host    all     car_portal_app        0.0.0.0/0        trust"
     when: inventory_hostname == 'subscriber'
 
   - name: allow all interfaces configure postgresql.conf
     ansible.builtin.lineinfile:
-      path: "/etc/postgresql/11/data/postgresql.conf"
+      path: "/etc/postgresql/11/main/postgresql.conf"
       regexp: "{{ item.regexp }}"
       line: "{{ item.line }}"
     loop:
       - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
+#      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
     when: inventory_hostname == 'subscriber'
               
-  - name: install postgres
+  - name: restart postgres
     shell: |
-      systemctl restart postgresql-11
-    when: inventory_hostname == 'subscriber'
-              
-  - name: Transfer file from publisher to subscriber
-    synchronize:
-      src: /opt/schema.sql
-      dest: /opt/schema.sql
-    delegate_to: publisher
+      systemctl restart postgresql@11-main.service
     when: inventory_hostname == 'subscriber'
 
-  - name: install postgres
+
+
+  - name: Transfer files from publisher to subscriber
+    block:
+      - name: fetch files from publisher
+        ansible.builtin.fetch:
+          src: "/opt/{{ item }}"
+          dest: "/tmp/{{ item }}"
+          flat: yes
+        loop:
+          - "schema.sql"
+          - "data.sql"
+        when: inventory_hostname == 'publisher'
+      - name: send files from subscriber
+        ansible.builtin.copy:
+          src: "/tmp/{{ item }}"
+          dest: "/opt/{{ item }}"
+          owner: user
+          group: user
+          mode: '0644'
+        loop:
+          - "schema.sql"
+          - "data.sql"
+        when: inventory_hostname == 'subscriber'
+              
+  - name: restore schema for subscriber
+    become: yes
+    become_user: postgres
     shell: |
       psql --username postgres -f /opt/schema.sql
     when: inventory_hostname == 'subscriber'
+
+  - name: create subscription
+    become: yes
+    become_user: postgres
+    shell: |
+      psql --username postgres  --dbname=car_portal --command="CREATE SUBSCRIPTION car_portal CONNECTION 'dbname=car_portal host={{ publisher_IP }} user=car_portal_app' PUBLICATION car_portal;"
+    when: inventory_hostname == 'subscriber'
+
+#Add random entry in order to check replication 
+  - name: Check replication
+    become: yes
+    become_user: postgres
+    shell: |
+      psql --username postgres  --dbname=car_portal --command="SET search_path to car_portal_app;SET role car_portal_app;insert into account values (default, 'Rebrain','me','info@rebrainme.com', md5('info@rebrainme.com'));"
+    when: inventory_hostname == 'publisher'
 
 
 #На стороне подписчика следует создать подписку. Это специальный объект, описывающий подключение к существующей публикации издателя. Подписка создается командой CREATE SUBSCRIPTION, как показано в примере ниже:
 #task07=# CREATE SUBSCRIPTION task07 CONNECTION 'dbname=task07 host=publisher user=db_role' PUBLICATION task07;
 #CREATE SUBSCRIPTION
 
-
----
-
-  - name: use pg_basebackup
-    become: yes
-    become_user: postgres
-    shell: |
-      pg_basebackup -h master -U postgres -p 5432 -D /var/lib/pgsql/13/backups/ -Fp -Xs -P -R
-    when: inventory_hostname == 'slave'
-
-
-
-#Разрешить безусловную аутентификацию клиентов в файле pg_hba.conf для пользователя репликации (postgres) с подключением для любых адресов (0.0.0.0/0);
-
-  - name: add entry for pg_hba.conf
-    lineinfile:
-      path: "/var/lib/pgsql/13/data/pg_hba.conf"
-      line:  "{{ item }}"
-      state: present
-    loop:
-      - "### slavedb"
-      - "### masterdb"
-      - "host    replication     postgres        0.0.0.0/0        trust"
-
-  - name: stop postgresql
-    shell: |
-      systemctl stop postgresql-13
-      mv /var/lib/pgsql/13/data /var/lib/pgsql/13/data_orig
-      mv /var/lib/pgsql/13/backups /var/lib/pgsql/13/data
-    when: inventory_hostname == 'slave'
-
-  - name: start postgres on slave
-    shell: |
-      systemctl start postgresql-13
-    when: inventory_hostname == 'slave'
-
-  - name: restore data on master server 
-    become: yes
-    become_user: postgres
-    shell: |
-      psql --username postgres -f /opt/schema.sql
-      psql --username postgres -f /opt/data.sql
-    when: inventory_hostname == 'master'
-
-#Tips to check results
-#Check this on both hosts 
-#-bash-4.2$ psql
-#postgres=# SET ROLE car_portal_app ;
-#postgres=> \c car_portal
-#car_portal=# \dt+ car_portal_app.*;
 

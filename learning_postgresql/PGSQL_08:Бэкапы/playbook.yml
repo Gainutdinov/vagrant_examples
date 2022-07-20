@@ -26,167 +26,57 @@
           touch /var/log/postgresql.log
           chmod a-r,u+r /var/log/postgresql.log
           chown postgres:postgres /var/log/postgresql.log
-          yum -y install epel-release-latest-7.noarch.rpm 
-          yum -y install python3 python36 python36-devel pip3 lzop pv python36-setuptools
-          easy_install-3.6 pip
-          alias pip=pip3
-          pip install https://github.com/wal-e/wal-e/archive/v1.1.1.tar.gz
-          yum install gcc -y
-          pip3 install wal-e envdir boto
-          python3 -c 'import boto; print(boto.__path__[0])' | xargs -I{} sudo chmod -R a+rx {}
-          mkdir -p /etc/wal-e/env
-          # значения переменных для каждого пользователя индивидуальные в инфраструктуре
-          echo 'key-id'       > "/etc/wal-e/env/{{ my_AWS_ACCESS_KEY_ID }}    "
-          echo 'key-value'    > "/etc/wal-e/env/{{ my_AWS_SECRET_ACCESS_KEY }}"
-          echo 'bucket-path'  > "/etc/wal-e/env/{{ my_WALE_S3_PREFIX }}       "
-          echo 'eu-central-1' > "/etc/wal-e/env/{{ my_AWS_REGION }}           "
+
+
+  - name: configure archive_mode to on
+    ansible.builtin.lineinfile:
+      path: "/var/lib/pgsql/13/data/postgresql.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^#wal_level = replica",  line: "wal_level = replica      # minimal, replica, or logical"                                                   }
+      - { regexp: "^#archive_mode = off",   line: "archive_mode=on       # enables archiving; off, on, or always"                                         }
+      - { regexp: "^#archive_command = ''", line: "archive_command = '/usr/local/bin/envdir /etc/wal-e/env wal-e wal-push %p'  # command to use to archive a logfile segment"}
+      - { regexp: "^#archive_timeout = 0",  line: "archive_timeout = '60' # force a logfile segment switch after this"                                        }
+
+  - name: restart postgres
+    shell: |
+      systemctl restart postgresql-13.service
+
+  - name: restore data for postgres
+    become: yes
+    become_user: postgres
+    shell: |
+      psql --username postgres -f /opt/schema.sql
+      psql --username postgres -f /opt/data.sql
+
+  - name: install tools for backup
+    shell: |
+      yum install -y epel-release-latest-7.noarch.rpm 
+      yum install -y epel-release 
+      yum -y install pv
+      yum -y install python3 python36 python36-devel pip3 lzop pv python36-setuptools
+      easy_install-3.6 pip
+      alias pip=pip3
+      pip install https://github.com/wal-e/wal-e/archive/v1.1.1.tar.gz
+      yum install gcc -y
+      pip3 install wal-e envdir boto
+      python3 -c 'import boto; print(boto.__path__[0])' | xargs -I{} sudo chmod -R a+rx {}
+      mkdir -m 0750 -p /etc/wal-e/env
+      chgrp -R postgres /etc/wal-e
+      # значения переменных для каждого пользователя индивидуальные в инфраструктуре
+      echo "{{ my_AWS_ACCESS_KEY_ID }}"     > "/etc/wal-e/env/AWS_ACCESS_KEY_ID"
+      echo "{{ my_AWS_SECRET_ACCESS_KEY }}" > "/etc/wal-e/env/AWS_SECRET_ACCESS_KEY"
+      echo "s3://{{ my_WALE_S3_PREFIX }}"        > "/etc/wal-e/env/WALE_S3_PREFIX"
+      echo "{{ my_AWS_REGION }}"            > "/etc/wal-e/env/AWS_REGION"
+      chgrp postgres /etc/wal-e/env/*
+
+  - name: check wal-e
+    become: yes
+    become_user: postgres
+    shell: |
+      /usr/local/bin/envdir /etc/wal-e/env /usr/local/bin/wal-e backup-list > /tmp/file
 
 
 
 
-####  - name: restore data on master server
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres -f /opt/schema.sql
-####      psql --username postgres -f /opt/data.sql
-####    
-####  - name: create role car_portal_app
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql -U postgres --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
-####      psql -U postgres --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
-####    when: inventory_hostname == 'publisher'
-####
-####  - name: add entry for pg_hba.conf
-####    lineinfile:
-####      path: "/etc/postgresql/11/main/pg_hba.conf"
-####      line:  "{{ item }}"
-####      state: present
-####    loop:
-####      - "### publisher"
-####      - "host    all             car_portal_app        0.0.0.0/0        trust"
-####    when: inventory_hostname == 'publisher'
-####
-####  - name: allow all interfaces configure postgresql.conf
-####    ansible.builtin.lineinfile:
-####      path: "/etc/postgresql/11/main/postgresql.conf"
-####      regexp: "{{ item.regexp }}"
-####      line: "{{ item.line }}"
-####    loop:
-####      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-####      - { regexp: "^#wal_level = replica", line: "wal_level = logical      # minimal, replica, or logical"}
-####    when: inventory_hostname == 'publisher'
-####              
-####  - name: restart postgres
-####    shell: |
-####      systemctl restart postgresql@11-main.service
-####    when: inventory_hostname == 'publisher'
-####
-####  - name: import postgres
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres -f /opt/schema.sql
-####      psql --username postgres -f /opt/data.sql
-####    when: inventory_hostname == 'publisher'
-####
-####  - name: create publication
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres --dbname=car_portal --command='CREATE PUBLICATION car_portal FOR ALL TABLES;'
-####    when: inventory_hostname == 'publisher'
-####
-####  - name: Subscriber starts
-####    ansible.builtin.debug:
-####      msg:
-####      - "Provisioning subscriber host"
-####
-####  - name: create role car_portal_app
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql -U postgres --dbname=postgres --command 'CREATE ROLE car_portal_app WITH LOGIN;'
-####      psql -U postgres --dbname=postgres --command 'ALTER ROLE car_portal_app REPLICATION;'
-####    when: inventory_hostname == 'subscriber'
-####
-####  - name: add entry for pg_hba.conf
-####    lineinfile:
-####      path: "/etc/postgresql/11/main/pg_hba.conf"
-####      line:  "{{ item }}"
-####      state: present
-####    loop:
-####      - "### subscriber"
-####      - "host    all     car_portal_app        0.0.0.0/0        trust"
-####    when: inventory_hostname == 'subscriber'
-####
-####  - name: allow all interfaces configure postgresql.conf
-####    ansible.builtin.lineinfile:
-####      path: "/etc/postgresql/11/main/postgresql.conf"
-####      regexp: "{{ item.regexp }}"
-####      line: "{{ item.line }}"
-####    loop:
-####      - { regexp: "^#listen_addresses = 'localhost'", line: "listen_addresses = '*'          # what IP address(es) to listen on;"}
-#####      - { regexp: "^#wal_level = replica", line: "wal_level = replica      # minimal, replica, or logical"}
-####    when: inventory_hostname == 'subscriber'
-####              
-####  - name: restart postgres
-####    shell: |
-####      systemctl restart postgresql@11-main.service
-####    when: inventory_hostname == 'subscriber'
-####
-####
-####
-####  - name: Transfer files from publisher to subscriber
-####    block:
-####      - name: fetch files from publisher
-####        ansible.builtin.fetch:
-####          src: "/opt/{{ item }}"
-####          dest: "/tmp/{{ item }}"
-####          flat: yes
-####        loop:
-####          - "schema.sql"
-####          - "data.sql"
-####        when: inventory_hostname == 'publisher'
-####      - name: send files from subscriber
-####        ansible.builtin.copy:
-####          src: "/tmp/{{ item }}"
-####          dest: "/opt/{{ item }}"
-####          owner: user
-####          group: user
-####          mode: '0644'
-####        loop:
-####          - "schema.sql"
-####          - "data.sql"
-####        when: inventory_hostname == 'subscriber'
-####              
-####  - name: restore schema for subscriber
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres -f /opt/schema.sql
-####    when: inventory_hostname == 'subscriber'
-####
-####  - name: create subscription
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres  --dbname=car_portal --command="CREATE SUBSCRIPTION car_portal CONNECTION 'dbname=car_portal host={{ backup_IP }} user=car_portal_app' PUBLICATION car_portal;"
-####    when: inventory_hostname == 'subscriber'
-####
-#####Add random entry in order to check replication 
-####  - name: Check replication
-####    become: yes
-####    become_user: postgres
-####    shell: |
-####      psql --username postgres  --dbname=car_portal --command="SET search_path to car_portal_app;SET role car_portal_app;insert into account values (default, 'Rebrain','me','info@rebrainme.com', md5('info@rebrainme.com'));"
-####    when: inventory_hostname == 'publisher'
-####
-####
-#####На стороне подписчика следует создать подписку. Это специальный объект, описывающий подключение к существующей публикации издателя. Подписка создается командой CREATE SUBSCRIPTION, как показано в примере ниже:
-#####task07=# CREATE SUBSCRIPTION task07 CONNECTION 'dbname=task07 host=publisher user=db_role' PUBLICATION task07;
-#####CREATE SUBSCRIPTION
-####
-####

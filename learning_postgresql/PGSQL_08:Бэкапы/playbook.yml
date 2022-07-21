@@ -24,7 +24,7 @@
           /usr/pgsql-13/bin/postgresql-13-setup initdb
           systemctl start postgresql-13
           touch /var/log/postgresql.log
-          chmod a-r,u+r /var/log/postgresql.log
+          chmod a-wr,u+wr /var/log/postgresql.log
           chown postgres:postgres /var/log/postgresql.log
 
 
@@ -34,9 +34,9 @@
       regexp: "{{ item.regexp }}"
       line: "{{ item.line }}"
     loop:
-      - { regexp: "^#wal_level = replica",  line: "wal_level = replica      # minimal, replica, or logical"                                                   }
-      - { regexp: "^#archive_mode = off",   line: "archive_mode=on       # enables archiving; off, on, or always"                                         }
-      - { regexp: "^#archive_command = ''", line: "archive_command = '/usr/local/bin/envdir /etc/wal-e/env wal-e wal-push %p'  # command to use to archive a logfile segment"}
+      - { regexp: "^#wal_level = replica",  line: "wal_level = replica       # minimal, replica, or logical"                                                  }
+      - { regexp: "^#archive_mode = off",   line: "archive_mode = 'on'       # enables archiving; off, on, or always"                                         }
+      - { regexp: "^#archive_command = ''", line: "archive_command = 'envdir /etc/wal-e/env wal-e wal-push %p'  # command to use to archive a logfile segment"}
       - { regexp: "^#archive_timeout = 0",  line: "archive_timeout = '60' # force a logfile segment switch after this"                                        }
 
   - name: restart postgres

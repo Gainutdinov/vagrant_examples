@@ -1,0 +1,74 @@
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    max_clients: 200
+    publisher_IP: "{{ hostvars['publisher'].ansible_host }}"
+    subscriber_IP:  "{{ hostvars['subscriber'].ansible_host }}"
+  tasks:
+  - name: Apply tags to tasks within included file
+    include_tasks:
+      file: include/ssh_append.yml
+  - name: Install Postgres Ubuntu 18_04
+    block:
+      - name: 2_ubuntu
+        ansible.builtin.apt_key:
+          url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          state: present
+      - name: 3_ubuntu
+        ansible.builtin.apt_repository:
+          repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+          filename: pgdg
+          state: present
+      - name: Wait for automatic system updates
+        become: yes
+        shell:  while sudo fuser /var/lib/dpkg/lock-frontend >/dev/null 2>&1; do sleep 1; done;
+      - name: install 4_ubuntu
+        become: yes
+        ansible.builtin.apt:
+          pkg:
+          - postgresql-13
+          - postgresql-client-13
+          - postgresql-contrib-13
+          update_cache: yes
+          state: latest
+#      - name: add hosts file entry
+#        lineinfile:
+#          path: "/etc/hosts"
+#          line:  "{{ item }}"
+#          state: present
+#        loop:
+#           - "{{publisher_IP}} publisher"
+#           - "{{subscriber_IP}}  subscriber"
+
+
+  - name: add superuser root
+    become_user: postgres
+    shell: |
+      createuser --superuser root
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: create database rebrain_courses_db
+    shell: |
+      psql -U root --dbname=postgres --command 'CREATE DATABASE rebrain_courses_db;'
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: create user plus add privileges
+    shell: |
+      psql -U root --dbname=postgres --command 'CREATE ROLE rebrain_admin WITH LOGIN;'
+      psql -U root --dbname=postgres --command 'GRANT CONNECT ON DATABASE rebrain_courses_db TO rebrain_admin;'
+      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#
+#      psql -U root --dbname=postgres --command 'ALTER DATABASE rebrain_courses_db OWNER TO root;'
+#      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO rebrain_admin;'
+#      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO root;'
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+

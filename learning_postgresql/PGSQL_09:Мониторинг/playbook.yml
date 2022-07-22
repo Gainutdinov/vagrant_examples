@@ -191,6 +191,14 @@
       executable: /usr/bin/bash
     ignore_errors: yes
 
+  - name: Template a file to /etc/default/prometheus-postgres-exporter
+    template:
+      src: templates/prometheus-postgres-exporter.j2
+      dest: /etc/default/prometheus-postgres-exporter
+      owner: root
+      group: root
+      mode: '0644'
+
   - name: add superuser rebrain_monitoring
     become_user: postgres
     shell: |
@@ -199,12 +207,43 @@
       executable: /usr/bin/bash
     ignore_errors: yes
 
+
+  - name: configure trust for all local users also for rebrain_admin user
+    ansible.builtin.lineinfile:
+      path: "/etc/postgresql/13/main/pg_hba.conf"
+      regexp: "{{ item.regexp }}"
+      line: "{{ item.line }}"
+    loop:
+      - { regexp: "^host    all             all             127.0.0.1/32            md5",  line: "^host    all             all             127.0.0.1/32            trust" }
+
+
+  - name: Restart prometheus-postgres-exporter & postgres
+    ansible.builtin.systemd:
+      state: restarted
+      daemon_reload: yes
+      name: "{{ item }}"
+    loop:
+      - prometheus-postgres-exporter.service
+      - postgresql.service
+
 #Настройте окружение для postgres_exporter так, чтобы работало подключение к PostgreSQL к базе данных rebrain_courses_db с правами rebrain_monitoring. Для этого используйте файл "/etc/default/prometheus-postgres-exporter", в него в одну строку внесите данные о подключении (DATA_SOURCE_NAME).
+
+  - name: access grafan via this link
+    ansible.builtin.debug:
+      msg: |
+        "
+        access grafan via http://188.166.93.72:3000 user:admin password:admin
+        for node_exporter import dashboard #1860
+        for prometheus_postgres_exporter import dashboard #9628 
+        "
 
   - name: start pgbench when you are ready (50 concurrent clients in 5 threads, duration is 120).
     ansible.builtin.debug:
-      msg:
-      - "pgbench --client=50 --jobs=5 --time=120 --username=rebrain_monitoring rebrain_courses_db"
+      msg: |
+        "
+        pgbench --username rebrain_monitoring --host=127.0.0.1 --initialize rebrain_courses_db
+        pgbench --username rebrain_monitoring --host=127.0.0.1 --client=50 --jobs=5 --time=120 rebrain_courses_db
+        "
   
 
 

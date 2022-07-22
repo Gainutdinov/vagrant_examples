@@ -1,1 +1,2 @@
-backup   ansible_user=user ansible_host=138.0.57 ansible_password=ambpox my_AWS_ACCESS_KEY_ID=IEO7Y my_AWS_SECRET_ACCESS_KEY=+BGSc+j7BUQb5 my_WALE_S3_PREFIX=b60c68  my_AWS_REGION=eu-central-1
+monitoring   ansible_user=user ansible_host=159.223.215.97 ansible_password=eddhlkcxxbxu
+#PostgreSQL-Ubuntu20: connect command: ssh user@159.223.215.97 password: eddhlkcxxbxu

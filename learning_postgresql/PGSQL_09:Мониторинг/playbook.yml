@@ -41,7 +41,6 @@
 #           - "{{publisher_IP}} publisher"
 #           - "{{subscriber_IP}}  subscriber"
 
-
   - name: add superuser root
     become_user: postgres
     shell: |
@@ -71,4 +70,159 @@
     args:
       executable: /usr/bin/bash
     ignore_errors: yes
+
+  - name: Create a directory if it does not exist /var/lib/prometheus
+    file:
+      path: "{{ item }}"
+      state: directory
+      mode: '0755'
+    loop:
+       - /var/lib/prometheus
+       - /etc/prometheus
+  
+  - name: Add the user 'prometheus' 
+    user:
+      name: prometheus
+      comment: John Doe
+      shell: /bin/false
+      system: true
+      create_home: false
+
+  - name: download prometheus-2.16.0
+    get_url:
+      url: https://github.com/prometheus/prometheus/releases/download/v2.16.0/prometheus-2.16.0.linux-amd64.tar.gz
+      dest: /tmp/prometheus-2.16.0.linux-amd64.tar.gz
+      mode: '0440'
+
+  - name: Extract prometheus-2.16.0.linux-amd64.tar.gz into /tmp
+    unarchive:
+      src: /tmp/prometheus-2.16.0.linux-amd64.tar.gz
+      dest: /tmp
+      remote_src: yes
+
+  - name: shell commands
+    shell: |
+      cd /tmp
+      cp prometheus-2.16.0.linux-amd64/{prometheus,promtool} /usr/local/bin/
+      chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
+      cp -r prometheus-2.16.0.linux-amd64/{consoles,console_libraries} /etc/prometheus/
+      cp prometheus-2.16.0.linux-amd64/prometheus.yml /etc/prometheus/prometheus.yml
+      chown -R prometheus:prometheus /etc/prometheus
+      chown prometheus:prometheus /var/lib/prometheus
+    args:
+      executable: /bin/bash
+
+  - name: Template a file to /etc/files.conf
+    template:
+      src: templates/prometheus.service.j2
+      dest: /etc/systemd/system/prometheus.service
+      owner: root
+      group: root
+      mode: '0644'
+  
+  - name: just force systemd to reread configs (2.4 and above)
+    systemd:
+      daemon_reload: yes
+
+  - name: restart service prometheus.service
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: prometheus.service
+
+  - name: Template a file to /etc/prometheus/prometheus.yml
+    template:
+      src: templates/prometheus.yml.j2
+      dest: /etc/prometheus/prometheus.yml
+      owner: root
+      group: root
+      mode: '0644'
+
+  - name: add node_exporter
+    shell: |
+      useradd --system --shell /bin/false node_exporter
+      curl -fsSL https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz \
+        | sudo tar -zxvf - -C /usr/local/bin --strip-components=1 node_exporter-1.2.2.linux-amd64/node_exporter \
+        && sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
+      sudo tee /etc/systemd/system/node_exporter.service <<"EOF"
+      [Unit]
+      Description=Node Exporter
+      
+      [Service]
+      User=node_exporter
+      Group=node_exporter
+      EnvironmentFile=-/etc/sysconfig/node_exporter
+      ExecStart=/usr/local/bin/node_exporter $OPTIONS
+      
+      [Install]
+      WantedBy=multi-user.target
+      EOF
+      systemctl daemon-reload && \
+      systemctl start node_exporter && \
+      systemctl status node_exporter && \
+      systemctl enable node_exporter
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: install grafana
+    shell: |
+      apt-get install -y wget
+      wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+      #Add this repository for stable releases:
+      echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+      apt-get update
+      apt-get install grafana -y
+      systemctl daemon-reload
+      systemctl enable grafana-server
+      systemctl start grafana-server
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: install postgres-exporter
+    shell: |
+      apt install -y prometheus-postgres-exporter
+#- job_name: postgres_exporter
+#  static_configs:
+#  - targets: ['postgres_exporter_machine_IP_address:9187']
+#
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: add superuser rebrain_monitoring
+    become_user: postgres
+    shell: |
+      createuser --superuser rebrain_monitoring
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+#Настройте окружение для postgres_exporter так, чтобы работало подключение к PostgreSQL к базе данных rebrain_courses_db с правами rebrain_monitoring. Для этого используйте файл "/etc/default/prometheus-postgres-exporter", в него в одну строку внесите данные о подключении (DATA_SOURCE_NAME).
+
+  - name: start pgbench when you are ready (50 concurrent clients in 5 threads, duration is 120).
+    ansible.builtin.debug:
+      msg:
+      - "pgbench --client=50 --jobs=5 --time=120 --username=rebrain_monitoring rebrain_courses_db"
+  
+
+
+
+
+
+#scrape_configs:
+#  # The job name is added as a label `job=<job_name>` to any timeseries scraped from this config.
+#  - job_name: 'prometheus'
+#    scrape_interval: 5s
+#    static_configs:
+#      - targets: ['localhost:9090']
+#  - job_name: 'node_exporter'
+#    scrape_interval: 5s
+#    static_configs:
+#      - targets: ['135.181.85.130:9100']
+#  - job_name: 'process_exporter'
+#    scrape_interval: 5s
+#    static_configs:
+#      - targets: ['135.181.85.130:9256']
 

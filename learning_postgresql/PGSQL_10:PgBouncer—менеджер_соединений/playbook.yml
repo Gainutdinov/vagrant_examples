@@ -241,14 +241,6 @@
       update_cache: yes
       state: latest
 
-  - name: start pgbench when you are ready (50 concurrent clients in 5 threads, duration is 120).
-    ansible.builtin.debug:
-      msg: |
-        "
-        pgbench --username rebrain_monitoring --password password --host=127.0.0.1 --initialize rebrain_courses_db
-        pgbench --username rebrain_monitoring --password password --host=127.0.0.1 --client=900 --jobs=5 --time=180 rebrain_courses_db
-        "
-
   - name: configure pgbouncer
     ansible.builtin.lineinfile:
       path: "/etc/pgbouncer/pgbouncer.ini"
@@ -264,4 +256,17 @@
     ansible.builtin.lineinfile:
       path: "/etc/pgbouncer/pgbouncer.ini"
       line: '"rebrain_monitoring" "password"'
+
+  - name: restart service pgbouncer.service
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: pgbouncer.service
+
+  - name: start pgbench when you are ready (50 concurrent clients in 5 threads, duration is 120).
+    ansible.builtin.debug:
+      msg: 
+        - "pgbench --username rebrain_monitoring --password password --host=127.0.0.1 --port 5432 --initialize rebrain_courses_db"
+        - "pgbench --username rebrain_monitoring --password password --host=127.0.0.1 --port 5432 --client=900 --jobs=5 --time=180 rebrain_courses_db #without pgbouncer"
+        - "pgbench --username rebrain_monitoring --password password --host=127.0.0.1 --port 6432 --client=900 --jobs=5 --time=180 rebrain_courses_db #with pgbouncer"
 

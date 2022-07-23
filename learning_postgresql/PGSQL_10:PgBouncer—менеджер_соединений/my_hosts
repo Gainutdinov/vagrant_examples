@@ -1,0 +1,4 @@
+monitoring   ansible_user=user ansible_host=188.166.125.32 ansible_password=rhdrvyzljzbb
+
+#188.166.93.72 password: mjcpfhaqzrzs
+#PostgreSQL-Ubuntu20: connect command: ssh user@159.223.215.97 password: eddhlkcxxbxu

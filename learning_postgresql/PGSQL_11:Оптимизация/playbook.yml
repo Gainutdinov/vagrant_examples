@@ -1,0 +1,319 @@
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    max_clients: 200
+    publisher_IP: "{{ hostvars['publisher'].ansible_host }}"
+    subscriber_IP:  "{{ hostvars['subscriber'].ansible_host }}"
+  tasks:
+  - name: Apply tags to tasks within included file
+    include_tasks:
+      file: include/ssh_append.yml
+
+
+  - name: Install Postgres CentOS 7
+    block:
+      - name: Disable SELinux
+        selinux:
+          state: disabled
+      - name: install postgres & pgbench
+        shell: |
+          yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+          yum -y install postgresql13 postgresql13-server postgresql13-contrib postgresql-contrib-9.2.24-8.el7_9.x86_64 vim
+          /usr/pgsql-13/bin/postgresql-13-setup initdb
+          systemctl start postgresql-13
+          touch /var/log/postgresql.log
+          chmod a-wr,u+wr /var/log/postgresql.log
+          chown postgres:postgres /var/log/postgresql.log
+
+  - name: add superuser root
+    become_user: postgres
+    shell: |
+      createuser --superuser root
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: create pgbench DB and initialize it
+    become_user: postgres
+    shell: |
+      psql -U root --dbname=postgres --command 'CREATE DATABASE pgbench;'
+      pgbench --initialize --scale=100 pgbench
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: Get basic productivity - test #1
+    ansible.builtin.debug:
+      msg: 
+        - "* Выполнить pgbench, чтобы узнать базовую - дефолтную производительность системы. ``` pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench ```"
+
+  - name: Prepare settings for test #2
+    become_user: postgres
+    shell: |
+      psql -U postgres << EOF
+      ALTER SYSTEM RESET ALL;
+      ALTER SYSTEM SET fsync to off;
+      EOF
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+#10. Выполните повторно pgbench -t 1000 -c 15 -f task11.sql -n pgbench.
+#11. Сохраните результат в /opt/result_2.txt.
+
+  - name: Run - test #2
+    ansible.builtin.debug:
+      msg: 
+        - " #10. Выполните повторно pgbench -t 1000 -c 15 -f task11.sql -n pgbench."
+        - " #11. Сохраните результат в /opt/result_2.txt."
+
+  - name: Prepare settings for test #2
+    become_user: postgres
+    shell: |
+      psql -U postgres << EOF
+      ALTER SYSTEM RESET ALL;
+      ALTER SYSTEM SET synchronous_commit to off;
+      ALTER SYSTEM SET commit_delay to 100000;
+      EOF
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: restart service postgresql.service
+    systemd:
+      state: restarted
+      daemon_reload: yes
+      name: postgresql.service
+
+####
+####  - name: create database rebrain_courses_db
+####    shell: |
+####      psql -U root --dbname=postgres --command 'CREATE DATABASE rebrain_courses_db;'
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: create user plus add privileges
+####    shell: |
+####      psql -U root --dbname=postgres --command 'CREATE ROLE rebrain_admin WITH LOGIN;'
+####      psql -U root --dbname=postgres --command 'GRANT CONNECT ON DATABASE rebrain_courses_db TO rebrain_admin;'
+####      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#####
+#####      psql -U root --dbname=postgres --command 'ALTER DATABASE rebrain_courses_db OWNER TO root;'
+#####      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#####      psql -U root --dbname=postgres --command 'GRANT ALL PRIVILEGES ON DATABASE rebrain_courses_db TO rebrain_admin;'
+#####      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO rebrain_admin;'
+#####      psql -U root --dbname=postgres --command 'GRANT pg_write_server_files TO root;'
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: Create a directory if it does not exist /var/lib/prometheus
+####    file:
+####      path: "{{ item }}"
+####      state: directory
+####      mode: '0755'
+####    loop:
+####       - /var/lib/prometheus
+####       - /etc/prometheus
+####  
+####  - name: Add the user 'prometheus' 
+####    user:
+####      name: prometheus
+####      comment: John Doe
+####      shell: /bin/false
+####      system: true
+####      create_home: false
+####
+####  - name: download prometheus-2.16.0
+####    get_url:
+####      url: https://github.com/prometheus/prometheus/releases/download/v2.16.0/prometheus-2.16.0.linux-amd64.tar.gz
+####      dest: /tmp/prometheus-2.16.0.linux-amd64.tar.gz
+####      mode: '0440'
+####
+####  - name: Extract prometheus-2.16.0.linux-amd64.tar.gz into /tmp
+####    unarchive:
+####      src: /tmp/prometheus-2.16.0.linux-amd64.tar.gz
+####      dest: /tmp
+####      remote_src: yes
+####
+####  - name: shell commands
+####    shell: |
+####      cd /tmp
+####      cp prometheus-2.16.0.linux-amd64/{prometheus,promtool} /usr/local/bin/
+####      chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
+####      cp -r prometheus-2.16.0.linux-amd64/{consoles,console_libraries} /etc/prometheus/
+####      cp prometheus-2.16.0.linux-amd64/prometheus.yml /etc/prometheus/prometheus.yml
+####      chown -R prometheus:prometheus /etc/prometheus
+####      chown prometheus:prometheus /var/lib/prometheus
+####    args:
+####      executable: /bin/bash
+####
+####  - name: Template a file to /etc/files.conf
+####    template:
+####      src: templates/prometheus.service.j2
+####      dest: /etc/systemd/system/prometheus.service
+####      owner: root
+####      group: root
+####      mode: '0644'
+####  
+####  - name: just force systemd to reread configs (2.4 and above)
+####    systemd:
+####      daemon_reload: yes
+####
+####  - name: restart service prometheus.service
+####    systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: prometheus.service
+####
+####  - name: Template a file to /etc/prometheus/prometheus.yml
+####    template:
+####      src: templates/prometheus.yml.j2
+####      dest: /etc/prometheus/prometheus.yml
+####      owner: root
+####      group: root
+####      mode: '0644'
+####
+####  - name: add node_exporter
+####    shell: |
+####      useradd --system --shell /bin/false node_exporter
+####      curl -fsSL https://github.com/prometheus/node_exporter/releases/download/v1.2.2/node_exporter-1.2.2.linux-amd64.tar.gz \
+####        | sudo tar -zxvf - -C /usr/local/bin --strip-components=1 node_exporter-1.2.2.linux-amd64/node_exporter \
+####        && sudo chown node_exporter:node_exporter /usr/local/bin/node_exporter
+####      sudo tee /etc/systemd/system/node_exporter.service <<"EOF"
+####      [Unit]
+####      Description=Node Exporter
+####      
+####      [Service]
+####      User=node_exporter
+####      Group=node_exporter
+####      EnvironmentFile=-/etc/sysconfig/node_exporter
+####      ExecStart=/usr/local/bin/node_exporter $OPTIONS
+####      
+####      [Install]
+####      WantedBy=multi-user.target
+####      EOF
+####      systemctl daemon-reload && \
+####      systemctl start node_exporter && \
+####      systemctl status node_exporter && \
+####      systemctl enable node_exporter
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: install grafana
+####    shell: |
+####      apt-get install -y wget
+####      wget -q -O - https://packages.grafana.com/gpg.key | sudo apt-key add -
+####      #Add this repository for stable releases:
+####      echo "deb https://packages.grafana.com/oss/deb stable main" | sudo tee -a /etc/apt/sources.list.d/grafana.list
+####      apt-get update
+####      apt-get install grafana -y
+####      systemctl daemon-reload
+####      systemctl enable grafana-server
+####      systemctl start grafana-server
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: install postgres-exporter
+####    shell: |
+####      apt install -y prometheus-postgres-exporter
+#####- job_name: postgres_exporter
+#####  static_configs:
+#####  - targets: ['postgres_exporter_machine_IP_address:9187']
+#####
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: Template a file to /etc/default/prometheus-postgres-exporter
+####    template:
+####      src: templates/prometheus-postgres-exporter.j2
+####      dest: /etc/default/prometheus-postgres-exporter
+####      owner: root
+####      group: root
+####      mode: '0644'
+####
+####  - name: add superuser rebrain_monitoring
+####    become_user: postgres
+####    shell: |
+####      createuser --superuser rebrain_monitoring
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: add password for rebrain_monitoring role
+####    shell: |
+####      psql -U root --dbname=postgres --command "ALTER USER rebrain_monitoring WITH PASSWORD 'password';"
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+#####  - name: configure trust for all local users also for rebrain_admin user
+#####    ansible.builtin.lineinfile:
+#####      path: "/etc/postgresql/13/main/pg_hba.conf"
+#####      regexp: "{{ item.regexp }}"
+#####      line: "{{ item.line }}"
+#####    loop:
+#####      - { regexp: "^host    all             all             127.0.0.1/32            md5",  line: "^host    all             all             127.0.0.1/32            trust" }
+#####
+####
+####  - name: Restart prometheus-postgres-exporter & postgres
+####    ansible.builtin.systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: "{{ item }}"
+####    loop:
+####      - prometheus-postgres-exporter.service
+####      - postgresql.service
+####
+####  - name: access grafan via this link
+####    ansible.builtin.debug:
+####      msg: |
+####        "
+####        access grafan via http://188.166.93.72:3000 user:admin password:admin
+####        for node_exporter import dashboard #1860
+####        for prometheus_postgres_exporter import dashboard #9628 
+####        "
+####  - name: install pgbouncer
+####    become: yes
+####    ansible.builtin.apt:
+####      pkg:
+####      - pgbouncer
+####      - postgresql-client-common
+####      update_cache: yes
+####      state: latest
+####
+####  - name: configure pgbouncer
+####    ansible.builtin.lineinfile:
+####      path: "/etc/pgbouncer/pgbouncer.ini"
+####      regexp: "{{ item.regexp }}"
+####      line: "{{ item.line }}"
+####    loop:
+####      - { regexp: "^auth_type = trust",  line: "auth_type = md5" }
+####      - { regexp: "^;pool_mode = session",  line: "pool_mode = transaction" }
+####      - { regexp: "^;max_client = 100",  line: "max_client_conn = 1000" }
+####      - { regexp: "^;default_pool_size = 20",  line: "default_pool_size = 30" }
+####      - { regexp: "^;foodb =",  line: "rebrain_courses_db = host=localhost port=5432 user=rebrain_monitoring password=password" }
+####
+####  - name: add entry for userlist
+####    ansible.builtin.lineinfile:
+####      path: "/etc/pgbouncer/userlist.txt"
+####      line: '"rebrain_monitoring" "password"'
+####
+####  - name: restart service pgbouncer.service
+####    systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: pgbouncer.service
+####
+####  - name: start pgbench when you are ready (50 concurrent clients in 5 threads, duration is 120).
+####    ansible.builtin.debug:
+####      msg: 
+####        - "export PGPASSWORD=password && pgbench --username=rebrain_monitoring --host 127.0.0.1 --port 5432 --initialize rebrain_courses_db"
+####        - "export PGPASSWORD=password && pgbench --username rebrain_monitoring --host=127.0.0.1 --port 5432 --client=900 --jobs=5 --time=180 rebrain_courses_db #without pgbouncer"
+####        - "export PGPASSWORD=password && pgbench --username rebrain_monitoring --host=127.0.0.1 --port 6432 --client=900 --jobs=5 --time=180 rebrain_courses_db #with pgbouncer"
+####

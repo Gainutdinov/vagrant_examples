@@ -38,3 +38,40 @@ pool_mode = transaction
 22. Теперь проведите второй нагрузочный тест с помощью pgbench с использованием pgbouncer в качестве пуллера(менеджера) соединений (порт 6432, 900 конкурентных клиентов в 5 потоков, 180 секунд). Метрики для PostgreSQL будут снова изменяться с течением времени. Обратите внимание на количество коннектов.
 23. Проанализируйте графики на обеих панелях мониторинга, убедитесть, что нагрузочные тесты проведены успешно. Согласно графиков, вы должны были увидеть, что с включенным в тракт pgbouncer наблюдается уменьшение нагрузки на CPU, при этотм количество коннектов не превосходит значения, указаного в настройках pgbouncer (default_pool_size), а количесво верно обработанных транзакций в секунду выросло в несколько раз. 
 24. Если уверены, что все сделали правильно, сдавайте задание на проверку. 
+
+
+```
+root@PostgreSQL-Ubuntu20:~# export PGPASSWORD=password && pgbench --username rebrain_monitoring --host=127.0.0.1 --port 5432 --client=900 --jobs=5 --time=180 rebrain_courses_db #without
+starting vacuum...end.
+pgbench: error: connection to database "rebrain_courses_db" failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+pgbench: error: connection to database "rebrain_courses_db" failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+pgbench: error: connection to database "rebrain_courses_db" failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+pgbench: error: connection to database "rebrain_courses_db" failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+pgbench: error: connection to database "rebrain_courses_db" failed: connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+connection to server at "127.0.0.1", port 5432 failed: FATAL:  sorry, too many clients already
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 1
+query mode: simple
+number of clients: 900
+number of threads: 5
+duration: 180 s
+number of transactions actually processed: 0
+pgbench: fatal: Run was aborted; the above results are incomplete.
+root@PostgreSQL-Ubuntu20:~# export PGPASSWORD=password && pgbench --username rebrain_monitoring --host=127.0.0.1 --port 6432 --client=900 --jobs=5 --time=180 rebrain_courses_db #without
+starting vacuum...end.
+transaction type: <builtin: TPC-B (sort of)>
+scaling factor: 1
+query mode: simple
+number of clients: 900
+number of threads: 5
+duration: 180 s
+number of transactions actually processed: 70149
+latency average = 2339.953 ms
+tps = 384.623079 (including connections establishing)
+tps = 384.628743 (excluding connections establishing)
+root@PostgreSQL-Ubuntu20:~#
+```

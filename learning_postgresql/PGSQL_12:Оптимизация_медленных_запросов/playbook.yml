@@ -3,8 +3,6 @@
   gather_facts: yes
   vars:
     max_clients: 200
-    publisher_IP: "{{ hostvars['publisher'].ansible_host }}"
-    subscriber_IP:  "{{ hostvars['subscriber'].ansible_host }}"
   tasks:
   - name: Apply tags to tasks within included file
     include_tasks:
@@ -36,164 +34,232 @@
       executable: /usr/bin/bash
     ignore_errors: yes
 
-  - name: create pgbench DB and initialize it
+  - name: create task12 DB
     become_user: postgres
     shell: |
-      psql --dbname=postgres --command 'CREATE DATABASE pgbench;' ;
-      pgbench --initialize --scale=100 pgbench
+      psql --dbname=postgres --command 'CREATE DATABASE task12;' ;
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: create table
+    shell: |
+      psql -U root --dbname=task12 --command '
+        CREATE TABLE pgsql(
+          id INT PRIMARY KEY, 
+          name TEXT NOT NULL
+        );'
+      psql -U root --dbname=task12 --command '
+        INSERT INTO pgsql SELECT n, md5 (random()::text) 
+          FROM generate_series (1, 100000) AS foo(n);'
+      psql -U root --dbname=task12 --command '
+        EXPLAIN SELECT * FROM pgsql;
+      ' > /tmp/EXPLAIN_1.txt
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+#В выводе EXPLAIN найдите и сохраните в файл /opt/cost_preview.txt стоимость выборки первой строки, стоимость выборки всех строк, количество рядов (rows), а также среднею ширину кортежа в байтах. В формате: cost=*.**..****.** rows=****** width=**
+
+  - name: analyze data #2
+    shell: |
+      psql -U root --dbname=task12 --command '
+        EXPLAIN ANALYZE SELECT * FROM pgsql WHERE id >= 10 and id < 20;' > /opt/explain_cost.txt. 
+    args:
+      executable: /usr/bin/bash
+    ignore_errors: yes
+
+  - name: explain data #3
+    shell: |
+      psql -U root --dbname=task12 --command '
+        EXPLAIN SELECT * FROM pgsql WHERE upper(id::text)::int < 20;' > /opt/expression.txt
     args:
       executable: /usr/bin/bash
     ignore_errors: yes
 
 
-  - name: Get basic productivity - test #1
-    ansible.builtin.debug:
-      msg: 
-        - "* Выполнить pgbench, чтобы узнать базовую - дефолтную производительность системы. ``` pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench ```"
-
-
-  - name: Get basic productivity - test #1
-    become_user: postgres
+  - name: create table success_practice
     shell: |
-      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_1.txt
+      psql -U root --dbname=task12 --command '
+        CREATE TABLE success_practice (
+          id int, description text,
+          pgsql_id int references pgsql(id));'
+      psql -U root --dbname=task12 --command '
+        INSERT INTO success_practice (id, description, pgsql_id) 
+          SELECT n, 
+                 md5(n::text), 
+                 random()*99999+1
+          FROM generate_series(1,200000) AS foo(n);'
+      psql -U root --dbname=task12 --command '
+        EXPLAIN ANALYZE 
+          SELECT * FROM table_name1 inner JOIN table_name2 on table_name1.id = table_name2.table_name1_id WHERE table_name1_id = 1000;' > /opt/execution_without_index.txt 
     args:
       executable: /usr/bin/bash
     ignore_errors: yes
 
-  - name: Prepare settings for test #2
-    become_user: postgres
+
+  - name: create index for table success_practice
     shell: |
-      psql -U postgres << EOF
-      ALTER SYSTEM RESET ALL;
-      ALTER SYSTEM SET fsync to off;
-      EOF
+      psql -U root --dbname=task12 --command '
+        CREATE index on success_practice (pgsql_id)
+        '
+      psql -U root --dbname=task12 --command '
+        EXPLAIN ANALYZE 
+          SELECT * FROM table_name1 inner JOIN table_name2 on table_name1.id = table_name2.table_name1_id WHERE table_name1_id = 1000;' >> /opt/execution_without_index.txt  #(Execution Time) в файл /opt/execution_without_index.txt 
     args:
       executable: /usr/bin/bash
     ignore_errors: yes
 
-  - name: restart service postgresql.service
-    systemd:
-      state: restarted
-      daemon_reload: yes
-      name: postgresql-13.service
 
-  - name: Prepare - test #2
-    ansible.builtin.debug:
-      msg: 
-        - " #10. Выполните повторно pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench."
-        - " #11. Сохраните результат в /opt/result_2.txt."
 
-  - name: Run test #2
-    become_user: postgres
-    shell: |
-      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_2.txt
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: Prepare settings for test #3
-    become_user: postgres
-    shell: |
-      psql -U postgres << EOF
-      ALTER SYSTEM RESET ALL;
-      ALTER SYSTEM SET synchronous_commit to off;
-      ALTER SYSTEM SET commit_delay to 100000;
-      EOF
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: restart service postgresql.service
-    systemd:
-      state: restarted
-      daemon_reload: yes
-      name: postgresql-13.service
-
-  - name: Run test #3
-    become_user: postgres
-    shell: |
-      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_3.txt
-    args:
-      executable: /usr/bin/bash
-    ignore_errors: yes
-
-  - name: Prepare and run test #4
-    block:
-      - name: Disable SELinux
-        selinux:
-          state: disabled
-      - name: prepare test #4
-        ansible.builtin.lineinfile:
-          path: "/var/lib/pgsql/13/data/postgresql.conf"
-          regexp: "{{ item.regexp }}"
-          line: "{{ item.line }}"
-        loop:
-          - { regexp: "^max_connections = 100",   line: "max_connections = 32"                               }
-          - { regexp: "^shared_buffers = 128MB",  line: "shared_buffers = 256MB"                             }
-          - { regexp: "^#work_mem = 4MB",         line: "work_mem = 16MB                         # min 64kB" }
-      - name: restart service postgresql.service
-        systemd:
-          state: restarted
-          daemon_reload: yes
-          name: postgresql-13.service
-
-  - name: last test run manually the 4th test
-    ansible.builtin.debug:
-      msg: 
-        - "* Выполнить pgbench, чтобы узнать базовую - дефолтную производительность системы. ``` pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench ```"
-        - "Проанализируйте запрос с сортировкой и посмотрите, производится ли сортировка в памяти или на диске:"
-        - "EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;"
-        - "Задать параметр random_page_cost с дефолтным значением."
-        - "Если уверены, что все выполнили правильно, оправляйте задание на проверку."
-
-#-bash-4.2$ psql --dbname=postgres --command 'EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;' ;
-#                                                       QUERY PLAN
-#------------------------------------------------------------------------------------------------------------------------
-# Sort  (cost=0.11..0.12 rows=5 width=4) (actual time=0.085..0.092 rows=5 loops=1)
-#   Sort Key: n
-#   Sort Method: quicksort  Memory: 25kB
-#   ->  Function Scan on generate_series foo  (cost=0.00..0.05 rows=5 width=4) (actual time=0.013..0.018 rows=5 loops=1)
-# Planning Time: 0.672 ms
-# Execution Time: 0.154 ms
-#(6 rows)
-#
-#
-  - name: change to random_page_cost
-    ansible.builtin.lineinfile:
-      path: "/var/lib/pgsql/13/data/postgresql.conf"
-      regexp: "{{ item.regexp }}"
-      line: "{{ item.line }}"
-    loop:
-      - { regexp: "^#random_page_cost = 4.0",   line: "random_page_cost = 4.0                 # same scale as above" }
-
-  - name: restart service postgresql.service
-    systemd:
-      state: restarted
-      daemon_reload: yes
-      name: postgresql-13.service
-
-#-bash-4.2$ psql --dbname=postgres --command 'EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;' ;
-#                                                       QUERY PLAN
-#------------------------------------------------------------------------------------------------------------------------
-# Sort  (cost=0.11..0.12 rows=5 width=4) (actual time=0.063..0.066 rows=5 loops=1)
-#   Sort Key: n
-#   Sort Method: quicksort  Memory: 25kB
-#   ->  Function Scan on generate_series foo  (cost=0.00..0.05 rows=5 width=4) (actual time=0.013..0.015 rows=5 loops=1)
-# Planning Time: 0.316 ms
-# Execution Time: 0.126 ms
-#(6 rows)
-#
-#-bash-4.2$
-#
-#
-#
-  - name: get result files from remote server
-    ansible.builtin.fetch:
-      src: "/opt/{{ item }}"
-      dest: "files/{{ item }}"
-      flat: yes
-    loop:
-      - "result_1.txt"
-      - "result_2.txt"
-      - "result_3.txt"
-
+####  - name: Get basic productivity - test #1
+####    ansible.builtin.debug:
+####      msg: 
+####        - "* Выполнить pgbench, чтобы узнать базовую - дефолтную производительность системы. ``` pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench ```"
+####
+####
+####  - name: Get basic productivity - test #1
+####    become_user: postgres
+####    shell: |
+####      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_1.txt
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: Prepare settings for test #2
+####    become_user: postgres
+####    shell: |
+####      psql -U postgres << EOF
+####      ALTER SYSTEM RESET ALL;
+####      ALTER SYSTEM SET fsync to off;
+####      EOF
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: restart service postgresql.service
+####    systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: postgresql-13.service
+####
+####  - name: Prepare - test #2
+####    ansible.builtin.debug:
+####      msg: 
+####        - " #10. Выполните повторно pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench."
+####        - " #11. Сохраните результат в /opt/result_2.txt."
+####
+####  - name: Run test #2
+####    become_user: postgres
+####    shell: |
+####      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_2.txt
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: Prepare settings for test #3
+####    become_user: postgres
+####    shell: |
+####      psql -U postgres << EOF
+####      ALTER SYSTEM RESET ALL;
+####      ALTER SYSTEM SET synchronous_commit to off;
+####      ALTER SYSTEM SET commit_delay to 100000;
+####      EOF
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: restart service postgresql.service
+####    systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: postgresql-13.service
+####
+####  - name: Run test #3
+####    become_user: postgres
+####    shell: |
+####      pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench > /opt/result_3.txt
+####    args:
+####      executable: /usr/bin/bash
+####    ignore_errors: yes
+####
+####  - name: Prepare and run test #4
+####    block:
+####      - name: Disable SELinux
+####        selinux:
+####          state: disabled
+####      - name: prepare test #4
+####        ansible.builtin.lineinfile:
+####          path: "/var/lib/pgsql/13/data/postgresql.conf"
+####          regexp: "{{ item.regexp }}"
+####          line: "{{ item.line }}"
+####        loop:
+####          - { regexp: "^max_connections = 100",   line: "max_connections = 32"                               }
+####          - { regexp: "^shared_buffers = 128MB",  line: "shared_buffers = 256MB"                             }
+####          - { regexp: "^#work_mem = 4MB",         line: "work_mem = 16MB                         # min 64kB" }
+####      - name: restart service postgresql.service
+####        systemd:
+####          state: restarted
+####          daemon_reload: yes
+####          name: postgresql-13.service
+####
+####  - name: last test run manually the 4th test
+####    ansible.builtin.debug:
+####      msg: 
+####        - "* Выполнить pgbench, чтобы узнать базовую - дефолтную производительность системы. ``` pgbench -t 1000 -c 15 -f /opt/task11.sql -n pgbench ```"
+####        - "Проанализируйте запрос с сортировкой и посмотрите, производится ли сортировка в памяти или на диске:"
+####        - "EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;"
+####        - "Задать параметр random_page_cost с дефолтным значением."
+####        - "Если уверены, что все выполнили правильно, оправляйте задание на проверку."
+####
+#####-bash-4.2$ psql --dbname=postgres --command 'EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;' ;
+#####                                                       QUERY PLAN
+#####------------------------------------------------------------------------------------------------------------------------
+##### Sort  (cost=0.11..0.12 rows=5 width=4) (actual time=0.085..0.092 rows=5 loops=1)
+#####   Sort Key: n
+#####   Sort Method: quicksort  Memory: 25kB
+#####   ->  Function Scan on generate_series foo  (cost=0.00..0.05 rows=5 width=4) (actual time=0.013..0.018 rows=5 loops=1)
+##### Planning Time: 0.672 ms
+##### Execution Time: 0.154 ms
+#####(6 rows)
+#####
+#####
+####  - name: change to random_page_cost
+####    ansible.builtin.lineinfile:
+####      path: "/var/lib/pgsql/13/data/postgresql.conf"
+####      regexp: "{{ item.regexp }}"
+####      line: "{{ item.line }}"
+####    loop:
+####      - { regexp: "^#random_page_cost = 4.0",   line: "random_page_cost = 4.0                 # same scale as above" }
+####
+####  - name: restart service postgresql.service
+####    systemd:
+####      state: restarted
+####      daemon_reload: yes
+####      name: postgresql-13.service
+####
+#####-bash-4.2$ psql --dbname=postgres --command 'EXPLAIN ANALYZE SELECT n FROM generate_series(1,5) as foo(n) order by n;' ;
+#####                                                       QUERY PLAN
+#####------------------------------------------------------------------------------------------------------------------------
+##### Sort  (cost=0.11..0.12 rows=5 width=4) (actual time=0.063..0.066 rows=5 loops=1)
+#####   Sort Key: n
+#####   Sort Method: quicksort  Memory: 25kB
+#####   ->  Function Scan on generate_series foo  (cost=0.00..0.05 rows=5 width=4) (actual time=0.013..0.015 rows=5 loops=1)
+##### Planning Time: 0.316 ms
+##### Execution Time: 0.126 ms
+#####(6 rows)
+#####
+#####-bash-4.2$
+#####
+#####
+#####
+####  - name: get result files from remote server
+####    ansible.builtin.fetch:
+####      src: "/opt/{{ item }}"
+####      dest: "files/{{ item }}"
+####      flat: yes
+####    loop:
+####      - "result_1.txt"
+####      - "result_2.txt"
+####      - "result_3.txt"
+####

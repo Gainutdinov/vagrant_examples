@@ -1,0 +1,10 @@
+transaction type: /opt/task11.sql
+scaling factor: 1
+query mode: simple
+number of clients: 15
+number of threads: 1
+number of transactions per client: 1000
+number of transactions actually processed: 15000/15000
+latency average = 13.071 ms
+tps = 1147.613141 (including connections establishing)
+tps = 1147.990373 (excluding connections establishing)

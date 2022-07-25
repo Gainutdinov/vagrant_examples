@@ -1,64 +1,128 @@
 Задание:
 
-1. Установить postgresql 13 через пакетный менеджер.
-2. Добавьте в PostgreSQL пользователя root c правами SUPERUSER.
-3. Подключитесь к postgresql и создайте базу данных с именем task12.
-4. Создайте простую таблицу pgsql с полями ( id INT PRIMARY KEY, name TEXT NOT NULL ) в бд task12.
-5. С помощью функции generate_series заполните таблицу pgsql значениями от 1 до 100000, в котором поле name будет содержать рандомный текст в md5.
-   
-```
-INSERT INTO pgsql SELECT n , md5 (random()::text) FROM generate_series (1, 100000) AS foo(n);
-```
-   
-6. Получите план выполнения запроса, который̆ выбирает все записи из таблицы pgsql, с помощью команды 
+1. На сервера etcd-1, etcd-2 и etcd-3 скачайте и установите etcd версии v3.5.0. Для этого на каждом из серверов etcd в директории /root/ создайте и запустите скрипт etcd_installer.sh:
 
 ```
-EXPLAIN. EXPLAIN SELECT * FROM pgsql;`
+ETCD_VER=v3.5.0
+
+# choose either URL
+GOOGLE_URL=https://storage.googleapis.com/etcd
+GITHUB_URL=https://github.com/etcd-io/etcd/releases/download
+DOWNLOAD_URL=${GOOGLE_URL}
+
+rm -f /task13/etcd-${ETCD_VER}-linux-amd64.tar.gz
+rm -rf /task13/etcd/ && mkdir -p /task13/etcd/
+
+curl -L ${DOWNLOAD_URL}/${ETCD_VER}/etcd-${ETCD_VER}-linux-amd64.tar.gz -o /task13/etcd-${ETCD_VER}-linux-amd64.tar.gz
+tar xzvf /task13/etcd-${ETCD_VER}-linux-amd64.tar.gz -C /task13/etcd --strip-components=1
+rm -f /task13/etcd-${ETCD_VER}-linux-amd64.tar.gz
+
+/task13/etcd/etcd --version
+/task13/etcd/etcdctl version
 ```
 
-7. В выводе EXPLAIN найдите и сохраните в файл /opt/cost_preview.txt стоимость выборки первой строки, стоимость выборки всех строк, количество рядов (rows), а также среднею ширину кортежа в байтах. В формате: cost=*.**..****.** rows=****** width=**
-8. Выполните ANALYSE таблицы pgsql. Затем повторите EXPLAIN запрос из предыдущего задания.
-9. Вы должны увидеть, что результат вывода изменился, найдите и сохраните в файл /opt/cost.txt стоимость выборки первой строки, стоимость выборки всех строк, количество рядов (rows), а также среднюю ширину кортежа в байтах.
-10. Выполните запрос стоимости, который возвращают все строки, идентификатор которых принадлежит диапазону от 10 до 20 с помощью команды: 
+2. Используя пример конфига из официального репозитория (https://github.com/etcd-io/etcd/blob/release-3.4/etcd.conf.yml.sample) на каждом сервере с etcd настройте etcd так, чтобы использовались следующие параметры окружения и конфигурации: - путь к исполняемому файлу etcd "/task13/etcd/etcd" - путь к конфигурационному файлу etcd "/etc/etcd/etcd.yml" - name: 'rebrain-etcd-node-X' |где X - номер сервера - data-dir: '/task13/etcd/data-dir' - wal-dir: '/task13/etcd/wal-dir' - Формат для записи параметра listen-peer-urls: http://#{Внешний etcd-X IP}:2380,http://127.0.0.1:2380 |где X - номер сервера (например: http://135.181.196.92:2380) - Формат для записи параметра listen-client-urls: http://#{Внешний etcd-X IP}:2379,http://127.0.0.1:2379 |где X - номер сервера (например: http://135.181.196.92:2379) - Формат для записи параметра initial-advertise-peer-urls: http://#{Внешний etcd-X IP}:2380 |где X - номер сервера (например: http://135.181.196.92:2380) - Формат для записи параметра advertise-client-urls: http://#{Внешний etcd-X IP}:2379 |где X - номер сервера (например: http://135.181.196.92:2379) - initial-cluster: 'rebrain-etcd-node-1=http://#{Внешний etcd-1 IP}:2380,rebrain-etcd-node-2=http://#{Внешний etcd-2 IP}:2380,rebrain-etcd-node-3=http://#{Внешний etcd-3 IP}:2380' - initial-cluster-token: 'etcd-cluster-rebrain-token'
+3. На каждом сервере с etcd cоздайте пользователя и группу etcd, измените рекурсивно владельца рабочей директории /task13/etcd/ и директории с конфигами /etc/etcd/ на etcd. Установите etcd в качесчтве сервиса systemd. Должны быть выполнены следующие требования:
+  * файл сервиса должен быть создан в директории "/etc/systemd/system/" с именем "etcd.service"
+  * в файле "etcd.service" должны содержаться следующие параметры: - в блоке [Unit] - Description=etcd key-value store - Documentation=https://github.com/etcd-io/etcd - After=network.target - в блоке [Service] - User=etcd - Type=notify - ExecStart=/task13/etcd/etcd --config-file /etc/etcd/etcd.yml - Restart=always - в блоке [Install] - WantedBy=multi-user.target
+4. Запустите etcd, проверьте его работоспособность и узнайте, какая нода является ведущей (является мастер-нодой), сколько members в кластере и их имена, какие из них активны. Все ноды должны быть в состоянии helthy.
+5. На сервера patroni-1, patroni-2 и patroni-3 из оффициального репозитория PostgreSQL установите PostgreSQL v13. Проверьте, чтобы СУБД PostgreSQL была установлена в качестве сервиса systemd и сам сервис находился в состоянии ОСТАНОВЛЕН. Если сервис PostgreSQL запущен, остановите его командой "systemctl stop postgresql"! 6.На сервера patroni-1, patroni-2 и patroni-3 установите ряд зависимостей patroni:
 
 ```
-EXPLAIN ANALYZE SELECT * FROM pgsql WHERE id >= 10 and id < 20;
+apt -y install python3-pip python3-dev libpq-dev
+pip3 install --upgrade setuptools pip
+pip install psycopg2-binary
 ```
 
-  * Сохраните полученный результат в файл /opt/explain_cost.txt.
+7. На сервера patroni-1, patroni-2 и patroni-3 установите patroni[etcd], при этом используя следующие параметры окружения и конфигурации:
+  * путь к исполняемому файлу patroni "/usr/local/bin/patroni"
+  * путь к конфигурационному файлу patroni "/etc/patroni/patroni.yml"
+  * scope: rebrain
+  * namespace: /rebrain-cluster/
+  * name: rebrain-postgres-node-X |где X - номер сервера patroni
+  * при настройке блоков "restapi/listen","restapi/connect_address","etcd/hosts","postgresql/listen","postgresql/connect_address" должны использоваться только внешние IP-адреса серверов
+  * при настройке блока "pg_hba" для replication должны использоваться только внешние IP-адреса серверов, для root должна использоваться следующая строка "- host all root 0.0.0.0/0 md5"
+  * в момент инициализации patroni должен создать пользователя "rebrain_admin" c паролем "rebrain_admin_password"
+  * при работе с блоком "postgresql/authentication" patroni должен создать super-пользователя "root" c паролем "admin"
+  * при работе с блоком "postgresql/authentication" для репликации patroni должен создать пользователя "replicator" c паролем "replicatorSuperHarDpwd"
+  * остальные настройки patroni взять из описания
+8. Установите рекурсивно владельца postgres на директории /task13/patroni/ и /etc/patroni/. Установите patroni в качесчтве сервиса systemd. Должны быть выполнены следующие требования:
 
-11. Искусственно сбейте планировщик, выполнив запрос: 
+  * файл сервиса должен быть создан в директории "/etc/systemd/system/" с именем "patroni.service"
+
+  * в файле "patroni.service" должны содержаться следующие параметры:
+
+  ```
+  - в блоке [Unit]
+          - Description=Patroni needs to orchestrate a high-availability PostgreSQL
+          - Documentation=https://patroni.readthedocs.io/en/latest/
+          - After=syslog.target network.target
+  - в блоке [Service]
+          - User=postgres
+  		- Group=postgres
+          - Type=simple
+          - ExecStart=/usr/local/bin/patroni /etc/patroni/patroni.yml
+          - Restart=no
+  - в блоке [Install]
+          - WantedBy=multi-user.target
+  ```
+
+9. Запустите Patroni на серверах patroni-1, patroni-2 и patroni-3.
+10. Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
 
 ```
-EXPLAIN SELECT * FROM pgsql WHERE upper(id::text)::int < 20;
+CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);
 ```
 
-  * Сохраните в файл /opt/expression.txt полный вывод команды
-
-12. Создать таблицу success_practice с полями (id int, description text, pgsql_id int references pgsql(id)) в бд task12.
-13. Заполнить таблицу success_practice данными. 
+Внесите в таблицу test следующие данные:
 
 ```
-INSERT INTO success_practice (id, description, pgsql_id) SELECT n, md5(n::text), random()*99999+1 FROM generate_series(1,200000) AS foo(n);
+INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
 ```
 
-14. Получите историю успеха из таблицы pgsql, написав простой запрос, соединяющий таблицы pgsql и success_practice. 
+Затем зайдите на любую из реплик с помощью psql и получите все данные из таблицы test командой:
 
 ```
-EXPLAIN ANALYZE SELECT * FROM table_name1 inner JOIN table_name2 on table_name1.id = table_name2.table_name1_id WHERE table_name1_id = 1000;
+SELECT * FROM test;
 ```
 
-* Запишите время исполнения (Execution Time) в файл /opt/execution_without_index.txt
-
-15. Cоздайте индекс по внешнему ключу для таблицы success_practice. 
+Вы должны увидеть следующий вывод:
 
 ```
-CREATE index on success_practice (pgsql_id);
+ id |  info   
+----+---------
+  1 | Hello
+  2 | From
+  3 | Patroni
+  4 | Leader
+(4 rows)
 ```
 
-16. Повторите запрос из п.14.
+Если вы его увидели, репликация работает. 11. На сервере HAProxy из официальных репозиториев Ubuntu установите HAProxy. Настройте HAProxy так, чтобы:
 
-* После построения индекса время выполнения должно уменьшиться, запишите это время в файл /opt/execution_with_index.txt
+  *  конфигурационный файл HAProxy находился в директории /etc/haproxy/
 
-17. Если уверены, что все сделали правильно, отправляйте задание на проверку.
+  *  настройки в конфигурационном файле HAProxy haproxy.cfg соответствовали следующим значениям: - listen stats - mode http - bind *:32700 - stats enable - stats uri /
 
+```
+- frontend ft_postgresql
+        - bind *:5432
+        - mode tcp
+        - default_backend bk_db
+
+- backend bk_db
+        - option httpchk
+        - mode tcp
+        - server patroni_node_1_IP patroni_node_1_IP:5432 maxconn 100 check port 8008
+        - server patroni_node_2_IP patroni_node_2_IP:5432 maxconn 100 check port 8008
+        - server patroni_node_2_IP patroni_node_3_IP:5432 maxconn 100 check port 8008
+```
+
+12. Проверьте работоспособность HAPropxy зайдите на страницу HAPropxy_IP:32700, там вы должны увидеть HAPropxy stats. Узнайте IP текущего лидера кластера c любого сервера, где есть psql командой:
+
+```
+psql -h HAproxy_ip_addr -p 5432 -d postgres -U root -W -c "select inet_server_addr();"
+```
+
+13. Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером. Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера.
+14. Если уверены, что все сделали правильно, сдавайте задание на проверку.

@@ -1,0 +1,6 @@
+                         QUERY PLAN                          
+-------------------------------------------------------------
+ Seq Scan on pgsql  (cost=0.00..3481.95 rows=35306 width=36)
+   Filter: ((upper((id)::text))::integer < 20)
+(2 rows)
+

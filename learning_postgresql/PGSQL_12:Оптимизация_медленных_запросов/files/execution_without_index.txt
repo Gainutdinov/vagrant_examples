@@ -1,0 +1,12 @@
+                                                       QUERY PLAN                                                        
+-------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=0.29..4694.53 rows=1122 width=76) (actual time=6.913..34.567 rows=1 loops=1)
+   ->  Index Scan using pgsql_pkey on pgsql  (cost=0.29..8.31 rows=1 width=36) (actual time=0.034..0.042 rows=1 loops=1)
+         Index Cond: (id = 1000)
+   ->  Seq Scan on success_practice  (cost=0.00..4675.00 rows=1122 width=40) (actual time=6.872..34.507 rows=1 loops=1)
+         Filter: (pgsql_id = 1000)
+         Rows Removed by Filter: 199999
+ Planning Time: 0.862 ms
+ Execution Time: 34.656 ms
+(8 rows)
+

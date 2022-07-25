@@ -1,7 +1,6 @@
-pgbouncer   ansible_user=user ansible_host=161.35.154.202 ansible_password=njujtrpbafzc
+slow_queries   ansible_user=user ansible_host=178.62.220.27 ansible_password=ezqbyjecxrnl
 
-#ssh user@161.35.154.202 password: njujtrpbafzc
-
+#ssh user@178.62.220.27 password: ezqbyjecxrnl
 #165.22.199.251 password: skvzwfwhgdxr
 #user@104.248.89.198 password: pvdxyvlambpw
 #188.166.93.72 password: mjcpfhaqzrzs

@@ -1,7 +1,7 @@
 # This is the configuration file for the etcd server.
 
 # Human-readable name for this member.
-name: 'rebrain-etcd-node-{{ansible_nodename.split("-")[-1] | lower }}'
+name: 'rebrain-etcd-node-{{ ansible_nodename.split("-")[-1] | lower }}'
 
 # Path to the data directory.
 data-dir: '/task13/etcd/data-dir'

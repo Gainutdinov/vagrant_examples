@@ -105,7 +105,7 @@
      
         - name: Ensure postgresql database-cluster manager package
           package:
-            name:               - 
+            name:                
               - postgresql-common 
               - python3-pip 
               - python3-dev 
@@ -127,16 +127,16 @@
             extra_args: --upgrade
             executable: pip
 
-        - name: Add patroni group
-          group:
-            name: "patroni"
-            state: present
-        
-        - name: Add patroni user
-          user:
-            name: "patroni"
-            group: "patroni"
-            system: yes
+#        - name: Add patroni group
+#          group:
+#            name: "patroni"
+#            state: present
+#        
+#        - name: Add patroni user
+#          user:
+#            name: "patroni"
+#            group: "patroni"
+#            system: yes
 
         - name: Restart postgresql.service
           ansible.builtin.systemd:
@@ -145,79 +145,119 @@
             name: "{{ item }}"
           loop:
             - postgresql.service
+     
+        - name: Install patroni[etcd] packages
+          pip:
+            name: 
+              - 'patroni[etcd]'
 
+        - name: create folder for patroni[etcd]
+          file:
+            path: "/etc/patroni"
+            owner: postgres
+            group: postgres
+            state: directory
+
+        - name: Ensure postgresql database-cluster manager package
+          package:
+            name:                
+              - patroni
+            update_cache: yes
+
+        - name: put etcd_installer.sh
+          ansible.builtin.template:
+            src: templates/patroni.yml.j2
+            dest: /etc/patroni/patroni.yml
+            owner: postgres
+            group: postgres
+            mode: '0755'
+
+        - name: change ownership for patroni folders
+          file:
+            path: "{{ item }}"
+            owner: postgres
+            group: postgres
+            recurse: true
+          loop:
+            - "/task13/patroni/"
+            - "/etc/patroni/"
+
+        - name: Create patroni systemd service 
+          template:
+            src: templates/patroni.service.j2
+            dest: /etc/systemd/system/patroni.service
+            owner: root
+            group: root
+            mode: 0644
+        
+        - name: Start patroni
+          service:
+            name: patroni
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
 
 
       when: 
         - inventory_hostname in groups['patroniservers']
 
+####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
+####
+####CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);
+####
+####Внесите в таблицу test следующие данные:
+####
+####INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+####
+####Затем зайдите на любую из реплик с помощью psql и получите все данные из таблицы test командой:
+####
+####SELECT * FROM test;
+####
+####Вы должны увидеть следующий вывод:
+####
+#### id |  info   
+####----+---------
+####  1 | Hello
+####  2 | From
+####  3 | Patroni
+####  4 | Leader
+####(4 rows)
 
+    - name: configure haproxy
+      block:
+        - name: install haproxy
+          ansible.builtin.apt:
+            pkg:
+            - haproxy
+            update_cache: yes
+            state: latest
 
+        - name: put haproxyconfig
+          ansible.builtin.template:
+            src: templates/haproxy.cfg.j2
+            dest: /etc/haproxy/haproxy.cfg
+            owner: haproxy
+            group: haproxy
+            mode: '0755'
+        
+        - name: Start haproxy
+          service:
+            name: haproxy
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
 
+      when: 
+        - inventory_hostname in groups['haproxyservers']
 
 
     - name: add superuser root
       become_user: postgres
       shell: |
-        createuser --superuser root
+        export PGPASSWORD=admin && psql -h {{ ansible_host['HAProxy'] }} -p 5432 -d postgres -U root -W -c "select inet_server_addr();"
       args:
         executable: /usr/bin/bash
       ignore_errors: yes
-    - name: create task12 DB
-      become_user: postgres
-      shell: |
-        psql --dbname=postgres --command 'CREATE DATABASE task12;' ;
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-    - name: create table
-      shell: "psql -U root --dbname=task12 --command '\n  CREATE TABLE pgsql(\n    id INT PRIMARY KEY, \n    name TEXT NOT NULL\n  );'\npsql -U root --dbname=task12 --command '\n  INSERT INTO pgsql SELECT n, md5 (random()::text) \n    FROM generate_series (1, 100000) AS foo(n);'\npsql -U root --dbname=task12 --command '\n  EXPLAIN SELECT * FROM pgsql;\n' | tail -n3 |head -n1 | cut -d ' ' -f7- | tr -d '(\\|)' > /opt/cost_preview.txt\npsql -U root --dbname=task12 --command '\n  EXPLAIN SELECT * FROM pgsql;\n' \npsql -U root --dbname=task12 --command '\n  EXPLAIN SELECT * FROM pgsql;\n' | tail -n3 |head -n1 | cut -d ' ' -f7- | tr -d '(\\|)' > /opt/cost.txt\n"
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-      #В выводе EXPLAIN найдите и сохраните в файл /opt/cost_preview.txt стоимость выборки первой строки, стоимость выборки всех строк, количество рядов (rows), а также среднею ширину кортежа в байтах. В формате: cost=*.**..****.** rows=****** width=**
-    - name: analyze data #2
-      shell: |
-        psql -U root --dbname=task12 --command '
-          EXPLAIN ANALYZE SELECT * FROM pgsql WHERE id >= 10 and id < 20;' > /opt/explain_cost.txt
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-    - name: explain data #3
-      shell: |
-        psql -U root --dbname=task12 --command '
-          EXPLAIN SELECT * FROM pgsql WHERE upper(id::text)::int < 20;' > /opt/expression.txt
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-    - name: create table success_practice
-      shell: "psql -U root --dbname=task12 --command '\n  CREATE TABLE success_practice (\n    id int, description text,\n    pgsql_id int references pgsql(id));'\npsql -U root --dbname=task12 --command '\n  INSERT INTO success_practice (id, description, pgsql_id) \n    SELECT n, \n           md5(n::text), \n           random()*99999+1\n    FROM generate_series(1,200000) AS foo(n);'\npsql -U root --dbname=task12 --command '\n  EXPLAIN ANALYZE \n    SELECT * FROM pgsql inner JOIN success_practice on pgsql.id = success_practice.pgsql_id WHERE pgsql_id = 1000;' > /opt/execution_without_index.txt \n"
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-    - name: create index for table success_practice
-      shell: "psql -U root --dbname=task12 --command '\n  CREATE index on success_practice (pgsql_id)\n  '\npsql -U root --dbname=task12 --command '\n  EXPLAIN ANALYZE \n    SELECT * FROM pgsql inner JOIN success_practice on pgsql.id = success_practice.pgsql_id WHERE pgsql_id = 1000;' > /opt/execution_with_index.txt  #(Execution Time) в файл /opt/execution_without_index.txt \n"
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-    - name: get result files from remote server #1
-      ansible.builtin.fetch:
-        src: "/opt/{{ item }}"
-        dest: "files/{{ item }}"
-        flat: yes
-      loop:
-        - "explain_cost.txt"
-        - "cost_preview.txt"
-        - "cost.txt"
-        - "expression.txt"
-        - "execution_without_index.txt"
-        - "execution_with_index.txt"
-
-#  - name: get result files from remote server #2
-#    ansible.builtin.fetch:
-#      src: "/tmp/{{ item }}"
-#      dest: "files/{{ item }}"
-#      flat: yes
-#    loop:
-#      - "EXPLAIN_1.txt"
-#
+      when: 
+        - inventory_hostname in groups['patroni-1']
+#Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером. Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера.

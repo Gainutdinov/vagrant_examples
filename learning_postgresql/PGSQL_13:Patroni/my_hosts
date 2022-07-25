@@ -1,7 +1,10 @@
-slow_queries   ansible_user=user ansible_host=178.62.220.27 ansible_password=ezqbyjecxrnl
-
-#ssh user@178.62.220.27 password: ezqbyjecxrnl
-#165.22.199.251 password: skvzwfwhgdxr
-#user@104.248.89.198 password: pvdxyvlambpw
-#188.166.93.72 password: mjcpfhaqzrzs
-#PostgreSQL-Ubuntu20: connect command: ssh user@159.223.215.97 password: eddhlkcxxbxu
+[etcdservers]
+etcd-1    ansible_user=user ansible_host=164.92.152.145     ansible_password=qfblpdehxkgb
+etcd-2    ansible_user=user ansible_host=159.223.217.235    ansible_password=mgacfphrqqya
+etcd-3    ansible_user=user ansible_host=167.71.5.137       ansible_password=ilqeisolxqgg
+[patroniservers]
+patroni-1 ansible_user=user ansible_host=188.166.4.220      ansible_password=xosafldkwvif
+patroni-2 ansible_user=user ansible_host=159.223.231.110    ansible_password=anadtzccosti
+patroni-3 ansible_user=user ansible_host=142.93.140.33      ansible_password=vvksdkepulyj
+[haproxyservers]
+HAProxy   ansible_user=user ansible_host=142.93.143.34      ansible_password=qyyvezydvtyq

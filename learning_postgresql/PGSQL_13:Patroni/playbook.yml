@@ -1,3 +1,4 @@
+---
 - hosts: all
   become: yes
   gather_facts: yes
@@ -7,22 +8,154 @@
     - name: Apply tags to tasks within included file
       include_tasks:
         file: include/ssh_append.yml
-    - name: Install Postgres CentOS 7
+      when: 
+        - inventory_hostname in groups['etcdservers']
+        - inventory_hostname in groups['haproxyservers']
+        - inventory_hostname in groups['patroniservers']
+
+    - name: configure etcd
       block:
-        - name: Disable SELinux
-          selinux:
-            state: disabled
-        - name: install postgres & pgbench
+        - name: put etcd_installer.sh
+          ansible.builtin.template:
+            src: templates/etcd_installer.sh.j2
+            dest: /root/etcd_installed.sh
+            owner: root
+            group: root
+            mode: '0755'
+
+        - name: run script etcd_installer.sh
           shell: |
-            yum -y install https://download.postgresql.org/pub/repos/yum/reporpms/EL-7-x86_64/pgdg-redhat-repo-latest.noarch.rpm
-            yum -y install postgresql13 postgresql13-server postgresql13-contrib vim
-            cp /usr/pgsql-13/bin/pgbench /usr/bin/
-            chmod -R 777 /opt/
-            /usr/pgsql-13/bin/postgresql-13-setup initdb
-            systemctl start postgresql-13
-            touch /var/log/postgresql.log
-            chmod a-wr,u+wr /var/log/postgresql.log
-            chown postgres:postgres /var/log/postgresql.log
+            /root/etcd_installer.sh
+
+        - name: Create etcd group
+          group:
+            name: "etcd"
+        
+        - name: Create etcd user
+          user:
+            name: "etcd"
+            group: "etcd"
+            home: /bin/false
+
+        - name: add etcd config file
+          ansible.builtin.template:
+            src: templates/etcd.conf.yml.sample.j2
+            dest: /etc/etcd/etcd.yml
+            owner: etcd
+            group: etcd
+            mode: '0755'
+
+        - name: Change kubeconfig file permission
+          file:
+            path: "{{ item }}"
+            owner: etcd
+            group: etcd
+            recurse: yes
+          loop:
+            - "/etc/etcd"
+            - "/task13/etcd"
+
+        - name: Create etcd systemd service 
+          template:
+            src: templates/etcd.service.j2
+            dest: /etc/systemd/system/etcd.service
+            owner: root
+            group: root
+            mode: 0644
+        
+        - name: Start etcd
+          service:
+            name: etcd
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
+
+        #Запустите etcd, проверьте его работоспособность и узнайте, какая нода является ведущей (является мастер-нодой), 
+        #сколько members в кластере и их имена, какие из них активны. Все ноды должны быть в состоянии helthy.
+      when: 
+        - inventory_hostname in groups['etcdservers']
+
+    - name: configure patroni
+      block:
+        - name: install 1_ubuntu
+          ansible.builtin.apt:
+            pkg:
+            - wget
+            - ca-certificates
+            - vim-nox
+            update_cache: yes
+            state: latest
+        - name: 2_ubuntu
+          ansible.builtin.apt_key:
+            url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+            state: present
+        - name: 3_ubuntu
+          ansible.builtin.apt_repository:
+            repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+            filename: pgdg
+            state: present
+        - name: install 4_ubuntu
+          become: yes
+          ansible.builtin.apt:
+            pkg:
+            - postgresql-13
+            - postgresql-client-13
+            update_cache: yes
+            state: latest
+     
+        - name: Ensure postgresql database-cluster manager package
+          package:
+            name:               - 
+              - postgresql-common 
+              - python3-pip 
+              - python3-dev 
+              - libpq-dev
+            update_cache: yes
+
+        - name: Install pip3 packages
+          pip:
+            name: 
+              - setuptools
+              - pip
+            extra_args: --upgrade
+            executable: pip3
+
+        - name: Install pip packages
+          pip:
+            name: 
+              - psycopg2-binary
+            extra_args: --upgrade
+            executable: pip
+
+        - name: Add patroni group
+          group:
+            name: "patroni"
+            state: present
+        
+        - name: Add patroni user
+          user:
+            name: "patroni"
+            group: "patroni"
+            system: yes
+
+        - name: Restart postgresql.service
+          ansible.builtin.systemd:
+            state: stopped
+            daemon_reload: yes
+            name: "{{ item }}"
+          loop:
+            - postgresql.service
+
+
+
+      when: 
+        - inventory_hostname in groups['patroniservers']
+
+
+
+
+
+
     - name: add superuser root
       become_user: postgres
       shell: |

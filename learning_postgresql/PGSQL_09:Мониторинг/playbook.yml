@@ -214,7 +214,7 @@
       regexp: "{{ item.regexp }}"
       line: "{{ item.line }}"
     loop:
-      - { regexp: "^host    all             all             127.0.0.1/32            md5",  line: "^host    all             all             127.0.0.1/32            trust" }
+      - { regexp: "^host    all             all             127.0.0.1/32            md5",  line: "host    all             all             127.0.0.1/32            trust" }
 
 
   - name: Restart prometheus-postgres-exporter & postgres

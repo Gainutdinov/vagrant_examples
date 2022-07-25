@@ -1,0 +1,14 @@
+                                                                 QUERY PLAN                                                                 
+--------------------------------------------------------------------------------------------------------------------------------------------
+ Nested Loop  (cost=4.74..24.57 rows=3 width=78) (actual time=0.065..0.090 rows=3 loops=1)
+   ->  Index Scan using pgsql_pkey on pgsql  (cost=0.29..8.31 rows=1 width=37) (actual time=0.023..0.024 rows=1 loops=1)
+         Index Cond: (id = 1000)
+   ->  Bitmap Heap Scan on success_practice  (cost=4.45..16.23 rows=3 width=41) (actual time=0.036..0.054 rows=3 loops=1)
+         Recheck Cond: (pgsql_id = 1000)
+         Heap Blocks: exact=3
+         ->  Bitmap Index Scan on success_practice_pgsql_id_idx  (cost=0.00..4.45 rows=3 width=0) (actual time=0.024..0.024 rows=3 loops=1)
+               Index Cond: (pgsql_id = 1000)
+ Planning Time: 0.768 ms
+ Execution Time: 0.170 ms
+(10 rows)
+

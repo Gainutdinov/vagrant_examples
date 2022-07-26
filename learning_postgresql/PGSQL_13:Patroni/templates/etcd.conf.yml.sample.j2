@@ -58,7 +58,7 @@ discovery-proxy:
 discovery-srv:
 
 # Initial cluster configuration for bootstrapping.
-initial-cluster: 'rebrain-etcd-node-1=http://{{ ansible_host["etcd-1"] }}:2380,rebrain-etcd-node-2=http://{{ ansible_host["etcd-2"] }}:2380,rebrain-etcd-node-3=http://{{ ansible_host["etcd-3"] }}:2380'
+initial-cluster: 'rebrain-etcd-node-1=http://{{ hostvars["etcd-1"].ansible_host }}:2380,rebrain-etcd-node-2=http://{{ hostvars["etcd-2"].ansible_host }}:2380,rebrain-etcd-node-3=http://{{ hostvars["etcd-3"].ansible_host }}:2380'
 
 # Initial cluster token for the etcd cluster during bootstrap.
 initial-cluster-token: 'etcd-cluster-rebrain-token'

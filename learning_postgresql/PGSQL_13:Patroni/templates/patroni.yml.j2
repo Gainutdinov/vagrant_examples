@@ -9,7 +9,7 @@ restapi:
   connect_address: {{ ansible_host }}:8008 # адрес той ноды, в которой находится этот файл
 
 etcd:
-  hosts: {{ ansible_host['etcd-1'] }}:2379, {{ ansible_host['etcd-2'] }}:2379, {{ ansible_host['etcd-3'] }}:2379 # перечислите здесь все ваши ноды, в случае если вы устанавливаете etcd на них же
+  hosts: {{ hostvars['etcd-1'].ansible_host }}:2379, {{ hostvars['etcd-2'].ansible_host }}:2379, {{ hostvars['etcd-3'].ansible_host }}:2379 # перечислите здесь все ваши ноды, в случае если вы устанавливаете etcd на них же
 
 # this section (bootstrap) will be written into Etcd:/<namespace>/<scope>/config after initializing new cluster
 # and all other cluster members will use it as a `global configuration`
@@ -41,9 +41,9 @@ bootstrap:
   pg_hba:
   - host replication replicator ::1/128 md5
   - host replication replicator 127.0.0.1/8 md5
-  - host replication replicator {{ ansible_host['patroni-1'] }}/32 md5
-  - host replication replicator {{ ansible_host['patroni-2'] }}/32 md5
-  - host replication replicator {{ ansible_host['patroni-3'] }}/32 md5
+  - host replication replicator {{ hostvars['patroni-1'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['patroni-2'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['patroni-3'].ansible_host }}/32 md5
   - host all root 0.0.0.0/0 md5
   - host all all  0.0.0.0/0 md5
   users:

@@ -23,6 +23,6 @@ global
         backend bk_db 
             option httpchk
             mode tcp
-            server patroni-1 {{ ansible_host['patroni-1'] }}:5432 maxconn 100 check port 8008
-            server patroni-2 {{ ansible_host['patroni-1'] }}:5432 maxconn 100 check port 8008
-            server patroni-3 {{ ansible_host['patroni-1'] }}:5432 maxconn 100 check port 8008
+            server patroni-1 {{ hostvars['patroni-1'].ansible_host }}:5432 maxconn 100 check port 8008
+            server patroni-2 {{ hostvars['patroni-2'].ansible_host }}:5432 maxconn 100 check port 8008
+            server patroni-3 {{ hostvars['patroni-3'].ansible_host }}:5432 maxconn 100 check port 8008

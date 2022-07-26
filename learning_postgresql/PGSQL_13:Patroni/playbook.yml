@@ -8,35 +8,36 @@
     - name: Apply tags to tasks within included file
       include_tasks:
         file: include/ssh_append.yml
-      when: 
+      when:
         - inventory_hostname in groups['etcdservers']
         - inventory_hostname in groups['haproxyservers']
         - inventory_hostname in groups['patroniservers']
-
     - name: configure etcd
       block:
         - name: put etcd_installer.sh
           ansible.builtin.template:
             src: templates/etcd_installer.sh.j2
-            dest: /root/etcd_installed.sh
+            dest: /root/etcd_installer.sh
             owner: root
             group: root
             mode: '0755'
-
         - name: run script etcd_installer.sh
           shell: |
             /root/etcd_installer.sh
-
         - name: Create etcd group
           group:
             name: "etcd"
-        
         - name: Create etcd user
           user:
             name: "etcd"
             group: "etcd"
             home: /bin/false
-
+        - name: create folder for etcd
+          file:
+            path: "/etc/etcd"
+            owner: etcd
+            group: etcd
+            state: directory
         - name: add etcd config file
           ansible.builtin.template:
             src: templates/etcd.conf.yml.sample.j2
@@ -44,8 +45,7 @@
             owner: etcd
             group: etcd
             mode: '0755'
-
-        - name: Change kubeconfig file permission
+        - name: Change etcd folders permissions
           file:
             path: "{{ item }}"
             owner: etcd
@@ -54,35 +54,31 @@
           loop:
             - "/etc/etcd"
             - "/task13/etcd"
-
-        - name: Create etcd systemd service 
+        - name: Create etcd systemd service
           template:
             src: templates/etcd.service.j2
             dest: /etc/systemd/system/etcd.service
             owner: root
             group: root
             mode: 0644
-        
         - name: Start etcd
           service:
             name: etcd
             state: "restarted"
             enabled: True
             daemon_reload: True
-
-        #Запустите etcd, проверьте его работоспособность и узнайте, какая нода является ведущей (является мастер-нодой), 
-        #сколько members в кластере и их имена, какие из них активны. Все ноды должны быть в состоянии helthy.
-      when: 
+            #Запустите etcd, проверьте его работоспособность и узнайте, какая нода является ведущей (является мастер-нодой), 
+            #сколько members в кластере и их имена, какие из них активны. Все ноды должны быть в состоянии helthy.
+      when:
         - inventory_hostname in groups['etcdservers']
-
     - name: configure patroni
       block:
         - name: install 1_ubuntu
           ansible.builtin.apt:
             pkg:
-            - wget
-            - ca-certificates
-            - vim-nox
+              - wget
+              - ca-certificates
+              - vim-nox
             update_cache: yes
             state: latest
         - name: 2_ubuntu
@@ -98,46 +94,41 @@
           become: yes
           ansible.builtin.apt:
             pkg:
-            - postgresql-13
-            - postgresql-client-13
+              - postgresql-13
+              - postgresql-client-13
             update_cache: yes
             state: latest
-     
         - name: Ensure postgresql database-cluster manager package
           package:
-            name:                
-              - postgresql-common 
-              - python3-pip 
-              - python3-dev 
+            name:
+              - postgresql-common
+              - python3-pip
+              - python3-dev
               - libpq-dev
             update_cache: yes
-
         - name: Install pip3 packages
           pip:
-            name: 
+            name:
               - setuptools
               - pip
             extra_args: --upgrade
             executable: pip3
-
         - name: Install pip packages
           pip:
-            name: 
+            name:
               - psycopg2-binary
             extra_args: --upgrade
             executable: pip
-
-#        - name: Add patroni group
-#          group:
-#            name: "patroni"
-#            state: present
-#        
-#        - name: Add patroni user
-#          user:
-#            name: "patroni"
-#            group: "patroni"
-#            system: yes
-
+            #        - name: Add patroni group
+            #          group:
+            #            name: "patroni"
+            #            state: present
+            #        
+            #        - name: Add patroni user
+            #          user:
+            #            name: "patroni"
+            #            group: "patroni"
+            #            system: yes
         - name: Restart postgresql.service
           ansible.builtin.systemd:
             state: stopped
@@ -145,33 +136,28 @@
             name: "{{ item }}"
           loop:
             - postgresql.service
-     
         - name: Install patroni[etcd] packages
           pip:
-            name: 
+            name:
               - 'patroni[etcd]'
-
         - name: create folder for patroni[etcd]
           file:
             path: "/etc/patroni"
             owner: postgres
             group: postgres
             state: directory
-
         - name: Ensure postgresql database-cluster manager package
           package:
-            name:                
+            name:
               - patroni
             update_cache: yes
-
-        - name: put etcd_installer.sh
+        - name: put patroni.yml 
           ansible.builtin.template:
             src: templates/patroni.yml.j2
             dest: /etc/patroni/patroni.yml
             owner: postgres
             group: postgres
             mode: '0755'
-
         - name: change ownership for patroni folders
           file:
             path: "{{ item }}"
@@ -181,57 +167,67 @@
           loop:
             - "/task13/patroni/"
             - "/etc/patroni/"
-
-        - name: Create patroni systemd service 
+        - name: Create patroni systemd service
           template:
             src: templates/patroni.service.j2
             dest: /etc/systemd/system/patroni.service
             owner: root
             group: root
             mode: 0644
-        
         - name: Start patroni
           service:
             name: patroni
             state: "restarted"
             enabled: True
             daemon_reload: True
-
-
-      when: 
+      when:
         - inventory_hostname in groups['patroniservers']
 
-####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
-####
-####CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);
-####
-####Внесите в таблицу test следующие данные:
-####
-####INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
-####
-####Затем зайдите на любую из реплик с помощью psql и получите все данные из таблицы test командой:
-####
-####SELECT * FROM test;
-####
-####Вы должны увидеть следующий вывод:
-####
-#### id |  info   
-####----+---------
-####  1 | Hello
-####  2 | From
-####  3 | Patroni
-####  4 | Leader
-####(4 rows)
+
+        ####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
+
+#УЗНАЙТЕ КАКАЯ НОДА ЛИДЕР
+
+        ####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
+        ####
+        ####CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);
+        ####
+#    - name: check cluster functionality
+#      become_user: postgres
+#      shell: |
+#        export PGPASSWORD=admin && psql -h {{ ansible_host['patroni-1'] }} -p 5432 -d postgres -U root -W -c "CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);"
+#      args:
+#        executable: /usr/bin/bash
+#      when:
+#        - inventory_hostname equal to
+
+        ####Внесите в таблицу test следующие данные:
+        ####
+        ####INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+        ####
+        ####Затем зайдите на любую из реплик с помощью psql и получите все данные из таблицы test командой:
+        ####
+        ####SELECT * FROM test;
+        ####
+        ####Вы должны увидеть следующий вывод:
+        ####
+        #### id |  info   
+        ####----+---------
+        ####  1 | Hello
+        ####  2 | From
+        ####  3 | Patroni
+        ####  4 | Leader
+        ####(4 rows)
+
 
     - name: configure haproxy
       block:
         - name: install haproxy
           ansible.builtin.apt:
             pkg:
-            - haproxy
+              - haproxy
             update_cache: yes
             state: latest
-
         - name: put haproxyconfig
           ansible.builtin.template:
             src: templates/haproxy.cfg.j2
@@ -239,25 +235,22 @@
             owner: haproxy
             group: haproxy
             mode: '0755'
-        
         - name: Start haproxy
           service:
             name: haproxy
             state: "restarted"
             enabled: True
             daemon_reload: True
-
-      when: 
+      when:
         - inventory_hostname in groups['haproxyservers']
+#    - name: add superuser root
+#      become_user: postgres
+#      shell: |
+#        export PGPASSWORD=admin && psql -h {{ ansible_host['HAProxy'] }} -p 5432 -d postgres -U root -W -c "select inet_server_addr();"
+#      args:
+#        executable: /usr/bin/bash
+#      ignore_errors: yes
+#      when:
+#        - inventory_hostname in groups['patroni-1']
 
-
-    - name: add superuser root
-      become_user: postgres
-      shell: |
-        export PGPASSWORD=admin && psql -h {{ ansible_host['HAProxy'] }} -p 5432 -d postgres -U root -W -c "select inet_server_addr();"
-      args:
-        executable: /usr/bin/bash
-      ignore_errors: yes
-      when: 
-        - inventory_hostname in groups['patroni-1']
 #Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером. Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера.

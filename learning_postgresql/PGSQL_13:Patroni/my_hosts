@@ -1,11 +1,11 @@
 [etcdservers]
-etcd-1    ansible_user=user ansible_host=164.90.197.101    ansible_password=pyoufxyevyac
-etcd-2    ansible_user=user ansible_host=164.90.197.105    ansible_password=wuktufcxqzmc
-etcd-3    ansible_user=user ansible_host=164.90.197.151    ansible_password=usybezyicgrp
-[patroniservers]
-patroni-1 ansible_user=user ansible_host=164.90.197.93     ansible_password=ceqiciarlhne
-patroni-2 ansible_user=user ansible_host=64.227.73.86      ansible_password=zljisgamrhvr
-patroni-3 ansible_user=user ansible_host=164.90.197.143    ansible_password=faosmjvqguiv
-[haproxyservers]
-HAProxy   ansible_user=user ansible_host=164.90.196.145    ansible_password=cmmrfynozudk
+etcd-1    ansible_user=user ansible_host=206.189.3.70                   ansible_password=ceuwcmixhfqq                        
+etcd-2    ansible_user=user ansible_host=174.138.12.78                  ansible_password=mwddscuvttcq                        
+etcd-3    ansible_user=user ansible_host=167.99.223.194                 ansible_password=xynwvsywglyn                        
+[patroniservers]                                                                                                 
+patroni-1 ansible_user=user ansible_host=159.223.3.189                  ansible_password=prvoeiytitdk                        
+patroni-2 ansible_user=user ansible_host=104.248.203.213                ansible_password=hbskvuunghrj                        
+patroni-3 ansible_user=user ansible_host=159.223.5.101                  ansible_password=rqfjursjsqfz                        
+[haproxyservers]                                                                                                 
+HAProxy   ansible_user=user ansible_host=68.183.10.196                  ansible_password=iocsxghzjzas                        
 

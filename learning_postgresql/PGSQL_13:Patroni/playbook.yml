@@ -44,7 +44,7 @@
             dest: /etc/etcd/etcd.yml
             owner: etcd
             group: etcd
-            mode: '0755'
+            mode: '0700'
         - name: Change etcd folders permissions
           file:
             path: "{{ item }}"
@@ -67,8 +67,50 @@
             state: "restarted"
             enabled: True
             daemon_reload: True
-            #Запустите etcd, проверьте его работоспособность и узнайте, какая нода является ведущей (является мастер-нодой), 
-            #сколько members в кластере и их имена, какие из них активны. Все ноды должны быть в состоянии helthy.
+        - name: Get etcd leader ip
+          shell: |
+            /task13/etcd/etcdctl --endpoints="{{ hostvars['etcd-1'].ansible_host }}:2379,{{ hostvars['etcd-2'].ansible_host }}:2379,{{ hostvars['etcd-3'].ansible_host }}:2379" endpoint status | grep true | cut -d ':' -f1
+          args:
+            executable: /usr/bin/bash
+          run_once: true
+          register: etcd_leader_ip
+          when:
+            - inventory_hostname == 'etcd-1'
+        - name: output etcd_leader_ip
+          ansible.builtin.debug:
+            msg: "{{ etcd_leader_ip }}"
+          run_once: true
+        - name: Put values into etcd cluster from replica nodes
+          shell: |
+            ETCDCTL_API=3 /task13/etcd/etcdctl put {{ item }}
+          args:
+            executable: /usr/bin/bash
+          loop:
+            - "name1 batman"
+            - "name2 ironman"
+            - "name3 superman"
+            - "name4 spiderman"
+          when:
+            - ansible_host in etcd_leader_ip.stdout_lines[0]
+
+        - name: Get newly putted values
+          shell: |
+            ETCDCTL_API=3 /task13/etcd/etcdctl get {{ item }}
+          args:
+            executable: /usr/bin/bash
+          loop:
+            - "name1"
+            - "name2"
+            - "name3"
+            - "name4"
+          register: etcd_values
+          when:
+            -  ansible_host not in etcd_leader_ip.stdout_lines[0]
+        - name: output etcd_values
+          ansible.builtin.debug:
+            msg: "{{ item['stdout'] }}"
+          loop: "{{ etcd_values.results }}"
+          run_once: true
       when:
         - inventory_hostname in groups['etcdservers']
     - name: configure patroni
@@ -129,7 +171,7 @@
             #            name: "patroni"
             #            group: "patroni"
             #            system: yes
-        - name: Restart postgresql.service
+        - name: Stop postgresql.service
           ansible.builtin.systemd:
             state: stopped
             daemon_reload: yes
@@ -151,7 +193,7 @@
             name:
               - patroni
             update_cache: yes
-        - name: put patroni.yml 
+        - name: put patroni.yml
           ansible.builtin.template:
             src: templates/patroni.yml.j2
             dest: /etc/patroni/patroni.yml
@@ -180,44 +222,49 @@
             state: "restarted"
             enabled: True
             daemon_reload: True
+        - name: Get patroni leader ip
+          shell: |
+            patronictl -c /etc/patroni/patroni.yml list | grep Leader  | cut -d ' ' -f4
+          args:
+            executable: /usr/bin/bash
+          register: patroni_leader_ip
+
+        - name: output patroni_leader_ip
+          ansible.builtin.debug:
+            msg: "{{ patroni_leader_ip }}"
+          when:
+            - inventory_hostname == 'patroni-1'
+#        - name: output patroni_leader_ip2
+#          ansible.builtin.debug:
+#            msg: "{{ patroni_leader_ip }}------{{  patroni_leader_ip.stdout }}-------{{ patroni_leader_ip['stdout'] }}"
+#          when:
+#            - inventory_hostname != 'patroni-12'
+
+        - name: Create table on leader Patroni
+          become_user: postgres
+          shell: |
+            PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+              CREATE TABLE test(id SERIAL Primary Key NOT NULL, info TEXT);
+              "
+            PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+              INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+              "
+          when:
+            - ansible_host in patroni_leader_ip.stdout_lines[0]
+        - name: Check newly created table on replicas
+          become_user: postgres
+          shell: |
+            PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command '
+              SELECT * FROM test;
+            '
+          when:
+            - ansible_host not in patroni_leader_ip.stdout_lines[0]
+            #        - name: output etcd_values
+            #          ansible.builtin.debug: 
+            #            msg: "{{ etcd_values.stdout }}"
+            #          run_once: true
       when:
         - inventory_hostname in groups['patroniservers']
-
-
-        ####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
-
-#УЗНАЙТЕ КАКАЯ НОДА ЛИДЕР
-
-        ####    Проверте работоспособность кластера PostgreSQL под управлением Patroni и получите информацию о нодах. Узнайте, какая из нод лидер кластера на данный момент. Затем проверьте работу репликации. Подключитесь к лидеру c помощью psql создайте таблицу test:
-        ####
-        ####CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);
-        ####
-#    - name: check cluster functionality
-#      become_user: postgres
-#      shell: |
-#        export PGPASSWORD=admin && psql -h {{ ansible_host['patroni-1'] }} -p 5432 -d postgres -U root -W -c "CREATE TABLE test (id SERIAL Primary Key NOT NULL, info TEXT);"
-#      args:
-#        executable: /usr/bin/bash
-#      when:
-#        - inventory_hostname equal to
-
-        ####Внесите в таблицу test следующие данные:
-        ####
-        ####INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
-        ####
-        ####Затем зайдите на любую из реплик с помощью psql и получите все данные из таблицы test командой:
-        ####
-        ####SELECT * FROM test;
-        ####
-        ####Вы должны увидеть следующий вывод:
-        ####
-        #### id |  info   
-        ####----+---------
-        ####  1 | Hello
-        ####  2 | From
-        ####  3 | Patroni
-        ####  4 | Leader
-        ####(4 rows)
 
 
     - name: configure haproxy
@@ -241,8 +288,32 @@
             state: "restarted"
             enabled: True
             daemon_reload: True
+        - name: pause for 45 seconds
+          pause:
+            seconds: 45
       when:
         - inventory_hostname in groups['haproxyservers']
+    - name: Get Patroni leader from Haproxy
+      shell: |
+        PGPASSWORD=admin psql -U root -h {{ hostvars['HAProxy'].ansible_host }} -p 5432 postgres --command "
+          SELECT inet_server_addr();
+        "
+      args:
+        executable: /usr/bin/bash
+      register: haproxy_output
+      when:
+        - inventory_hostname in groups['patroniservers']
+    - name: Output leader patroni server from HAProxy ip
+      ansible.builtin.debug:
+        msg: "{{ haproxy_output.stdout_lines }}"
+      when:
+        - inventory_hostname == 'patroni-1'
+
+    - name: Lastly visit HAProxy to get stats
+      ansible.builtin.debug:
+        msg: "http://{{ ansible_host }}:32700/"
+      run_once: true
+
 #    - name: add superuser root
 #      become_user: postgres
 #      shell: |
@@ -252,5 +323,3 @@
 #      ignore_errors: yes
 #      when:
 #        - inventory_hostname in groups['patroni-1']
-
-#Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером. Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера.

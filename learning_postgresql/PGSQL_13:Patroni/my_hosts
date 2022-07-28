@@ -1,11 +1,11 @@
 [etcdservers]
-etcd-1    ansible_user=user ansible_host=206.189.3.70                   ansible_password=ceuwcmixhfqq                        
-etcd-2    ansible_user=user ansible_host=174.138.12.78                  ansible_password=mwddscuvttcq                        
-etcd-3    ansible_user=user ansible_host=167.99.223.194                 ansible_password=xynwvsywglyn                        
-[patroniservers]                                                                                                 
-patroni-1 ansible_user=user ansible_host=159.223.3.189                  ansible_password=prvoeiytitdk                        
-patroni-2 ansible_user=user ansible_host=104.248.203.213                ansible_password=hbskvuunghrj                        
-patroni-3 ansible_user=user ansible_host=159.223.5.101                  ansible_password=rqfjursjsqfz                        
-[haproxyservers]                                                                                                 
-HAProxy   ansible_user=user ansible_host=68.183.10.196                  ansible_password=iocsxghzjzas                        
+etcd-1    ansible_user=user ansible_host=104.248.80.34             ansible_password=ffmvjtbejfyo                        
+etcd-2    ansible_user=user ansible_host=164.90.198.73             ansible_password=cpdoeohwkqry                        
+etcd-3    ansible_user=user ansible_host=161.35.153.35             ansible_password=zzjxplymbxqr                        
+[patroniservers]                                                                                            
+patroni-1 ansible_user=user ansible_host=161.35.154.71             ansible_password=ejngpghwmhnt                        
+patroni-2 ansible_user=user ansible_host=161.35.156.243            ansible_password=lpwlncswxcfa                        
+patroni-3 ansible_user=user ansible_host=164.90.196.151            ansible_password=hlwnzclktqfz                        
+[haproxyservers]                                                                                            
+HAProxy   ansible_user=user ansible_host=164.90.194.215            ansible_password=bsykorqftvjs                        
 

@@ -115,7 +115,7 @@
         - inventory_hostname in groups['etcdservers']
     - name: configure patroni
       block:
-        - name: install 1_ubuntu
+        - name: install miscellaneous ubuntu
           ansible.builtin.apt:
             pkg:
               - wget
@@ -123,16 +123,16 @@
               - vim-nox
             update_cache: yes
             state: latest
-        - name: 2_ubuntu
+        - name: add key for postgres repo
           ansible.builtin.apt_key:
             url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
             state: present
-        - name: 3_ubuntu
+        - name: add repo for postgres
           ansible.builtin.apt_repository:
             repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
             filename: pgdg
             state: present
-        - name: install 4_ubuntu
+        - name: install postgres13
           become: yes
           ansible.builtin.apt:
             pkg:
@@ -249,14 +249,26 @@
             PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
               INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
               "
+          args:
+            executable: /usr/bin/bash
           when:
             - ansible_host in patroni_leader_ip.stdout_lines[0]
+        - name: pause for 50 seconds
+          pause:
+            seconds: 50
+          delegate_to: localhost
         - name: Check newly created table on replicas
           become_user: postgres
           shell: |
-            PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command '
-              SELECT * FROM test;
-            '
+            sleep 10
+            PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command 'SELECT * FROM test;'
+          args:
+            executable: /usr/bin/bash
+          register: postgres_check
+
+        - name: output postgres_check
+          ansible.builtin.debug:
+            msg: "{{ postgres_check.stdout_lines }}"
           when:
             - ansible_host not in patroni_leader_ip.stdout_lines[0]
             #        - name: output etcd_values
@@ -288,11 +300,13 @@
             state: "restarted"
             enabled: True
             daemon_reload: True
-        - name: pause for 45 seconds
-          pause:
-            seconds: 45
       when:
         - inventory_hostname in groups['haproxyservers']
+
+    - name: pause for 45 seconds
+      pause:
+        seconds: 45
+      delegate_to: localhost
     - name: Get Patroni leader from Haproxy
       shell: |
         PGPASSWORD=admin psql -U root -h {{ hostvars['HAProxy'].ansible_host }} -p 5432 postgres --command "
@@ -311,15 +325,15 @@
 
     - name: Lastly visit HAProxy to get stats
       ansible.builtin.debug:
-        msg: "http://{{ ansible_host }}:32700/"
+        msg: "http://{{ hostvars['HAProxy'].ansible_host }}:32700/"
       run_once: true
 
-#    - name: add superuser root
-#      become_user: postgres
-#      shell: |
-#        export PGPASSWORD=admin && psql -h {{ ansible_host['HAProxy'] }} -p 5432 -d postgres -U root -W -c "select inet_server_addr();"
-#      args:
-#        executable: /usr/bin/bash
-#      ignore_errors: yes
-#      when:
-#        - inventory_hostname in groups['patroni-1']
+    - name: Last steps do manually
+      ansible.builtin.debug:
+        msg:
+        - "Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером."
+        - "Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера."
+      run_once: true
+
+
+

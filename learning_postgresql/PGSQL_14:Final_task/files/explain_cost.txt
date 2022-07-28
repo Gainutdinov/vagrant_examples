@@ -1,0 +1,8 @@
+                                                     QUERY PLAN                                                      
+---------------------------------------------------------------------------------------------------------------------
+ Index Scan using pgsql_pkey on pgsql  (cost=0.29..8.51 rows=11 width=37) (actual time=0.012..0.017 rows=10 loops=1)
+   Index Cond: ((id >= 10) AND (id < 20))
+ Planning Time: 0.624 ms
+ Execution Time: 0.066 ms
+(4 rows)
+

@@ -1,0 +1,339 @@
+---
+- hosts: all
+  become: yes
+  gather_facts: yes
+  vars:
+    max_clients: 200
+  tasks:
+    - name: Apply tags to tasks within included file
+      include_tasks:
+        file: include/ssh_append.yml
+      when:
+        - inventory_hostname in groups['etcdservers']
+        - inventory_hostname in groups['haproxyservers']
+        - inventory_hostname in groups['patroniservers']
+    - name: configure etcd
+      block:
+        - name: put etcd_installer.sh
+          ansible.builtin.template:
+            src: templates/etcd_installer.sh.j2
+            dest: /root/etcd_installer.sh
+            owner: root
+            group: root
+            mode: '0755'
+        - name: run script etcd_installer.sh
+          shell: |
+            /root/etcd_installer.sh
+        - name: Create etcd group
+          group:
+            name: "etcd"
+        - name: Create etcd user
+          user:
+            name: "etcd"
+            group: "etcd"
+            home: /bin/false
+        - name: create folder for etcd
+          file:
+            path: "/etc/etcd"
+            owner: etcd
+            group: etcd
+            state: directory
+        - name: add etcd config file
+          ansible.builtin.template:
+            src: templates/etcd.conf.yml.sample.j2
+            dest: /etc/etcd/etcd.yml
+            owner: etcd
+            group: etcd
+            mode: '0700'
+        - name: Change etcd folders permissions
+          file:
+            path: "{{ item }}"
+            owner: etcd
+            group: etcd
+            recurse: yes
+          loop:
+            - "/etc/etcd"
+            - "/task13/etcd"
+        - name: Create etcd systemd service
+          template:
+            src: templates/etcd.service.j2
+            dest: /etc/systemd/system/etcd.service
+            owner: root
+            group: root
+            mode: 0644
+        - name: Start etcd
+          service:
+            name: etcd
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
+        - name: Get etcd leader ip
+          shell: |
+            /task13/etcd/etcdctl --endpoints="{{ hostvars['etcd-1'].ansible_host }}:2379,{{ hostvars['etcd-2'].ansible_host }}:2379,{{ hostvars['etcd-3'].ansible_host }}:2379" endpoint status | grep true | cut -d ':' -f1
+          args:
+            executable: /usr/bin/bash
+          run_once: true
+          register: etcd_leader_ip
+          when:
+            - inventory_hostname == 'etcd-1'
+        - name: output etcd_leader_ip
+          ansible.builtin.debug:
+            msg: "{{ etcd_leader_ip }}"
+          run_once: true
+        - name: Put values into etcd cluster from replica nodes
+          shell: |
+            ETCDCTL_API=3 /task13/etcd/etcdctl put {{ item }}
+          args:
+            executable: /usr/bin/bash
+          loop:
+            - "name1 batman"
+            - "name2 ironman"
+            - "name3 superman"
+            - "name4 spiderman"
+          when:
+            - ansible_host in etcd_leader_ip.stdout_lines[0]
+
+        - name: Get newly putted values
+          shell: |
+            ETCDCTL_API=3 /task13/etcd/etcdctl get {{ item }}
+          args:
+            executable: /usr/bin/bash
+          loop:
+            - "name1"
+            - "name2"
+            - "name3"
+            - "name4"
+          register: etcd_values
+          when:
+            -  ansible_host not in etcd_leader_ip.stdout_lines[0]
+        - name: output etcd_values
+          ansible.builtin.debug:
+            msg: "{{ item['stdout'] }}"
+          loop: "{{ etcd_values.results }}"
+          run_once: true
+      when:
+        - inventory_hostname in groups['etcdservers']
+    - name: configure patroni
+      block:
+        - name: install miscellaneous ubuntu
+          ansible.builtin.apt:
+            pkg:
+              - wget
+              - ca-certificates
+              - vim-nox
+            update_cache: yes
+            state: latest
+        - name: add key for postgres repo
+          ansible.builtin.apt_key:
+            url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+            state: present
+        - name: add repo for postgres
+          ansible.builtin.apt_repository:
+            repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+            filename: pgdg
+            state: present
+        - name: install postgres13
+          become: yes
+          ansible.builtin.apt:
+            pkg:
+              - postgresql-13
+              - postgresql-client-13
+            update_cache: yes
+            state: latest
+        - name: Ensure postgresql database-cluster manager package
+          package:
+            name:
+              - postgresql-common
+              - python3-pip
+              - python3-dev
+              - libpq-dev
+            update_cache: yes
+        - name: Install pip3 packages
+          pip:
+            name:
+              - setuptools
+              - pip
+            extra_args: --upgrade
+            executable: pip3
+        - name: Install pip packages
+          pip:
+            name:
+              - psycopg2-binary
+            extra_args: --upgrade
+            executable: pip
+            #        - name: Add patroni group
+            #          group:
+            #            name: "patroni"
+            #            state: present
+            #        
+            #        - name: Add patroni user
+            #          user:
+            #            name: "patroni"
+            #            group: "patroni"
+            #            system: yes
+        - name: Stop postgresql.service
+          ansible.builtin.systemd:
+            state: stopped
+            daemon_reload: yes
+            name: "{{ item }}"
+          loop:
+            - postgresql.service
+        - name: Install patroni[etcd] packages
+          pip:
+            name:
+              - 'patroni[etcd]'
+        - name: create folder for patroni[etcd]
+          file:
+            path: "/etc/patroni"
+            owner: postgres
+            group: postgres
+            state: directory
+        - name: Ensure postgresql database-cluster manager package
+          package:
+            name:
+              - patroni
+            update_cache: yes
+        - name: put patroni.yml
+          ansible.builtin.template:
+            src: templates/patroni.yml.j2
+            dest: /etc/patroni/patroni.yml
+            owner: postgres
+            group: postgres
+            mode: '0755'
+        - name: change ownership for patroni folders
+          file:
+            path: "{{ item }}"
+            owner: postgres
+            group: postgres
+            recurse: true
+          loop:
+            - "/task13/patroni/"
+            - "/etc/patroni/"
+        - name: Create patroni systemd service
+          template:
+            src: templates/patroni.service.j2
+            dest: /etc/systemd/system/patroni.service
+            owner: root
+            group: root
+            mode: 0644
+        - name: Start patroni
+          service:
+            name: patroni
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
+        - name: Get patroni leader ip
+          shell: |
+            patronictl -c /etc/patroni/patroni.yml list | grep Leader  | cut -d ' ' -f4
+          args:
+            executable: /usr/bin/bash
+          register: patroni_leader_ip
+
+        - name: output patroni_leader_ip
+          ansible.builtin.debug:
+            msg: "{{ patroni_leader_ip }}"
+          when:
+            - inventory_hostname == 'patroni-1'
+#        - name: output patroni_leader_ip2
+#          ansible.builtin.debug:
+#            msg: "{{ patroni_leader_ip }}------{{  patroni_leader_ip.stdout }}-------{{ patroni_leader_ip['stdout'] }}"
+#          when:
+#            - inventory_hostname != 'patroni-12'
+
+        - name: Create table on leader Patroni
+          become_user: postgres
+          shell: |
+            PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+              CREATE TABLE test(id SERIAL Primary Key NOT NULL, info TEXT);
+              "
+            PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+              INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+              "
+          args:
+            executable: /usr/bin/bash
+          when:
+            - ansible_host in patroni_leader_ip.stdout_lines[0]
+        - name: pause for 50 seconds
+          pause:
+            seconds: 50
+          delegate_to: localhost
+        - name: Check newly created table on replicas
+          become_user: postgres
+          shell: |
+            sleep 10
+            PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command 'SELECT * FROM test;'
+          args:
+            executable: /usr/bin/bash
+          register: postgres_check
+
+        - name: output postgres_check
+          ansible.builtin.debug:
+            msg: "{{ postgres_check.stdout_lines }}"
+          when:
+            - ansible_host not in patroni_leader_ip.stdout_lines[0]
+            #        - name: output etcd_values
+            #          ansible.builtin.debug: 
+            #            msg: "{{ etcd_values.stdout }}"
+            #          run_once: true
+      when:
+        - inventory_hostname in groups['patroniservers']
+
+
+    - name: configure haproxy
+      block:
+        - name: install haproxy
+          ansible.builtin.apt:
+            pkg:
+              - haproxy
+            update_cache: yes
+            state: latest
+        - name: put haproxyconfig
+          ansible.builtin.template:
+            src: templates/haproxy.cfg.j2
+            dest: /etc/haproxy/haproxy.cfg
+            owner: haproxy
+            group: haproxy
+            mode: '0755'
+        - name: Start haproxy
+          service:
+            name: haproxy
+            state: "restarted"
+            enabled: True
+            daemon_reload: True
+      when:
+        - inventory_hostname in groups['haproxyservers']
+
+    - name: pause for 45 seconds
+      pause:
+        seconds: 45
+      delegate_to: localhost
+    - name: Get Patroni leader from Haproxy
+      shell: |
+        PGPASSWORD=admin psql -U root -h {{ hostvars['HAProxy'].ansible_host }} -p 5432 postgres --command "
+          SELECT inet_server_addr();
+        "
+      args:
+        executable: /usr/bin/bash
+      register: haproxy_output
+      when:
+        - inventory_hostname in groups['patroniservers']
+    - name: Output leader patroni server from HAProxy ip
+      ansible.builtin.debug:
+        msg: "{{ haproxy_output.stdout_lines }}"
+      when:
+        - inventory_hostname == 'patroni-1'
+
+    - name: Lastly visit HAProxy to get stats
+      ansible.builtin.debug:
+        msg: "http://{{ hostvars['HAProxy'].ansible_host }}:32700/"
+      run_once: true
+
+    - name: Last steps do manually
+      ansible.builtin.debug:
+        msg:
+        - "Убейте лидера кластера PostgreSQL, для этого остановите PostgreSQL на ноде, которая на данный момент является лидером."
+        - "Убедитесь, что Patroni произвел переключение. Узнайте IP нового лидера."
+      run_once: true
+
+
+

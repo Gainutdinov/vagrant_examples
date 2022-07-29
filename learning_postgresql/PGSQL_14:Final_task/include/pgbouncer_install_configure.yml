@@ -1,0 +1,33 @@
+- name: install pgbouncer
+  become: yes
+  ansible.builtin.apt:
+    pkg:
+    - pgbouncer
+    - postgresql-client-common
+    update_cache: yes
+    state: latest
+
+- name: configure pgbouncer
+  ansible.builtin.lineinfile:
+    path: "/etc/pgbouncer/pgbouncer.ini"
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+  loop:
+    - { regexp: "^auth_type = trust",        line: "auth_type = md5" }
+    - { regexp: "^;pool_mode = session",     line: "pool_mode = transaction" }
+    - { regexp: "^;max_client = 100",        line: "max_client_conn = 1000" }
+    - { regexp: "^;default_pool_size = 20",  line: "default_pool_size = 30" }
+    - { regexp: "^;foodb =",                 line: "rebrain_courses_db = host=localhost port=5432 user=rebrain_monitoring password=password" }
+
+- name: add entry for userlist
+  ansible.builtin.lineinfile:
+    path: "/etc/pgbouncer/userlist.txt"
+    line: '"rebrain_monitoring" "password"'
+
+- name: restart service pgbouncer.service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: pgbouncer.service
+
+

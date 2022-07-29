@@ -1,0 +1,97 @@
+- name: put etcd_installer.sh
+  ansible.builtin.template:
+    src: templates/etcd_installer.sh.j2
+    dest: /root/etcd_installer.sh
+    owner: root
+    group: root
+    mode: '0755'
+- name: run script etcd_installer.sh
+  shell: |
+    /root/etcd_installer.sh
+- name: Create etcd group
+  group:
+    name: "etcd"
+- name: Create etcd user
+  user:
+    name: "etcd"
+    group: "etcd"
+    home: /bin/false
+- name: create folder for etcd
+  file:
+    path: "/etc/etcd"
+    owner: etcd
+    group: etcd
+    state: directory
+- name: add etcd config file
+  ansible.builtin.template:
+    src: templates/etcd.conf.yml.sample.j2
+    dest: /etc/etcd/etcd.yml
+    owner: etcd
+    group: etcd
+    mode: '0700'
+- name: Change etcd folders permissions
+  file:
+    path: "{{ item }}"
+    owner: etcd
+    group: etcd
+    recurse: yes
+  loop:
+    - "/etc/etcd"
+    - "/task14/etcd"
+- name: Create etcd systemd service
+  template:
+    src: templates/etcd.service.j2
+    dest: /etc/systemd/system/etcd.service
+    owner: root
+    group: root
+    mode: 0644
+- name: Start etcd
+  service:
+    name: etcd
+    state: "restarted"
+    enabled: True
+    daemon_reload: True
+- name: Get etcd leader ip
+  shell: |
+    /task14/etcd/etcdctl --endpoints="{{ hostvars['etcd-1'].ansible_host }}:2379,{{ hostvars['etcd-2'].ansible_host }}:2379,{{ hostvars['etcd-3'].ansible_host }}:2379" endpoint status | grep true | cut -d ':' -f1
+  args:
+    executable: /usr/bin/bash
+  run_once: true
+  register: etcd_leader_ip
+  when:
+    - inventory_hostname == 'etcd-1'
+- name: output etcd_leader_ip
+  ansible.builtin.debug:
+    msg: "{{ etcd_leader_ip }}"
+  run_once: true
+- name: Put values into etcd cluster from replica nodes
+  shell: |
+    ETCDCTL_API=3 /task14/etcd/etcdctl put {{ item }}
+  args:
+    executable: /usr/bin/bash
+  loop:
+    - "name1 batman"
+    - "name2 ironman"
+    - "name3 superman"
+    - "name4 spiderman"
+  when:
+    - ansible_host in etcd_leader_ip.stdout_lines[0]
+
+- name: Get newly putted values
+  shell: |
+    ETCDCTL_API=3 /task14/etcd/etcdctl get {{ item }}
+  args:
+    executable: /usr/bin/bash
+  loop:
+    - "name1"
+    - "name2"
+    - "name3"
+    - "name4"
+  register: etcd_values
+  when:
+    -  ansible_host not in etcd_leader_ip.stdout_lines[0]
+- name: output etcd_values
+  ansible.builtin.debug:
+    msg: "{{ item['stdout'] }}"
+  loop: "{{ etcd_values.results }}"
+  run_once: true

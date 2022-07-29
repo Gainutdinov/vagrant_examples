@@ -2,7 +2,7 @@
 # --------------------------------------------------------------------------
 scope: rebrain # должно быть одинаковым на всех нодах
 namespace: /rebrain-cluster/ # должно быть одинаковым на всех нодах
-name: rebrain-postgres-node-{{ ansible_nodename.split("-")[-1] | lower }}
+name: rebrain-postgres-node-{{ inventory_hostname.split("-")[-1] | lower }}
 
 restapi:
   listen: {{ ansible_host }}:8008 # адрес той ноды, в которой находится этот файл

@@ -1,13 +1,13 @@
 # This is the configuration file for the etcd server.
 
 # Human-readable name for this member.
-name: 'rebrain-etcd-node-{{ ansible_nodename.split("-")[-1] | lower }}'
+name: 'rebrain-etcd-node-{{ inventory_hostname.split("-")[-1] | lower }}'
 
 # Path to the data directory.
-data-dir: '/task13/etcd/data-dir'
+data-dir: '/task14/etcd/data-dir'
 
 # Path to the dedicated wal directory.
-wal-dir: '/task13/etcd/wal-dir'
+wal-dir: '/task14/etcd/wal-dir'
 
 # Number of committed transactions to trigger a snapshot to disk.
 snapshot-count: 10000

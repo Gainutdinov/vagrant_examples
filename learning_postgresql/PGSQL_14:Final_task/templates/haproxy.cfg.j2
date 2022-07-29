@@ -18,11 +18,10 @@ global
         frontend ft_postgresql 
             bind *:5432 
             mode tcp
-            default_backend bk_db 
+            default_backend bk_pgbouncers
  
-        backend bk_db 
+        backend bk_pgbouncers
             option httpchk
             mode tcp
-            server patroni-1 {{ hostvars['patroni-1'].ansible_host }}:5432 maxconn 100 check port 8008
-            server patroni-2 {{ hostvars['patroni-2'].ansible_host }}:5432 maxconn 100 check port 8008
-            server patroni-3 {{ hostvars['patroni-3'].ansible_host }}:5432 maxconn 100 check port 8008
+            server pgbouncer-1 {{ hostvars['pgbouncer-1'].ansible_host }}:5432 maxconn 100 check port 8008
+            server pgbouncer-2 {{ hostvars['pgbouncer-2'].ansible_host }}:5432 maxconn 100 check port 8008

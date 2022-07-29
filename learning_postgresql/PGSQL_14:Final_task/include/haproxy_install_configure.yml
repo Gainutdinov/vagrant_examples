@@ -1,0 +1,20 @@
+- name: Install haproxy
+  ansible.builtin.apt:
+    pkg:
+      - haproxy
+    update_cache: yes
+    state: latest
+- name: put haproxyconfig
+  ansible.builtin.template:
+    src: templates/haproxy.cfg.j2
+    dest: /etc/haproxy/haproxy.cfg
+    owner: haproxy
+    group: haproxy
+    mode: '0755'
+- name: Start haproxy
+  service:
+    name: haproxy
+    state: "restarted"
+    enabled: True
+    daemon_reload: True
+

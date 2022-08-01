@@ -1,7 +1,7 @@
 # my global config
 global:
-  scrape_interval:     20s
-  evaluation_interval: 15s # Evaluate rules every 15 seconds. The default is every 1 minute.
+  scrape_interval:     10s
+  evaluation_interval: 5s # Evaluate rules every 15 seconds. The default is every 1 minute.
   # scrape_timeout is set to the global default (10s).
 
 # Alertmanager configuration
@@ -23,12 +23,49 @@ scrape_configs:
     static_configs:
     - targets: ['localhost:9090']
     metrics_path: '/metrics'
-  - job_name: 'node_exporter'
+  - job_name: "{{hostvars['pgbouncer-1'].inventory_hostname}}"
     static_configs:
-    - targets: ['localhost:9100']
+    - targets: ["{{hostvars['pgbouncer-1'].ansible_host}}:9100"]
     metrics_path: '/metrics'
-  - job_name: postgres_exporter
+  - job_name: "{{hostvars['pgbouncer-2'].inventory_hostname}}"
     static_configs:
-    - targets: ['localhost:9187']
+    - targets: ["{{hostvars['pgbouncer-2'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['haproxy'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['haproxy'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['etcd-1'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['etcd-1'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['etcd-2'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['etcd-2'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['etcd-3'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['etcd-3'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['etcd-3'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['etcd-3'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['pgsql-replica-1'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['pgsql-replica-1'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['pgsql-replica-2'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['pgsql-replica-2'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+  - job_name: "{{hostvars['pgsql-replica-3'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['pgsql-replica-3'].ansible_host}}:9100"]
+    metrics_path: '/metrics'
+
+  - job_name: "haproxy-postgres-master-{{hostvars['pgsql-replica-3'].inventory_hostname}}"
+    static_configs:
+    - targets: ["{{hostvars['haproxy'].ansible_host}}:9187"]
     metrics_path: '/metrics'
 

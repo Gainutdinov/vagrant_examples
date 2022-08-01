@@ -94,4 +94,5 @@
   ansible.builtin.debug:
     msg: "{{ item['stdout'] }}"
   loop: "{{ etcd_values.results }}"
-  run_once: true
+  when:
+    -  ansible_host not in etcd_leader_ip.stdout_lines[0]

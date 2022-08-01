@@ -1,0 +1,94 @@
+- name: Create a directory if it does not exist /var/lib/prometheus
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+     - /var/lib/prometheus
+     - /etc/prometheus
+
+- name: Add the user 'prometheus'
+  user:
+    name: prometheus
+    comment: John Doe
+    shell: /bin/false
+    system: true
+    create_home: false
+
+- name: download prometheus-2.37.0
+  get_url:
+    url: https://github.com/prometheus/prometheus/releases/download/v2.37.0/prometheus-2.37.0.linux-amd64.tar.gz
+    dest: /tmp/prometheus-2.37.0.linux-amd64.tar.gz
+    mode: '0440'
+
+- name: Extract prometheus-2.37.0.linux-amd64.tar.gz into /tmp
+  unarchive:
+    src: /tmp/prometheus-2.37.0.linux-amd64.tar.gz
+    dest: /tmp
+    remote_src: yes
+
+- name: shell commands
+  shell: |
+    cd /tmp
+    cp prometheus-2.37.0.linux-amd64/{prometheus,promtool} /usr/local/bin/
+    chown prometheus:prometheus /usr/local/bin/{prometheus,promtool}
+    cp -r prometheus-2.37.0.linux-amd64/{consoles,console_libraries} /etc/prometheus/
+    cp prometheus-2.37.0.linux-amd64/prometheus.yml /etc/prometheus/prometheus.yml
+    chown -R prometheus:prometheus /etc/prometheus
+    chown prometheus:prometheus /var/lib/prometheus
+  args:
+    executable: /bin/bash
+
+- name: Template a file to /etc/files.conf
+  template:
+    src: templates/prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: just force systemd to reread configs (2.4 and above)
+  systemd:
+    daemon_reload: yes
+
+- name: restart service prometheus.service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: prometheus.service
+
+- name: Template a file to /etc/prometheus/prometheus.yml
+  template:
+    src: templates/prometheus.yml.j2
+    dest: /etc/prometheus/prometheus.yml
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Install wget
+  apt:
+    name: wget
+    state: present
+
+- name: Add an Apt signing key for grafana repo
+  ansible.builtin.apt_key:
+    url: https://packages.grafana.com/gpg.key
+    state: present
+
+- name: Add specified repository into sources list
+  ansible.builtin.apt_repository:
+    repo: deb https://packages.grafana.com/oss/deb stable main
+    state: present
+    filename: grafana.list
+
+- name: Install grafana
+  apt:
+    name: grafana
+    update_cache: yes
+
+- name: restart service grafana-server.service
+  systemd:
+    state: restarted
+    daemon_reload: yes
+    name: prometheus.service
+

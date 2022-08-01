@@ -33,8 +33,20 @@
         file: include/pgsqlservers_install_configure.yml
       when: inventory_hostname in groups['pgsqlservers']
 
+    - name: Install & configure node_exporter
+      include_tasks:
+        file: include/node_exporter_install_configure.yml
+      when: inventory_hostname in groups['etcdservers']       or 
+            inventory_hostname in groups['haproxyservers']    or 
+            inventory_hostname in groups['pgbouncerservers']  or 
+            inventory_hostname in groups['pgsqlservers'] 
+ 
+    - name: Install & configure prometheus, grafana
+      include_tasks:
+        file: include/prometheus_grafana_install_configure.yml
+      when: inventory_hostname in groups['haproxyservers']
 
-
+#
 #    - name: Apply tags to tasks within included file
 #      include_tasks:
 #        file: include/ssh_append.yml
@@ -42,7 +54,6 @@
 #        - inventory_hostname in groups['etcdservers']
 #        - inventory_hostname in groups['haproxyservers']
 #        - inventory_hostname in groups['patroniservers']
-        :
 #
 #    - name: pause for 45 seconds
 #      pause:

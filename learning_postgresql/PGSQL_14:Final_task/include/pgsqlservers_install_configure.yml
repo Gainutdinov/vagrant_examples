@@ -13,7 +13,7 @@
     state: present
 - name: add repo for postgres
   ansible.builtin.apt_repository:
-    repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+    repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_facts['lsb']['release'] }}-pgdg main
     filename: pgdg
     state: present
 - name: install postgres13
@@ -123,38 +123,38 @@
 #    msg: "{{ patroni_leader_ip }}------{{  patroni_leader_ip.stdout }}-------{{ patroni_leader_ip['stdout'] }}"
 #  when:
 #    - inventory_hostname != 'patroni-12'
-- name: Create table on leader Patroni
-  become_user: postgres
-  shell: |
-    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
-      CREATE TABLE test(id SERIAL Primary Key NOT NULL, info TEXT);
-      "
-    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
-      INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
-      "
-  args:
-    executable: /usr/bin/bash
-  when:
-    - ansible_host in patroni_leader_ip.stdout_lines[0]
-- name: pause for 50 seconds
-  pause:
-    seconds: 50
-  delegate_to: localhost
-- name: Check newly created table on replicas
-  become_user: postgres
-  shell: |
-    sleep 10
-    PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command 'SELECT * FROM test;'
-  args:
-    executable: /usr/bin/bash
-  register: postgres_check
-
-- name: output postgres_check
-  ansible.builtin.debug:
-    msg: "{{ postgres_check.stdout_lines }}"
-  when:
-    - ansible_host not in patroni_leader_ip.stdout_lines[0]
-    #        - name: output etcd_values
-    #          ansible.builtin.debug: 
-    #            msg: "{{ etcd_values.stdout }}"
-    #          run_once: true
+#- name: Create table on leader Patroni
+####  become_user: postgres
+####  shell: |
+####    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+####      CREATE TABLE test(id SERIAL Primary Key NOT NULL, info TEXT);
+####      "
+####    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+####      INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+####      "
+####  args:
+####    executable: /usr/bin/bash
+####  when:
+####    - ansible_host in patroni_leader_ip.stdout_lines[0]
+####- name: pause for 50 seconds
+####  pause:
+####    seconds: 50
+####  delegate_to: localhost
+####- name: Check newly created table on replicas
+####  become_user: postgres
+####  shell: |
+####    sleep 10
+####    PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command 'SELECT * FROM test;'
+####  args:
+####    executable: /usr/bin/bash
+####  register: postgres_check
+####
+####- name: output postgres_check
+####  ansible.builtin.debug:
+####    msg: "{{ postgres_check.stdout_lines }}"
+####  when:
+####    - ansible_host not in patroni_leader_ip.stdout_lines[0]
+####    #        - name: output etcd_values
+####    #          ansible.builtin.debug: 
+####    #            msg: "{{ etcd_values.stdout }}"
+####    #          run_once: true

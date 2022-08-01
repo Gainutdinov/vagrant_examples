@@ -41,9 +41,10 @@ bootstrap:
   pg_hba:
   - host replication replicator ::1/128 md5
   - host replication replicator 127.0.0.1/8 md5
-  - host replication replicator {{ hostvars['patroni-1'].ansible_host }}/32 md5
-  - host replication replicator {{ hostvars['patroni-2'].ansible_host }}/32 md5
-  - host replication replicator {{ hostvars['patroni-3'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['pgsql-replica-1'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['pgsql-replica-2'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['pgsql-replica-3'].ansible_host }}/32 md5
+  - host replication replicator {{ hostvars['pgsql-master'].ansible_host }}/32 md5
   - host all root 0.0.0.0/0 md5
   - host all all  0.0.0.0/0 md5
   users:

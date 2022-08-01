@@ -16,12 +16,13 @@ global
             stats uri /
  
         frontend ft_postgresql 
-            bind *:5432 
+            bind *:6432 
             mode tcp
             default_backend bk_pgbouncers
  
         backend bk_pgbouncers
+            balance roundrobin
             option httpchk
             mode tcp
-            server pgbouncer-1 {{ hostvars['pgbouncer-1'].ansible_host }}:5432 maxconn 100 check port 8008
-            server pgbouncer-2 {{ hostvars['pgbouncer-2'].ansible_host }}:5432 maxconn 100 check port 8008
+            server pgbouncer-1 {{ hostvars['pgbouncer-1'].ansible_host }}:6432 maxconn 100 check port 8008
+            server pgbouncer-2 {{ hostvars['pgbouncer-2'].ansible_host }}:6432 maxconn 100 check port 8008

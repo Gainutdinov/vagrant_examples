@@ -1,0 +1,160 @@
+---
+- name: install miscellaneous ubuntu 
+  ansible.builtin.apt:
+    pkg:
+      - wget
+      - ca-certificates
+      - vim-nox
+    update_cache: yes
+    state: latest
+- name: add key for postgres repo
+  ansible.builtin.apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+- name: add repo for postgres
+  ansible.builtin.apt_repository:
+    repo: deb http://apt.postgresql.org/pub/repos/apt/ {{ ansible_distribution_release }}-pgdg main
+    filename: pgdg
+    state: present
+- name: install postgres13
+  become: yes
+  ansible.builtin.apt:
+    pkg:
+      - postgresql-13
+      - postgresql-client-13
+    update_cache: yes
+    state: latest
+- name: Ensure postgresql database-cluster manager package
+  package:
+    name:
+      - postgresql-common
+      - python3-pip
+      - python3-dev
+      - libpq-dev
+    update_cache: yes
+- name: Install pip3 packages
+  pip:
+    name:
+      - setuptools
+      - pip
+    extra_args: --upgrade
+    executable: pip3
+- name: Install pip packages
+  pip:
+    name:
+      - psycopg2-binary
+    extra_args: --upgrade
+    executable: pip
+- name: Add patroni group
+  group:
+    name: "patroni"
+    state: present
+
+- name: Add patroni user
+  user:
+    name: "patroni"
+    group: "patroni"
+    system: yes
+- name: Stop postgresql.service
+  ansible.builtin.systemd:
+    state: stopped
+    daemon_reload: yes
+    name: "{{ item }}"
+  loop:
+    - postgresql.service
+- name: Install patroni[etcd] packages
+  pip:
+    name:
+      - 'patroni[etcd]'
+- name: create folder for patroni[etcd]
+  file:
+    path: "/etc/patroni"
+    owner: postgres
+    group: postgres
+    state: directory
+- name: Ensure postgresql database-cluster manager package
+  package:
+    name:
+      - patroni
+    update_cache: yes
+- name: put patroni.yml
+  ansible.builtin.template:
+    src: templates/patroni.yml.j2
+    dest: /etc/patroni/patroni.yml
+    owner: postgres
+    group: postgres
+    mode: '0755'
+- name: change ownership for patroni folders
+  file:
+    path: "{{ item }}"
+    owner: postgres
+    group: postgres
+    recurse: true
+  loop:
+    - "/task13/patroni/"
+    - "/etc/patroni/"
+- name: Create patroni systemd service
+  template:
+    src: templates/patroni.service.j2
+    dest: /etc/systemd/system/patroni.service
+    owner: root
+    group: root
+    mode: 0644
+- name: Start patroni
+  service:
+    name: patroni
+    state: "restarted"
+    enabled: True
+    daemon_reload: True
+- name: Get patroni leader ip
+  shell: |
+    patronictl -c /etc/patroni/patroni.yml list | grep Leader  | cut -d ' ' -f4
+  args:
+    executable: /usr/bin/bash
+  register: patroni_leader_ip
+
+- name: output patroni_leader_ip
+  ansible.builtin.debug:
+    msg: "{{ patroni_leader_ip }}"
+  when:
+    - inventory_hostname == 'patroni-1'
+#- name: output patroni_leader_ip2
+#  ansible.builtin.debug:
+#    msg: "{{ patroni_leader_ip }}------{{  patroni_leader_ip.stdout }}-------{{ patroni_leader_ip['stdout'] }}"
+#  when:
+#    - inventory_hostname != 'patroni-12'
+- name: Create table on leader Patroni
+  become_user: postgres
+  shell: |
+    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+      CREATE TABLE test(id SERIAL Primary Key NOT NULL, info TEXT);
+      "
+    PGPASSWORD=admin psql -U root -h {{ patroni_leader_ip.stdout }} -p 5432 postgres --command "
+      INSERT INTO test (info) VALUES ('Hello'),('From'),('Patroni'),('Leader');
+      "
+  args:
+    executable: /usr/bin/bash
+  when:
+    - ansible_host in patroni_leader_ip.stdout_lines[0]
+- name: pause for 50 seconds
+  pause:
+    seconds: 50
+  delegate_to: localhost
+- name: Check newly created table on replicas
+  become_user: postgres
+  shell: |
+    sleep 10
+    PGPASSWORD=admin psql -U root -h {{ ansible_host }} -p 5432 postgres --command 'SELECT * FROM test;'
+  args:
+    executable: /usr/bin/bash
+  register: postgres_check
+
+- name: output postgres_check
+  ansible.builtin.debug:
+    msg: "{{ postgres_check.stdout_lines }}"
+  when:
+    - ansible_host not in patroni_leader_ip.stdout_lines[0]
+    #        - name: output etcd_values
+    #          ansible.builtin.debug: 
+    #            msg: "{{ etcd_values.stdout }}"
+    #          run_once: true

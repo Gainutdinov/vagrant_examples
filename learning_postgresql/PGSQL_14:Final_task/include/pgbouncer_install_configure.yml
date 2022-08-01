@@ -15,14 +15,14 @@
   loop:
     - { regexp: "^auth_type = trust",        line: "auth_type = md5" }
     - { regexp: "^;pool_mode = session",     line: "pool_mode = transaction" }
-    - { regexp: "^;max_client = 100",        line: "max_client_conn = 1000" }
-    - { regexp: "^;default_pool_size = 20",  line: "default_pool_size = 30" }
+    - { regexp: "^;max_client = 100",        line: "max_client_conn = 2500" }
+    - { regexp: "^;default_pool_size = 20",  line: "default_pool_size = 50" }
     - { regexp: "^;foodb =",                 line: "rebrain_courses_db = host=localhost port=5432 user=rebrain_monitoring password=password" }
 
 - name: add entry for userlist
   ansible.builtin.lineinfile:
     path: "/etc/pgbouncer/userlist.txt"
-    line: '"rebrain_monitoring" "password"'
+    line: '"rebrain_admin" "password"'
 
 - name: restart service pgbouncer.service
   systemd:

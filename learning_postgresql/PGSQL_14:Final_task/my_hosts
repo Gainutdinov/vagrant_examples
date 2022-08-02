@@ -1,14 +1,14 @@
 [haproxyservers]
-haproxy ansible_user=user ansible_host=188.166.50.194 ansible_password=uwohsqustjae
+haproxy ansible_user=user ansible_host=206.189.10.198 ansible_password=tabcfzsxxzwu
 [etcdservers]
-etcd-1 ansible_user=user ansible_host=164.92.145.228 ansible_password=jajxnzalwrvv
-etcd-2 ansible_user=user ansible_host=164.92.211.217 ansible_password=zmyllnqwkotq
-etcd-3 ansible_user=user ansible_host=167.99.222.204 ansible_password=xuvaiwdvkvzr
+etcd-1 ansible_user=user ansible_host=159.223.0.80 ansible_password=cyriufvwyror
+etcd-2 ansible_user=user ansible_host=188.166.57.121 ansible_password=bqmswhghdfsx
+etcd-3 ansible_user=user ansible_host=104.248.202.123 ansible_password=fsylapducxbe
 [pgbouncerservers]
-pgbouncer-1 ansible_user=user ansible_host=164.92.153.62 ansible_password=qatfwycseuwi
-pgbouncer-2 ansible_user=user ansible_host=164.92.210.216 ansible_password=toityabccdfz
+pgbouncer-1 ansible_user=user ansible_host=167.99.214.82 ansible_password=lqkztbxuyfrd
+pgbouncer-2 ansible_user=user ansible_host=188.166.125.15 ansible_password=epmeeuynfbbz
 [pgsqlservers]
-pgsql-replica-0 ansible_user=user ansible_host=164.92.145.240 ansible_password=ywtshujufxyt
-pgsql-replica-1 ansible_user=user ansible_host=188.166.2.114 ansible_password=cwpsgkgfuwjm
-pgsql-replica-2 ansible_user=user ansible_host=104.248.201.150 ansible_password=abvomxsbxsea
-pgsql-replica-3 ansible_user=user ansible_host=188.166.105.163 ansible_password=tqsgxggxiwpv
+pgsql-replica-0 ansible_user=user ansible_host=167.99.45.53 ansible_password=pvqfhjoeawng
+pgsql-replica-1 ansible_user=user ansible_host=206.189.99.188 ansible_password=arbtuucipven
+pgsql-replica-2 ansible_user=user ansible_host=188.166.124.130 ansible_password=kxtqsbvmpebm
+pgsql-replica-3 ansible_user=user ansible_host=206.189.4.45 ansible_password=znowxxkeqgjg

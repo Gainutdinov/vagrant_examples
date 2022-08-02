@@ -26,14 +26,6 @@
     state: directory
     mode: '0755'
 
-- name: Another symbolic mode example, adding some permissions and removing others
-  ansible.builtin.copy:
-    src: templates/
-    dest: /etc/foo.conf
-    owner: foo
-    group: foo
-    mode: u+rw,g-wx,o-rwx
-
 - name: Template a file to /usr/local/scripts
   ansible.builtin.template:
     src: templates/pgbouncer_script.sh.j2
@@ -59,14 +51,6 @@
 #     - "{{ hostvars['pgsql-replica-1'].ansible_host }} rebrain-postgres-node-1"
 #     - "{{ hostvars['pgsql-replica-2'].ansible_host }} rebrain-postgres-node-2"
 #     - "{{ hostvars['pgsql-replica-3'].ansible_host }} rebrain-postgres-node-3"
-
-restapi:
-  listen: {{ ansible_host }}:8008 # адрес той ноды, в которой находится этот файл
-  connect_address: {{ ansible_host }}:8008 # адрес той ноды, в которой находится этот файл
-
-etcd:
-  hosts: {{ hostvars['etcd-1'].ansible_host }}:2379, {{ hostvars['etcd-2'].ansible_host }}:2379, {{ hostvars['etcd-3'].ansible_host }}:2379 # перечислите здесь все ваши ноды, в случае если вы устанавливаете etcd на них же
-
 
 - name: add entry for userlist
   ansible.builtin.lineinfile:

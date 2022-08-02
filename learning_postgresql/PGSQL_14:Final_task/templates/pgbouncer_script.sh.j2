@@ -1,0 +1,32 @@
+#!/bin/bash
+
+#0. add script for every 10 seconds
+ETCD_NODE1={{ hostvars['etcd-1'].ansible_host }}
+ETCD_NODE2={{ hostvars['etcd-2'].ansible_host }}
+ETCD_NODE3={{ hostvars['etcd-3'].ansible_host }}
+
+#1. get leader
+#2. get leader ip
+for i in ${ETCD_NODE1} ${ETCD_NODE2} ${ETCD_NODE3}; do
+  response=$(curl --write-out '%{http_code}' --silent --output /dev/null http://${i}:2379/v2/keys/rebrain-cluster/rebrain/leader )
+  if [[ $response == '200' ]]; then
+    LEADER_NAME=$(curl http://${i}:2379/v2/keys/rebrain-cluster/rebrain/leader | jq .node.value | tr -d '"' )
+    LEADER_IP=$(curl http://${i}:2379/v2/keys/rebrain-cluster/rebrain/members/${LEADER_NAME}  | jq '.node.value | fromjson | .conn_url '| cut -d '/' -f3 | cut -d ':' -f1)
+
+    #3. compare leader ip with IP in pgbouncer
+    PGBOUNCER_HOST=$(cat /etc/pgbouncer/pgbouncer.ini | grep rebrain_courses_db | cut -d '=' -f3 | cut -d ' ' -f1)
+    echo "PGBOUNCER = $PGBOUNCER_HOST, LEADER_NAME = $LEADER_NAME, LEADER_IP = $LEADER_IP"
+    
+    #3.1. in case of differences edit config and re
+    #3.2. recofigure & reload pgbouncer
+    if [[ "$LEADER_IP" != "$PGBOUNCER_HOST" ]]; then
+      echo "NOT EQUAL"
+      sed -i "s/^rebrain_courses_db.*$/rebrain_courses_db = host=${LEADER_IP} port=5432 user=rebrain_monitoring password=password/g" /etc/pgbouncer/pgbouncer.ini
+      echo 'systemctl restart pgbouncer.service'
+      sudo systemctl restart pgbouncer.service
+    fi
+
+    break
+  fi
+done
+

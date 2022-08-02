@@ -1,11 +1,11 @@
 Infrastructure:
-haproxy: connect command: ssh user@159.223.226.203 password: iidkkmofmnik
-etcd-1: connect command: ssh user@159.223.229.13 password: isnlapzordtj
-etcd-2: connect command: ssh user@159.223.212.144 password: aiwzbovgmxsi
-etcd-3: connect command: ssh user@159.223.212.217 password: jfjklwxsqusa
-pgbouncer-1: connect command: ssh user@159.223.208.59 password: mjstbgmqmhms
-pgbouncer-2: connect command: ssh user@159.223.210.33 password: qpqxuumkgord
-pgsql-master: connect command: ssh user@164.92.157.249 password: khzfbzrndify
-pgsql-replica-1: connect command: ssh user@159.223.208.181 password: htofgbljedql
-pgsql-replica-2: connect command: ssh user@164.92.153.140 password: zytqskflyhui
-pgsql-replica-3: connect command: ssh user@164.92.151.173 password: wdigzbjyqhvt
+haproxy: connect command: ssh user@188.166.50.194 password: uwohsqustjae
+etcd-1: connect command: ssh user@164.92.145.228 password: jajxnzalwrvv
+etcd-2: connect command: ssh user@164.92.211.217 password: zmyllnqwkotq
+etcd-3: connect command: ssh user@167.99.222.204 password: xuvaiwdvkvzr
+pgbouncer-1: connect command: ssh user@164.92.153.62 password: qatfwycseuwi
+pgbouncer-2: connect command: ssh user@164.92.210.216 password: toityabccdfz
+pgsql-master: connect command: ssh user@164.92.145.240 password: ywtshujufxyt
+pgsql-replica-1: connect command: ssh user@188.166.2.114 password: cwpsgkgfuwjm
+pgsql-replica-2: connect command: ssh user@104.248.201.150 password: abvomxsbxsea
+pgsql-replica-3: connect command: ssh user@188.166.105.163 password: tqsgxggxiwpv

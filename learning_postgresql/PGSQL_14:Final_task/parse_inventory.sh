@@ -32,3 +32,5 @@ cat "$(echo $PWD)/hosts.txt" | while read line; do
   esac
 
 done
+
+sed -i 's/pgsql-master/pgsql-replica-0/g' ./my_hosts

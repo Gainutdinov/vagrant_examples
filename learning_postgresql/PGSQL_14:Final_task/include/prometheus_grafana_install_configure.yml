@@ -94,33 +94,47 @@
 
 - name: create prometheus datasource
   community.grafana.grafana_datasource:
-    url: "http://{{ hostvars['haproxy'].ansible_host }}"
+    url: "http://{{ hostvars['haproxy'].ansible_host }}:3000"
+    url_username: admin
+    url_password: admin
     name: myprometheus
     ds_type: prometheus
-    ds_url: "http://{{ hostvars['haproxy'].ansible_host }}"
+    ds_url: "http://{{ hostvars['haproxy'].ansible_host }}:9090"
+    is_default: true
     tls_skip_verify: true
 
-- name: Create or update a Grafana admin user
+- name: Create or update a Grafana admin user - user password
   community.grafana.grafana_user:
-    url: "http://{{ hostvars['haproxy'].ansible_host }}"
+    url: "http://{{ hostvars['haproxy'].ansible_host }}:3000"
     url_username: admin
     url_password: admin
     name: "Marat Admin"
-    email: batman@gotham.city
-    login: admin
-    password: admin
+    email: user@gotham.city
+    login: user
+    password: password
     is_admin: true
     state: present
 
-- name: Import Grafana dashboard Zabbix
+- name: Template dashboard files to grafana server
+  template:
+    src: "templates/{{ item }}"
+    dest: "/tmp/{{ item }}"
+    owner: root
+    group: root
+    mode: '0644'
+  loop:
+    - "node_full_template.json"
+    - "postgres_dashboard.json"
+
+- name: Import Grafana dashboard for postgres & node exporters
   community.grafana.grafana_dashboard:
-    grafana_url: "http://{{ hostvars['haproxy'].ansible_host }}"
+    grafana_url: "http://{{ hostvars['haproxy'].ansible_host }}:3000"
     url_username: admin
     url_password: admin
-    dashboard_id: "{{ item }}"
-    dashbord_revision: 1
-    loop:
-      - "1860"
-      - "9628"
-
-
+    state: present
+    commit_message: Updated by ansible
+    overwrite: yes
+    path: "{{ item }}"
+  loop:
+    - "/tmp/node_full_template.json"
+    - "/tmp/postgres_dashboard.json"

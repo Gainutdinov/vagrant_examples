@@ -47,10 +47,6 @@ scrape_configs:
     static_configs:
     - targets: ["{{hostvars['etcd-3'].ansible_host}}:9100"]
     metrics_path: '/metrics'
-  - job_name: "{{hostvars['etcd-3'].inventory_hostname}}"
-    static_configs:
-    - targets: ["{{hostvars['etcd-3'].ansible_host}}:9100"]
-    metrics_path: '/metrics'
   - job_name: "{{hostvars['pgsql-replica-1'].inventory_hostname}}"
     static_configs:
     - targets: ["{{hostvars['pgsql-replica-1'].ansible_host}}:9100"]
